@@ -63,6 +63,27 @@
     return () => window.removeEventListener('beforeunload', handler);
   });
 
+  // While awaiting advance, a click anywhere on the page (not just a fret)
+  // proceeds to the next prompt. Clicks on the fretboard hit-rects still
+  // trigger handleSelect's awaitingAdvance branch first, which flips the
+  // flag false before this bubble-phase listener reads it — so the rect
+  // path and the document path can't double-advance.
+  $effect(() => {
+    if (!awaitingAdvance || sessionEnded) return;
+    function handler(e: MouseEvent) {
+      if (!awaitingAdvance) return;
+      if (!(e.target instanceof Element)) return;
+      // Don't hijack clicks on interactive controls (End session button,
+      // Show roots toggle, anything else with native click semantics).
+      if (e.target.closest('button, input, label, select, textarea, a')) return;
+      awaitingAdvance = false;
+      flashHighlights = [];
+      nextPrompt();
+    }
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  });
+
   function endSession(soft: boolean) {
     if (sessionEnded) return;
     sessionEnded = true;
@@ -218,7 +239,7 @@
   </div>
 
   {#if awaitingAdvance}
-    <div class="continue-hint">Click any fret to continue →</div>
+    <div class="continue-hint">Click anywhere to continue →</div>
   {/if}
 </div>
 

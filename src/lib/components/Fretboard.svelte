@@ -245,16 +245,20 @@
       {#each Array(maxFret + 1) as _, f}
         <!-- Invisible hit target for mouse/touch click-to-answer. No keyboard
              affordance is provided today (the fretboard answers are entered
-             by pointing); marking role="button" satisfies a11y semantics and
-             we explicitly opt out of the click-without-keys warning. -->
+             by pointing); role="button" gives screen readers semantics, and
+             we explicitly opt out of click-without-keys and the
+             interactive-supports-focus rule. We deliberately do NOT add
+             tabindex — that would make the rects focusable and the browser
+             would paint a focus ring on click, which looks like a stray box
+             around the last-clicked cell. -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_interactive_supports_focus -->
         <rect
           data-role="hit"
           data-string={s}
           data-fret={f}
           role="button"
           aria-label={`String ${s}, fret ${f}`}
-          tabindex="-1"
           x={fretCenters[f] - fretSpacing / 2}
           y={stringYs[(s as number) - 1] - 11}
           width={fretSpacing}
@@ -273,5 +277,12 @@
     width: 100%;
     display: block;
     min-width: 800px;
+  }
+  .fretboard [data-role="hit"] {
+    outline: none;
+  }
+  .fretboard [data-role="hit"]:focus,
+  .fretboard [data-role="hit"]:focus-visible {
+    outline: none;
   }
 </style>
