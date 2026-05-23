@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
   import { RootNotesExercise } from '../exercise/rootNotes/RootNotesExercise';
   import type { RootNotesConfig, RootNotesPrompt, RootNotesReport } from '../exercise/rootNotes/types';
@@ -14,18 +15,23 @@
 
   let { config, onComplete, onAbort }: Props = $props();
 
+  // A session locks in its configuration for its lifetime: when it starts we
+  // snapshot the initial config and run with it until the session ends. Wrap
+  // the top-level reads in untrack() to make that intent explicit and silence
+  // state_referenced_locally — we deliberately do NOT want these reads to be
+  // reactive.
   const exercise = new RootNotesExercise();
-  exercise.start(config);
+  untrack(() => exercise.start(config));
 
   let currentPrompt = $state<RootNotesPrompt | null>(null);
   let awaitingAdvance = $state(false);
   let flashHighlights = $state<Highlight[]>([]);
   let correctCount = $state(0);
   let incorrectCount = $state(0);
-  let remainingSec = $state(config.durationSec);
+  let remainingSec = $state(untrack(() => config.durationSec));
   let elapsedSec = $state(0);
   let sessionEnded = $state(false);
-  let showRootMarkers = $state(config.showRootMarkers);
+  let showRootMarkers = $state(untrack(() => config.showRootMarkers));
 
   const sessionStartedAt = Date.now();
   let tickHandle: ReturnType<typeof setInterval> | null = null;

@@ -235,10 +235,18 @@
   <g>
     {#each [1,2,3,4,5,6] as s}
       {#each Array(maxFret + 1) as _, f}
+        <!-- Invisible hit target for mouse/touch click-to-answer. No keyboard
+             affordance is provided today (the fretboard answers are entered
+             by pointing); marking role="button" satisfies a11y semantics and
+             we explicitly opt out of the click-without-keys warning. -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <rect
           data-role="hit"
           data-string={s}
           data-fret={f}
+          role="button"
+          aria-label={`String ${s}, fret ${f}`}
+          tabindex="-1"
           x={fretCenters[f] - fretSpacing / 2}
           y={stringYs[(s as number) - 1] - 11}
           width={fretSpacing}
