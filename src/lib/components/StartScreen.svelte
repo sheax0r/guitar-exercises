@@ -14,7 +14,7 @@
   let durationSec = $state<number>(stored.durationSec ?? 300);
   let showAllLabels = $state<boolean>(stored.showAllLabels ?? false);
   let showRootMarkers = $state<boolean>(stored.showRootMarkers ?? false);
-  let playSound = $state<boolean>(stored.playSound ?? false);
+  let playSound = $state<boolean>(stored.playSound ?? true);
   let continuous = $state<boolean>(stored.continuous ?? false);
   let algorithm = $state<ClosestAlgorithm>(stored.algorithm ?? 'fret-first');
   let customMode = $state<boolean>(!continuous && ![60, 180, 300, 600].includes(durationSec));
