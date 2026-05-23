@@ -50,6 +50,19 @@
     };
   });
 
+  // While a session is running, intercept tab close / back nav / refresh so
+  // the user doesn't lose progress mid-test. The browser shows its own native
+  // "Leave site?" dialog — text is not customizable.
+  $effect(() => {
+    if (sessionEnded) return;
+    function handler(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  });
+
   function endSession(soft: boolean) {
     if (sessionEnded) return;
     sessionEnded = true;

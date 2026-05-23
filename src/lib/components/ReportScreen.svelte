@@ -1,17 +1,20 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
-  import type { RootNotesReport, PerTargetStat } from '../exercise/rootNotes/types';
-  import type { Note } from '../music/notes';
+  import type { RootNotesConfig, RootNotesReport, PerTargetStat } from '../exercise/rootNotes/types';
 
   type Props = {
     report: RootNotesReport;
-    targetNote: Note;
-    maxFret: number;
+    config: RootNotesConfig;
     onPracticeAgain: () => void;
     onBack: () => void;
   };
 
-  let { report, targetNote, maxFret, onPracticeAgain, onBack }: Props = $props();
+  let { report, config, onPracticeAgain, onBack }: Props = $props();
+  // The report is a static snapshot of a completed session — config values
+  // shown here are intentionally captured once, not reactive.
+  const targetNote = untrack(() => config.targetNote);
+  const maxFret = untrack(() => config.maxFret);
 
   const accuracyPct = $derived(Math.round(report.accuracy * 100));
   const avgTimeSec = $derived(report.avgTimeMs / 1000);
@@ -94,19 +97,58 @@
     return lines.join('\n');
   }
 
-  let copyState = $state<'idle' | 'copied' | 'failed'>('idle');
-  let copyResetHandle: ReturnType<typeof setTimeout> | null = null;
+  function buildJsonData(): string {
+    return JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      config: { ...config },
+      summary: {
+        totalPrompts: report.totalPrompts,
+        correctCount: report.correctCount,
+        incorrectCount: report.incorrectCount,
+        accuracy: report.accuracy,
+        avgTimeMs: report.avgTimeMs
+      },
+      attempts: report.attempts.map((a, i) => ({
+        index: i + 1,
+        elapsedMs: a.elapsedMs,
+        correct: a.correct
+      })),
+      perTargetStats: report.perTargetStats.map(s => ({
+        string: s.position.string,
+        fret: s.position.fret,
+        timesAsked: s.timesAsked,
+        correctCount: s.correctCount,
+        avgTimeMs: s.avgTimeMs
+      }))
+    }, null, 2);
+  }
+
+  type CopyState = 'idle' | 'copied' | 'failed';
+  let copyReportState = $state<CopyState>('idle');
+  let copyDataState = $state<CopyState>('idle');
+  let copyReportResetHandle: ReturnType<typeof setTimeout> | null = null;
+  let copyDataResetHandle: ReturnType<typeof setTimeout> | null = null;
 
   async function copyReport() {
-    const text = buildTextReport();
     try {
-      await navigator.clipboard.writeText(text);
-      copyState = 'copied';
+      await navigator.clipboard.writeText(buildTextReport());
+      copyReportState = 'copied';
     } catch {
-      copyState = 'failed';
+      copyReportState = 'failed';
     }
-    if (copyResetHandle !== null) clearTimeout(copyResetHandle);
-    copyResetHandle = setTimeout(() => { copyState = 'idle'; }, 2000);
+    if (copyReportResetHandle !== null) clearTimeout(copyReportResetHandle);
+    copyReportResetHandle = setTimeout(() => { copyReportState = 'idle'; }, 2000);
+  }
+
+  async function copyData() {
+    try {
+      await navigator.clipboard.writeText(buildJsonData());
+      copyDataState = 'copied';
+    } catch {
+      copyDataState = 'failed';
+    }
+    if (copyDataResetHandle !== null) clearTimeout(copyDataResetHandle);
+    copyDataResetHandle = setTimeout(() => { copyDataState = 'idle'; }, 2000);
   }
 </script>
 
@@ -217,7 +259,10 @@
     <button class="primary" onclick={onPracticeAgain}>Practice again</button>
     <button onclick={onBack}>Back to start</button>
     <button onclick={copyReport}>
-      {#if copyState === 'copied'}Copied!{:else if copyState === 'failed'}Copy failed{:else}Copy report{/if}
+      {#if copyReportState === 'copied'}Copied!{:else if copyReportState === 'failed'}Copy failed{:else}Copy report{/if}
+    </button>
+    <button onclick={copyData}>
+      {#if copyDataState === 'copied'}Copied!{:else if copyDataState === 'failed'}Copy failed{:else}Copy data (JSON){/if}
     </button>
   </div>
 </div>

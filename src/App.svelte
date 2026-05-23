@@ -54,8 +54,7 @@
 {:else if screen === 'report' && activeReport && activeConfig}
   <ReportScreen
     report={activeReport}
-    targetNote={activeConfig.targetNote}
-    maxFret={activeConfig.maxFret}
+    config={activeConfig}
     onPracticeAgain={handlePracticeAgain}
     onBack={handleBack}
   />
