@@ -49,11 +49,19 @@
   const NUT_W = 10;
 
   const fretSpacing = $derived((BOARD_W - NUT_W) / (maxFret + 1));
+  // The nut sits between fret 0 (open string, left of the nut) and fret 1.
+  // Wires are drawn between numbered frets only; the nut replaces what
+  // would otherwise have been the wire between fret 0 and fret 1.
+  const nutX = $derived(BOARD_X + fretSpacing);
   const fretLines = $derived(
-    Array.from({ length: maxFret }, (_, i) => BOARD_X + NUT_W + (i + 1) * fretSpacing)
+    Array.from({ length: maxFret - 1 }, (_, i) => BOARD_X + NUT_W + (i + 2) * fretSpacing)
   );
   const fretCenters = $derived(
-    Array.from({ length: maxFret + 1 }, (_, i) => BOARD_X + NUT_W + (i + 0.5) * fretSpacing)
+    Array.from({ length: maxFret + 1 }, (_, i) =>
+      i === 0
+        ? BOARD_X + 0.5 * fretSpacing
+        : BOARD_X + NUT_W + (i + 0.5) * fretSpacing
+    )
   );
 
   const stringYs = [40, 64, 88, 112, 136, 160];
@@ -113,7 +121,7 @@
 
 <svg viewBox="0 0 {VB_W} {VB_H}" class="fretboard" xmlns="http://www.w3.org/2000/svg">
   <rect x={BOARD_X} y={BOARD_Y} width={BOARD_W} height={BOARD_H} fill="#5b3a22" />
-  <rect x={BOARD_X} y={BOARD_Y} width={NUT_W} height={BOARD_H} fill="#e6e1d6" />
+  <rect x={nutX} y={BOARD_Y} width={NUT_W} height={BOARD_H} fill="#e6e1d6" />
 
   <g stroke="#bfb8a8" stroke-width="2">
     {#each fretLines as x}

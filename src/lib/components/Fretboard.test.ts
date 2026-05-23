@@ -16,10 +16,12 @@ describe('Fretboard — base rendering', () => {
     expect(strings).toHaveLength(6);
   });
 
-  it('renders 22 fret lines (excluding the nut)', () => {
+  it('renders fret wires between numbered frets (nut replaces the 1st wire)', () => {
     const { container } = render(Fretboard, { props: { maxFret: 22 } });
     const frets = container.querySelectorAll('[data-role="fret"]');
-    expect(frets).toHaveLength(22);
+    // For maxFret=22: wires sit between frets 1↔2, 2↔3, ..., 21↔22 = 21 wires.
+    // The boundary between fret 0 (open) and fret 1 is the nut itself.
+    expect(frets).toHaveLength(21);
   });
 
   it('renders string labels e B G D A E top-to-bottom', () => {
