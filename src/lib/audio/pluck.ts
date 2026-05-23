@@ -38,6 +38,14 @@ export function playPluck(string: StringNum, fret: number, durationSec = 1.5): v
   const audioCtx = getCtx();
   if (!audioCtx) return;
 
+  // Browsers create AudioContexts in 'suspended' state on production origins
+  // per the autoplay policy. Resume here — this call is reached from a click
+  // handler, so the user-gesture requirement is satisfied. On localhost the
+  // context often starts already 'running', so this was easy to miss.
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => { /* ignore */ });
+  }
+
   try {
     const freq = frequencyFor(string, fret);
     const sampleRate = audioCtx.sampleRate;
