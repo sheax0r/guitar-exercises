@@ -6,6 +6,7 @@ export interface Prefs {
   targetNote: Note;
   durationSec: number;
   continuous: boolean;
+  maxFret: number;
   showAllLabels: boolean;
   showRootMarkers: boolean;
   playSound: boolean;

@@ -5,6 +5,7 @@ const FULL_PREFS: Prefs = {
   targetNote: 'A',
   durationSec: 180,
   continuous: false,
+  maxFret: 24,
   showAllLabels: false,
   showRootMarkers: false,
   playSound: true,

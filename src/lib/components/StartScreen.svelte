@@ -10,8 +10,18 @@
   let { onStart }: Props = $props();
 
   const stored = loadPrefs();
+  // Narrow-viewport heuristic for the default fret count: phones (and most
+  // small tablets) can't comfortably render 24 frets at the board's 800px
+  // min-width. We only consult this when no stored preference exists — once
+  // the user picks a value it sticks across visits.
+  const isNarrowViewport = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(max-width: 768px)').matches;
+  const DEFAULT_MAX_FRET = isNarrowViewport ? 12 : 24;
+
   let targetNote = $state<Note>(stored.targetNote ?? 'A');
   let durationSec = $state<number>(stored.durationSec ?? 300);
+  let maxFret = $state<number>(stored.maxFret ?? DEFAULT_MAX_FRET);
   let showAllLabels = $state<boolean>(stored.showAllLabels ?? false);
   let showRootMarkers = $state<boolean>(stored.showRootMarkers ?? false);
   let playSound = $state<boolean>(stored.playSound ?? true);
@@ -26,6 +36,8 @@
     { label: '5m', sec: 300 },
     { label: '10m', sec: 600 }
   ];
+
+  const FRET_OPTIONS = [12, 22, 24];
 
   function pickPreset(sec: number) {
     continuous = false;
@@ -62,13 +74,13 @@
       targetNote,
       durationSec,
       continuous,
-      maxFret: 24,
+      maxFret,
       showAllLabels,
       showRootMarkers,
       playSound,
       algorithm
     };
-    const prefs: Prefs = { targetNote, durationSec, continuous, showAllLabels, showRootMarkers, playSound, algorithm };
+    const prefs: Prefs = { targetNote, durationSec, continuous, maxFret, showAllLabels, showRootMarkers, playSound, algorithm };
     savePrefs(prefs);
     onStart(config);
   }
@@ -127,6 +139,20 @@
         class:chip-active={continuous}
         onclick={pickContinuous}
       >Continuous</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="label">Frets</span>
+    <div class="chips">
+      {#each FRET_OPTIONS as n}
+        <button
+          type="button"
+          class:chip={true}
+          class:chip-active={maxFret === n}
+          onclick={() => (maxFret = n)}
+        >{n}</button>
+      {/each}
     </div>
   </div>
 
