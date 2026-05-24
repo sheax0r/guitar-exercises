@@ -31,14 +31,18 @@
   let remainingSec = $state(untrack(() => config.durationSec));
   let elapsedSec = $state(0);
   let sessionEnded = $state(false);
+  let paused = $state(false);
+  let pauseStartedAt: number | null = null;
   let showRootMarkers = $state(untrack(() => config.showRootMarkers));
 
-  const sessionStartedAt = Date.now();
+  // sessionStartedAt is shifted forward by pause durations on resume so the
+  // displayed elapsed/remaining timers exclude paused time.
+  let sessionStartedAt = Date.now();
   let tickHandle: ReturnType<typeof setInterval> | null = null;
 
   $effect(() => {
     tickHandle = setInterval(() => {
-      if (sessionEnded) return;
+      if (sessionEnded || paused) return;
       const elapsed = Math.floor((Date.now() - sessionStartedAt) / 1000);
       elapsedSec = elapsed;
       if (!config.continuous) {
@@ -69,9 +73,9 @@
   // flag false before this bubble-phase listener reads it — so the rect
   // path and the document path can't double-advance.
   $effect(() => {
-    if (!awaitingAdvance || sessionEnded) return;
+    if (!awaitingAdvance || sessionEnded || paused) return;
     function handler(e: MouseEvent) {
-      if (!awaitingAdvance) return;
+      if (!awaitingAdvance || paused) return;
       if (!(e.target instanceof Element)) return;
       // Don't hijack clicks on interactive controls (End session button,
       // Show roots toggle, anything else with native click semantics).
@@ -83,6 +87,35 @@
     window.addEventListener('click', handler);
     return () => window.removeEventListener('click', handler);
   });
+
+  // Spacebar toggles pause while a session is active. We ignore the key when
+  // focus is on a native interactive control so it can still activate buttons
+  // and toggle checkboxes the usual way.
+  $effect(() => {
+    if (sessionEnded) return;
+    function handler(e: KeyboardEvent) {
+      if (e.key !== ' ' && e.code !== 'Space') return;
+      if (e.target instanceof Element && e.target.closest('button, input, label, select, textarea, a')) return;
+      e.preventDefault();
+      togglePause();
+    }
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  });
+
+  function togglePause() {
+    if (sessionEnded) return;
+    if (paused) {
+      const pauseDurationMs = pauseStartedAt === null ? 0 : Date.now() - pauseStartedAt;
+      sessionStartedAt += pauseDurationMs;
+      exercise.notifyResumed(pauseDurationMs);
+      pauseStartedAt = null;
+      paused = false;
+    } else {
+      pauseStartedAt = Date.now();
+      paused = true;
+    }
+  }
 
   function endSession(soft: boolean) {
     if (sessionEnded) return;
@@ -120,7 +153,7 @@
   nextPrompt();
 
   function handleSelect(pos: { string: StringNum; fret: Fret }) {
-    if (sessionEnded) return;
+    if (sessionEnded || paused) return;
     // While awaiting advance, any fretboard click advances to the next prompt.
     if (awaitingAdvance) {
       awaitingAdvance = false;
@@ -224,10 +257,11 @@
       <input type="checkbox" bind:checked={showRootMarkers} />
       Show roots
     </label>
+    <button onclick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>
     <button onclick={confirmAndAbort}>End session</button>
   </header>
 
-  <div class="board">
+  <div class="board" class:paused>
     <Fretboard
       maxFret={config.maxFret}
       labelsVisible={config.showAllLabels}
@@ -236,9 +270,15 @@
       highlights={highlights}
       onSelect={handleSelect}
     />
+    {#if paused}
+      <div class="paused-overlay">
+        <div class="paused-text">Paused</div>
+        <div class="paused-hint">Press space or click Resume</div>
+      </div>
+    {/if}
   </div>
 
-  {#if awaitingAdvance}
+  {#if awaitingAdvance && !paused}
     <div class="continue-hint">Click anywhere to continue →</div>
   {/if}
 </div>
@@ -262,7 +302,20 @@
   }
   .ok { color: #5fb35a; }
   .bad { color: #e07a5f; }
-  .board { background: #2a2018; padding: 20px; border-radius: 8px; }
+  .board { background: #2a2018; padding: 20px; border-radius: 8px; position: relative; }
+  .board.paused :global(.fretboard) { filter: blur(2px) brightness(0.6); }
+  .paused-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; border-radius: 8px;
+    background: rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+  }
+  .paused-text {
+    font-size: 48px; font-weight: 700; letter-spacing: 0.05em;
+    color: #e8e3d3; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  .paused-hint { font-size: 14px; opacity: 0.8; color: #cfc6b3; }
   .continue-hint {
     text-align: center;
     font-size: 14px;

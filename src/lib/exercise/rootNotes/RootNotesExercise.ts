@@ -101,6 +101,13 @@ export class RootNotesExercise
     return result;
   }
 
+  // Called when a session resumes from a pause. Shifts the in-flight
+  // prompt's start time forward so the eventual submitAnswer measurement
+  // doesn't include time the player spent paused.
+  notifyResumed(pauseDurationMs: number): void {
+    this.promptStartedAt += pauseDurationMs;
+  }
+
   getReport(): RootNotesReport {
     const total = this.attempts.length;
     const correct = this.attempts.filter(a => a.correct).length;

@@ -95,6 +95,25 @@ describe('RootNotesExercise.submitAnswer', () => {
       vi.useRealTimers();
     }
   });
+
+  it('subtracts paused time from elapsedMs via notifyResumed', () => {
+    vi.useFakeTimers();
+    try {
+      const ex = new RootNotesExercise();
+      ex.start(DEFAULT_CONFIG);
+      ex.getNextPrompt();
+      vi.advanceTimersByTime(1000);  // 1s of thinking before pause
+      vi.advanceTimersByTime(5000);  // wall-clock advances 5s during the pause
+      ex.notifyResumed(5000);        // resume: subtract the 5s spent paused
+      vi.advanceTimersByTime(500);   // 0.5s more thinking after resume
+      const result = ex.submitAnswer({ string: 1, fret: 5 });
+      // Attention time was 1.5s despite 6.5s of wall-clock since prompt.
+      expect(result.elapsedMs).toBeGreaterThanOrEqual(1400);
+      expect(result.elapsedMs).toBeLessThanOrEqual(1600);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('RootNotesExercise.getReport', () => {
