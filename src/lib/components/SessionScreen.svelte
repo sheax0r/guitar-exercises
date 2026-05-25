@@ -67,16 +67,17 @@
     return () => window.removeEventListener('beforeunload', handler);
   });
 
-  // While awaiting advance, a click anywhere on the page (not just a fret)
-  // proceeds to the next prompt. Clicks on the fretboard hit-rects still
-  // trigger handleSelect's awaitingAdvance branch first, which flips the
-  // flag false before this bubble-phase listener reads it — so the rect
-  // path and the document path can't double-advance.
+  // While awaiting advance, a click anywhere OFF the fretboard advances to
+  // the next prompt. Clicks on the fretboard hit-rects go through the rect's
+  // own onclick → handleSelect, which already handles the advance branch —
+  // skipping them here also prevents the answer-submit click from immediately
+  // re-triggering this handler via bubbling once the effect arms it.
   $effect(() => {
     if (!awaitingAdvance || sessionEnded || paused) return;
     function handler(e: MouseEvent) {
       if (!awaitingAdvance || paused) return;
       if (!(e.target instanceof Element)) return;
+      if (e.target.closest('[data-role="hit"]')) return;
       // Don't hijack clicks on interactive controls (End session button,
       // Show roots toggle, anything else with native click semantics).
       if (e.target.closest('button, input, label, select, textarea, a')) return;
