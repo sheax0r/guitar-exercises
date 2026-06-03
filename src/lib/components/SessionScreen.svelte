@@ -31,9 +31,13 @@
   let remainingSec = $state(untrack(() => config.durationSec));
   let elapsedSec = $state(0);
   let sessionEnded = $state(false);
-  let paused = $state(false);
+  let pausedManually = $state(false);
   let pauseStartedAt: number | null = null;
   let showRootMarkers = $state(untrack(() => config.showRootMarkers));
+
+  // Toggling "Show roots" pauses the session — it's a study mode, not a
+  // testing mode, so we shouldn't be timing or quizzing while it's on.
+  const paused = $derived(pausedManually || showRootMarkers);
 
   // sessionStartedAt is shifted forward by pause durations on resume so the
   // displayed elapsed/remaining timers exclude paused time.
@@ -104,18 +108,26 @@
     return () => window.removeEventListener('keydown', handler);
   });
 
-  function togglePause() {
+  // A single $effect handles pause-start/resume accounting so it works for
+  // BOTH pause sources (manual button/space and the Show-roots toggle).
+  // When we enter pause we record the start; when we leave pause we shift
+  // sessionStartedAt and the exercise's prompt timer forward by the pause
+  // duration so paused time doesn't count against the player.
+  $effect(() => {
     if (sessionEnded) return;
     if (paused) {
-      const pauseDurationMs = pauseStartedAt === null ? 0 : Date.now() - pauseStartedAt;
+      if (pauseStartedAt === null) pauseStartedAt = Date.now();
+    } else if (pauseStartedAt !== null) {
+      const pauseDurationMs = Date.now() - pauseStartedAt;
       sessionStartedAt += pauseDurationMs;
       exercise.notifyResumed(pauseDurationMs);
       pauseStartedAt = null;
-      paused = false;
-    } else {
-      pauseStartedAt = Date.now();
-      paused = true;
     }
+  });
+
+  function togglePause() {
+    if (sessionEnded) return;
+    pausedManually = !pausedManually;
   }
 
   function endSession(soft: boolean) {
@@ -223,7 +235,7 @@
   }
 
   const highlights = $derived<Highlight[]>(
-    flashHighlights.length > 0 ? flashHighlights : buildPromptHighlight()
+    paused ? [] : (flashHighlights.length > 0 ? flashHighlights : buildPromptHighlight())
   );
 
   function confirmAndAbort() {
@@ -262,7 +274,11 @@
     <button onclick={confirmAndAbort}>End session</button>
   </header>
 
-  <div class="board" class:paused>
+  {#if paused}
+    <div class="paused-banner">Paused</div>
+  {/if}
+
+  <div class="board" class:paused={pausedManually && !showRootMarkers}>
     <Fretboard
       maxFret={config.maxFret}
       labelsVisible={config.showAllLabels}
@@ -271,7 +287,7 @@
       highlights={highlights}
       onSelect={handleSelect}
     />
-    {#if paused}
+    {#if pausedManually && !showRootMarkers}
       <div class="paused-overlay">
         <div class="paused-text">Paused</div>
         <div class="paused-hint">Press space or click Resume</div>
@@ -303,6 +319,14 @@
   }
   .ok { color: #5fb35a; }
   .bad { color: #e07a5f; }
+  .paused-banner {
+    text-align: center;
+    color: #e54b4b;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
   .board { background: #2a2018; padding: 20px; border-radius: 8px; position: relative; }
   .board.paused :global(.fretboard) { filter: blur(2px) brightness(0.6); }
   .paused-overlay {
