@@ -275,9 +275,6 @@
   </header>
 
   <div class="board" class:paused={pausedManually && !showRootMarkers}>
-    {#if paused}
-      <div class="paused-banner">Paused</div>
-    {/if}
     <Fretboard
       maxFret={config.maxFret}
       labelsVisible={config.showAllLabels}
@@ -286,7 +283,7 @@
       highlights={highlights}
       onSelect={handleSelect}
     />
-    {#if pausedManually && !showRootMarkers}
+    {#if paused}
       <div class="paused-overlay">
         <div class="paused-text">Paused</div>
         <div class="paused-hint">Press space or click Resume</div>
@@ -318,25 +315,9 @@
   }
   .ok { color: #5fb35a; }
   .bad { color: #e07a5f; }
-  .paused-banner {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #e54b4b;
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    pointer-events: none;
-  }
   .board {
     background: #2a2018;
-    padding: 40px 20px 20px;
+    padding: 20px;
     border-radius: 8px;
     position: relative;
   }
@@ -350,7 +331,7 @@
   }
   .paused-text {
     font-size: 48px; font-weight: 700; letter-spacing: 0.05em;
-    color: #e8e3d3; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    color: rgba(232, 227, 211, 0.7); text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   }
   .paused-hint { font-size: 14px; opacity: 0.8; color: #cfc6b3; }
   .continue-hint {
