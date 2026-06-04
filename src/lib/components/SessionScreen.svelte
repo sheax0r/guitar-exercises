@@ -274,11 +274,10 @@
     <button onclick={confirmAndAbort}>End session</button>
   </header>
 
-  {#if paused}
-    <div class="paused-banner">Paused</div>
-  {/if}
-
   <div class="board" class:paused={pausedManually && !showRootMarkers}>
+    {#if paused}
+      <div class="paused-banner">Paused</div>
+    {/if}
     <Fretboard
       maxFret={config.maxFret}
       labelsVisible={config.showAllLabels}
@@ -320,14 +319,27 @@
   .ok { color: #5fb35a; }
   .bad { color: #e07a5f; }
   .paused-banner {
-    text-align: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #e54b4b;
-    font-size: 28px;
+    font-size: 18px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    pointer-events: none;
   }
-  .board { background: #2a2018; padding: 20px; border-radius: 8px; position: relative; }
+  .board {
+    background: #2a2018;
+    padding: 40px 20px 20px;
+    border-radius: 8px;
+    position: relative;
+  }
   .board.paused :global(.fretboard) { filter: blur(2px) brightness(0.6); }
   .paused-overlay {
     position: absolute; inset: 0;
