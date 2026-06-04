@@ -270,7 +270,7 @@
       <input type="checkbox" bind:checked={showRootMarkers} />
       Show roots
     </label>
-    <button onclick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>
+    <button class="pause-btn" onclick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>
     <button onclick={confirmAndAbort}>End session</button>
   </header>
 
@@ -313,6 +313,9 @@
     cursor: pointer;
     user-select: none;
   }
+  /* Fixed width so the label swapping between "Pause" and "Resume" doesn't
+     resize the button and shift the rest of the header row. */
+  .pause-btn { min-width: 6em; }
   .ok { color: #5fb35a; }
   .bad { color: #e07a5f; }
   .board {
