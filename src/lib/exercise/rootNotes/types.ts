@@ -8,6 +8,7 @@ export interface RootNotesConfig {
   maxFret: number;
   showAllLabels: boolean;
   showRootMarkers: boolean;
+  showFretNumbers: boolean;
   playSound: boolean;
   algorithm: ClosestAlgorithm;
 }
