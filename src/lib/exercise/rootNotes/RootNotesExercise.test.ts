@@ -10,6 +10,7 @@ const DEFAULT_CONFIG: RootNotesConfig = {
   maxFret: 22,
   showAllLabels: false,
   showRootMarkers: false,
+  showFretNumbers: true,
   playSound: false,
   algorithm: 'fret-first'
 };

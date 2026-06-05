@@ -8,6 +8,7 @@ const FULL_PREFS: Prefs = {
   maxFret: 24,
   showAllLabels: false,
   showRootMarkers: false,
+  showFretNumbers: true,
   playSound: true,
   algorithm: 'fret-first'
 };

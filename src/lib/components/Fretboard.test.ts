@@ -104,6 +104,25 @@ describe('Fretboard — labels and highlights', () => {
   });
 });
 
+describe('Fretboard — fret numbers', () => {
+  it('renders a fret number under every fret column by default', () => {
+    const { container } = render(Fretboard, { props: { maxFret: 22 } });
+    const nums = container.querySelectorAll('[data-role="fret-number"]');
+    // Columns 0..22 inclusive = 23 numbers.
+    expect(nums).toHaveLength(23);
+  });
+
+  it('renders fret numbers when fretNumbersVisible=true', () => {
+    const { container } = render(Fretboard, { props: { maxFret: 22, fretNumbersVisible: true } });
+    expect(container.querySelectorAll('[data-role="fret-number"]')).toHaveLength(23);
+  });
+
+  it('renders no fret numbers when fretNumbersVisible=false', () => {
+    const { container } = render(Fretboard, { props: { maxFret: 22, fretNumbersVisible: false } });
+    expect(container.querySelectorAll('[data-role="fret-number"]')).toHaveLength(0);
+  });
+});
+
 describe('Fretboard — root markers', () => {
   it('renders nothing when showRootMarkers=false', () => {
     const { container } = render(Fretboard, {

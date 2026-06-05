@@ -21,6 +21,7 @@ describe('parseHash', () => {
         maxFret: 12,
         showAllLabels: false,
         showRootMarkers: false,
+        showFretNumbers: true,
         playSound: true,
         algorithm: 'fret-first'
       });
@@ -69,6 +70,7 @@ describe('parseHash', () => {
     if (r.screen === 'session') {
       expect(r.config.showAllLabels).toBe(false);
       expect(r.config.showRootMarkers).toBe(false);
+      expect(r.config.showFretNumbers).toBe(true);
       expect(r.config.playSound).toBe(true);
       expect(r.config.algorithm).toBe('fret-first');
     }
@@ -84,6 +86,7 @@ describe('sessionHash round-trip', () => {
       maxFret: 24,
       showAllLabels: true,
       showRootMarkers: false,
+      showFretNumbers: false,
       playSound: false,
       algorithm: 'manhattan'
     };
@@ -102,6 +105,7 @@ describe('sessionHash round-trip', () => {
       maxFret: 12,
       showAllLabels: false,
       showRootMarkers: false,
+      showFretNumbers: true,
       playSound: true,
       algorithm: 'fret-first'
     };

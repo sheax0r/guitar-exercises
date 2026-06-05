@@ -34,6 +34,9 @@
   let pausedManually = $state(false);
   let pauseStartedAt: number | null = null;
   let showRootMarkers = $state(untrack(() => config.showRootMarkers));
+  // Fret numbers are an orientation aid, not a study cheat, so toggling them
+  // does NOT pause the session the way "Show roots" does.
+  let showFretNumbers = $state(untrack(() => config.showFretNumbers));
 
   // Toggling "Show roots" pauses the session — it's a study mode, not a
   // testing mode, so we shouldn't be timing or quizzing while it's on.
@@ -270,6 +273,10 @@
       <input type="checkbox" bind:checked={showRootMarkers} />
       Show roots
     </label>
+    <label class="toggle">
+      <input type="checkbox" bind:checked={showFretNumbers} />
+      Fret numbers
+    </label>
     <button class="pause-btn" onclick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>
     <button onclick={confirmAndAbort}>End session</button>
   </header>
@@ -278,6 +285,7 @@
     <Fretboard
       maxFret={config.maxFret}
       labelsVisible={config.showAllLabels}
+      fretNumbersVisible={showFretNumbers}
       targetHighlightNote={config.targetNote}
       showRootMarkers={showRootMarkers}
       highlights={highlights}

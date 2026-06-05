@@ -24,6 +24,7 @@
   let maxFret = $state<number>(stored.maxFret ?? DEFAULT_MAX_FRET);
   let showAllLabels = $state<boolean>(stored.showAllLabels ?? false);
   let showRootMarkers = $state<boolean>(stored.showRootMarkers ?? false);
+  let showFretNumbers = $state<boolean>(stored.showFretNumbers ?? true);
   let playSound = $state<boolean>(stored.playSound ?? true);
   let continuous = $state<boolean>(stored.continuous ?? false);
   let algorithm = $state<ClosestAlgorithm>(stored.algorithm ?? 'fret-first');
@@ -77,10 +78,11 @@
       maxFret,
       showAllLabels,
       showRootMarkers,
+      showFretNumbers,
       playSound,
       algorithm
     };
-    const prefs: Prefs = { targetNote, durationSec, continuous, maxFret, showAllLabels, showRootMarkers, playSound, algorithm };
+    const prefs: Prefs = { targetNote, durationSec, continuous, maxFret, showAllLabels, showRootMarkers, showFretNumbers, playSound, algorithm };
     savePrefs(prefs);
     onStart(config);
   }
@@ -167,6 +169,13 @@
     <label>
       <input type="checkbox" bind:checked={showRootMarkers} />
       Show root note positions
+    </label>
+  </div>
+
+  <div class="row">
+    <label>
+      <input type="checkbox" bind:checked={showFretNumbers} />
+      Show fret numbers
     </label>
   </div>
 

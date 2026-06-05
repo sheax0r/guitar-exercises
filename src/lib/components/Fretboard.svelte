@@ -25,6 +25,7 @@
   type Props = {
     maxFret: number;
     labelsVisible?: boolean;
+    fretNumbersVisible?: boolean;
     targetHighlightNote?: Note;
     showRootMarkers?: boolean;
     highlights?: Highlight[];
@@ -34,6 +35,7 @@
   let {
     maxFret,
     labelsVisible = false,
+    fretNumbersVisible = true,
     targetHighlightNote,
     showRootMarkers = false,
     highlights = [],
@@ -162,11 +164,13 @@
     {/each}
   </g>
 
-  <g fill="#9c9384" font-family="ui-sans-serif, system-ui" font-size="11" text-anchor="middle">
-    {#each fretCenters as cx, i}
-      <text data-role="fret-number" x={cx} y={BOARD_Y + BOARD_H + 15}>{i}</text>
-    {/each}
-  </g>
+  {#if fretNumbersVisible}
+    <g fill="#9c9384" font-family="ui-sans-serif, system-ui" font-size="11" text-anchor="middle">
+      {#each fretCenters as cx, i}
+        <text data-role="fret-number" x={cx} y={BOARD_Y + BOARD_H + 15}>{i}</text>
+      {/each}
+    </g>
+  {/if}
 
   {#if labelsVisible}
     <g font-family="ui-sans-serif, system-ui" font-size="9" text-anchor="middle">

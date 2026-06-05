@@ -9,6 +9,7 @@ export interface Prefs {
   maxFret: number;
   showAllLabels: boolean;
   showRootMarkers: boolean;
+  showFretNumbers: boolean;
   playSound: boolean;
   algorithm: ClosestAlgorithm;
 }

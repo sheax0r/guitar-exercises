@@ -13,6 +13,7 @@ function makeConfig(): RootNotesConfig {
     maxFret: 22,
     showAllLabels: false,
     showRootMarkers: false,
+    showFretNumbers: true,
     playSound: false,
     algorithm: 'fret-first'
   };
@@ -76,5 +77,45 @@ describe('SessionScreen — answer feedback gate', () => {
     const okN = parseInt(container.querySelector('.ok')!.textContent!.replace(/\D/g, ''), 10);
     const badN = parseInt(container.querySelector('.bad')!.textContent!.replace(/\D/g, ''), 10);
     expect(okN + badN).toBe(1);
+  });
+});
+
+describe('SessionScreen — fret-number toggle', () => {
+  function fretNumberCheckbox(container: HTMLElement): HTMLInputElement {
+    const label = Array.from(container.querySelectorAll('label.toggle'))
+      .find(l => l.textContent?.includes('Fret numbers'))!;
+    return label.querySelector('input[type="checkbox"]') as HTMLInputElement;
+  }
+
+  it('shows fret numbers by default and hides them when the toggle is unchecked', async () => {
+    const { container } = render(SessionScreen, {
+      props: { config: makeConfig(), onComplete: () => {}, onAbort: () => {} }
+    });
+
+    expect(container.querySelectorAll('[data-role="fret-number"]').length).toBeGreaterThan(0);
+
+    const checkbox = fretNumberCheckbox(container);
+    expect(checkbox.checked).toBe(true);
+    await fireEvent.click(checkbox);
+
+    expect(container.querySelectorAll('[data-role="fret-number"]')).toHaveLength(0);
+  });
+
+  it('starts hidden when config.showFretNumbers is false', () => {
+    const { container } = render(SessionScreen, {
+      props: { config: { ...makeConfig(), showFretNumbers: false }, onComplete: () => {}, onAbort: () => {} }
+    });
+    expect(container.querySelectorAll('[data-role="fret-number"]')).toHaveLength(0);
+    expect(fretNumberCheckbox(container).checked).toBe(false);
+  });
+
+  it('does not pause the session when fret numbers are toggled off', async () => {
+    const { container } = render(SessionScreen, {
+      props: { config: makeConfig(), onComplete: () => {}, onAbort: () => {} }
+    });
+    await fireEvent.click(fretNumberCheckbox(container));
+    // Toggling fret numbers is purely visual — unlike "Show roots" it must not
+    // bring up the Paused overlay.
+    expect(container.querySelector('.paused-overlay')).toBeNull();
   });
 });

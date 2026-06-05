@@ -61,6 +61,7 @@ export function parseHash(hash: string): Route {
     maxFret: frets,
     showAllLabels: parseBool(params.get('labels'), false),
     showRootMarkers: parseBool(params.get('roots'), false),
+    showFretNumbers: parseBool(params.get('fretnums'), true),
     playSound: parseBool(params.get('sound'), true),
     algorithm: algoRaw as ClosestAlgorithm
   };
@@ -74,6 +75,7 @@ export function sessionHash(config: RootNotesConfig): string {
   params.set('frets', String(config.maxFret));
   params.set('roots', config.showRootMarkers ? '1' : '0');
   params.set('labels', config.showAllLabels ? '1' : '0');
+  params.set('fretnums', config.showFretNumbers ? '1' : '0');
   params.set('sound', config.playSound ? '1' : '0');
   params.set('algo', config.algorithm);
   return '#/session?' + params.toString();
