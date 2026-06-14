@@ -1,8 +1,10 @@
 import type { Note, ClosestAlgorithm } from '../music/notes';
+import type { ExerciseKind } from '../exercise/rootNotes/types';
 
 const KEY = 'guitar-exercises.prefs.v1';
 
 export interface Prefs {
+  exercise: ExerciseKind;
   targetNote: Note;
   durationSec: number;
   continuous: boolean;

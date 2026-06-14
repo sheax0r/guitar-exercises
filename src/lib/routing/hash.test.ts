@@ -15,6 +15,7 @@ describe('parseHash', () => {
     expect(r.screen).toBe('session');
     if (r.screen === 'session') {
       expect(r.config).toEqual({
+        exercise: 'root-notes',
         targetNote: 'A',
         durationSec: 300,
         continuous: false,
@@ -64,6 +65,31 @@ describe('parseHash', () => {
     expect(parseHash('#/session?note=A&duration=300&frets=12&algo=bogus').screen).toBe('start');
   });
 
+  it('defaults exercise to root-notes when ex param is absent', () => {
+    const r = parseHash('#/session?note=A&duration=300&frets=12');
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session') {
+      expect(r.config.exercise).toBe('root-notes');
+    }
+  });
+
+  it('parses the ex param for random-roots', () => {
+    const r = parseHash('#/session?ex=random-roots&duration=300&frets=12');
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session') {
+      expect(r.config.exercise).toBe('random-roots');
+    }
+  });
+
+  it('parses random-roots even when note is absent or invalid', () => {
+    const r = parseHash('#/session?ex=random-roots&duration=300&frets=12&note=X');
+    expect(r.screen).toBe('session');
+  });
+
+  it('falls back to start on an unknown ex value', () => {
+    expect(parseHash('#/session?ex=bogus&note=A&duration=300&frets=12').screen).toBe('start');
+  });
+
   it('defaults optional fields when omitted', () => {
     const r = parseHash('#/session?note=A&duration=300&frets=12');
     expect(r.screen).toBe('session');
@@ -80,6 +106,7 @@ describe('parseHash', () => {
 describe('sessionHash round-trip', () => {
   it('round-trips a typical timed config', () => {
     const original: RootNotesConfig = {
+      exercise: 'root-notes',
       targetNote: 'C#',
       durationSec: 180,
       continuous: false,
@@ -97,8 +124,29 @@ describe('sessionHash round-trip', () => {
     }
   });
 
+  it('round-trips a random-roots config', () => {
+    const original: RootNotesConfig = {
+      exercise: 'random-roots',
+      targetNote: 'A',
+      durationSec: 300,
+      continuous: false,
+      maxFret: 12,
+      showAllLabels: false,
+      showRootMarkers: false,
+      showFretNumbers: true,
+      playSound: true,
+      algorithm: 'fret-first'
+    };
+    const parsed = parseHash(sessionHash(original));
+    expect(parsed.screen).toBe('session');
+    if (parsed.screen === 'session') {
+      expect(parsed.config.exercise).toBe('random-roots');
+    }
+  });
+
   it('serializes continuous mode using the literal "continuous"', () => {
     const config: RootNotesConfig = {
+      exercise: 'root-notes',
       targetNote: 'A',
       durationSec: 300,
       continuous: true,

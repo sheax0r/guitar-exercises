@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { loadPrefs, savePrefs, type Prefs } from './prefs';
 
 const FULL_PREFS: Prefs = {
+  exercise: 'root-notes',
   targetNote: 'A',
   durationSec: 180,
   continuous: false,

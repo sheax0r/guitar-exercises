@@ -1,6 +1,9 @@
 # Guitar Exercises
 
-A local web app for guitar practice. Currently includes one exercise: **Root Notes** — given a target note and a starting position on the fretboard, find the closest occurrence of that note on any string.
+A local web app for guitar practice. Includes two exercises:
+
+- **Root Notes** — given a fixed target note and a starting position on the fretboard, find the closest occurrence of that note on any string.
+- **Random Roots** — same task, but the target note is re-randomized from A, E, or D on every prompt and shown each question.
 
 ## Run it
 

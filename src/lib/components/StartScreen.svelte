@@ -1,7 +1,7 @@
 <script lang="ts">
   import { CHROMATIC, NOTE_DISPLAY, type Note, type ClosestAlgorithm } from '../music/notes';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
-  import type { RootNotesConfig } from '../exercise/rootNotes/types';
+  import type { RootNotesConfig, ExerciseKind } from '../exercise/rootNotes/types';
 
   type Props = {
     onStart: (config: RootNotesConfig) => void;
@@ -19,6 +19,7 @@
     && window.matchMedia('(max-width: 768px)').matches;
   const DEFAULT_MAX_FRET = isNarrowViewport ? 12 : 24;
 
+  let exercise = $state<ExerciseKind>(stored.exercise ?? 'root-notes');
   let targetNote = $state<Note>(stored.targetNote ?? 'A');
   let durationSec = $state<number>(stored.durationSec ?? 300);
   let maxFret = $state<number>(stored.maxFret ?? DEFAULT_MAX_FRET);
@@ -72,6 +73,7 @@
   function handleStart() {
     if (!valid) return;
     const config: RootNotesConfig = {
+      exercise,
       targetNote,
       durationSec,
       continuous,
@@ -82,7 +84,7 @@
       playSound,
       algorithm
     };
-    const prefs: Prefs = { targetNote, durationSec, continuous, maxFret, showAllLabels, showRootMarkers, showFretNumbers, playSound, algorithm };
+    const prefs: Prefs = { exercise, targetNote, durationSec, continuous, maxFret, showAllLabels, showRootMarkers, showFretNumbers, playSound, algorithm };
     savePrefs(prefs);
     onStart(config);
   }
@@ -93,19 +95,27 @@
 
   <div class="row">
     <label for="exercise">Exercise</label>
-    <select id="exercise" disabled>
-      <option>Root Notes</option>
+    <select id="exercise" bind:value={exercise}>
+      <option value="root-notes">Root Notes</option>
+      <option value="random-roots">Random Roots</option>
     </select>
   </div>
 
-  <div class="row">
-    <label for="note">Root note</label>
-    <select id="note" bind:value={targetNote}>
-      {#each CHROMATIC as n}
-        <option value={n}>{NOTE_DISPLAY[n]}</option>
-      {/each}
-    </select>
-  </div>
+  {#if exercise === 'random-roots'}
+    <div class="row">
+      <span class="label">Target notes</span>
+      <span class="hint">A, E, D — randomized each prompt</span>
+    </div>
+  {:else}
+    <div class="row">
+      <label for="note">Root note</label>
+      <select id="note" bind:value={targetNote}>
+        {#each CHROMATIC as n}
+          <option value={n}>{NOTE_DISPLAY[n]}</option>
+        {/each}
+      </select>
+    </div>
+  {/if}
 
   <div class="row">
     <span class="label">Duration</span>

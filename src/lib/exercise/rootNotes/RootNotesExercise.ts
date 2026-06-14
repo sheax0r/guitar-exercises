@@ -6,8 +6,12 @@ import type {
   RootNotesReport,
   PerTargetStat
 } from './types';
-import { noteAt, closestPositionOf, type Fret } from '../../music/notes';
+import { noteAt, closestPositionOf, type Fret, type Note } from '../../music/notes';
 import type { StringNum } from '../../music/tuning';
+
+// The fixed pool the 'random-roots' exercise re-draws its target from on every
+// prompt.
+const RANDOM_ROOT_NOTES: Note[] = ['A', 'E', 'D'];
 
 interface AttemptLog {
   // The canonical (lowest string, then lowest fret) position out of the tied
@@ -49,6 +53,15 @@ export class RootNotesExercise
     this.attempts = [];
   }
 
+  // For 'root-notes' the target is fixed at config.targetNote; for
+  // 'random-roots' it is re-drawn uniformly from RANDOM_ROOT_NOTES each prompt.
+  private pickTarget(): Note {
+    if (this.config.exercise === 'random-roots') {
+      return RANDOM_ROOT_NOTES[Math.floor(Math.random() * RANDOM_ROOT_NOTES.length)];
+    }
+    return this.config.targetNote;
+  }
+
   getNextPrompt(): RootNotesPrompt {
     const maxFret = this.config.maxFret;
     let pick: { string: StringNum; fret: Fret };
@@ -63,13 +76,15 @@ export class RootNotesExercise
     );
 
     this.prevPrompt = pick;
+    const targetNote = this.pickTarget();
     const prompt: RootNotesPrompt = {
       highlight: pick,
-      highlightNote: noteAt(pick.string, pick.fret)
+      highlightNote: noteAt(pick.string, pick.fret),
+      targetNote
     };
     this.currentPrompt = prompt;
     this.currentCorrect = closestPositionOf(
-      this.config.targetNote,
+      targetNote,
       pick,
       maxFret,
       this.config.algorithm
