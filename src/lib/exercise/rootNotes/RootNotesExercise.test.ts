@@ -81,6 +81,19 @@ describe('RootNotesExercise random-roots mode', () => {
       expect(result.correct).toBe(true);
     }
   });
+
+  it('records the prompt target on each report attempt', () => {
+    const ex = new RootNotesExercise();
+    ex.start(RANDOM_CONFIG);
+    const expectedTargets: string[] = [];
+    for (let i = 0; i < 30; i++) {
+      const prompt = ex.getNextPrompt();
+      expectedTargets.push(prompt.targetNote);
+      ex.submitAnswer(closestPositionOf(prompt.targetNote, prompt.highlight, 22, 'fret-first')[0]);
+    }
+    const report = ex.getReport();
+    expect(report.attempts.map(a => a.targetNote)).toEqual(expectedTargets);
+  });
 });
 
 describe('RootNotesExercise.submitAnswer', () => {

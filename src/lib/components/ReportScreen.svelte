@@ -1,8 +1,8 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
-  import { noteAt } from '../music/notes';
-  import type { RootNotesConfig, RootNotesReport, PerTargetStat } from '../exercise/rootNotes/types';
+  import { noteAt, CHROMATIC, type Note } from '../music/notes';
+  import type { RootNotesConfig, RootNotesReport, AttemptRecord, PerTargetStat } from '../exercise/rootNotes/types';
 
   type Props = {
     report: RootNotesReport;
@@ -21,11 +21,58 @@
   // exercise drew from rather than one fixed note.
   const titleSuffix = isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${targetNote}`;
 
-  const accuracyPct = $derived(Math.round(report.accuracy * 100));
-  const avgTimeSec = $derived(report.avgTimeMs / 1000);
+  // The distinct notes targeted this session, in chromatic order. Filters are
+  // only meaningful when more than one note appeared (i.e. a random-roots run).
+  const targetedNotes = untrack(() => {
+    const seen = new Set(report.attempts.map(a => a.targetNote));
+    return CHROMATIC.filter(n => seen.has(n));
+  });
+  const showNoteFilters = targetedNotes.length > 1;
+
+  // Which notes are currently included in the report views. All on by default;
+  // at least one must stay selected so the report is never empty-by-accident.
+  let selectedNotes = $state<Note[]>([...targetedNotes]);
+
+  function isSelected(n: Note): boolean {
+    return selectedNotes.includes(n);
+  }
+  function toggleNote(n: Note): void {
+    if (isSelected(n)) {
+      if (selectedNotes.length === 1) return; // keep at least one
+      selectedNotes = selectedNotes.filter(x => x !== n);
+    } else {
+      selectedNotes = [...selectedNotes, n];
+    }
+  }
+
+  // Attempts / per-position stats restricted to the selected notes. Each answer
+  // position plays exactly one note, so a position belongs to a note iff that
+  // note is selected. The summary cards are recomputed from this subset.
+  const filteredAttempts = $derived<AttemptRecord[]>(
+    report.attempts.filter(a => selectedNotes.includes(a.targetNote))
+  );
+  const filteredStats = $derived<PerTargetStat[]>(
+    report.perTargetStats.filter(s => selectedNotes.includes(noteAt(s.position.string, s.position.fret)))
+  );
+
+  const view = $derived.by(() => {
+    const att = filteredAttempts;
+    const total = att.length;
+    const correct = att.filter(a => a.correct).length;
+    return {
+      totalPrompts: total,
+      correctCount: correct,
+      incorrectCount: total - correct,
+      accuracy: total === 0 ? 0 : correct / total,
+      avgTimeMs: total === 0 ? 0 : att.reduce((s, a) => s + a.elapsedMs, 0) / total
+    };
+  });
+
+  const accuracyPct = $derived(Math.round(view.accuracy * 100));
+  const avgTimeSec = $derived(view.avgTimeMs / 1000);
 
   const heatmapHighlights = $derived<Highlight[]>(
-    report.perTargetStats.map(s => ({
+    filteredStats.map(s => ({
       string: s.position.string,
       fret: s.position.fret,
       // Each answer position plays exactly one note, so derive the label from
@@ -51,9 +98,9 @@
   const SCAT_PAD_B = 28;
 
   const maxElapsedSec = $derived(
-    report.attempts.length === 0
+    filteredAttempts.length === 0
       ? 1
-      : Math.max(1, Math.ceil(Math.max(...report.attempts.map(a => a.elapsedMs / 1000))))
+      : Math.max(1, Math.ceil(Math.max(...filteredAttempts.map(a => a.elapsedMs / 1000))))
   );
   const yTicks = $derived.by(() => {
     const m = maxElapsedSec;
@@ -64,7 +111,7 @@
     return ticks;
   });
   function xFor(i: number): number {
-    const n = report.attempts.length;
+    const n = filteredAttempts.length;
     if (n <= 1) return SCAT_PAD_L + (SCAT_W - SCAT_PAD_L - SCAT_PAD_R) / 2;
     const w = SCAT_W - SCAT_PAD_L - SCAT_PAD_R;
     return SCAT_PAD_L + (i / (n - 1)) * w;
@@ -75,29 +122,33 @@
   }
   const avgY = $derived(yFor(avgTimeSec));
 
-  const weakest = $derived<PerTargetStat[]>(
-    (() => {
-      const eligible = report.perTargetStats.filter(s => s.timesAsked >= 2);
-      eligible.sort((a, b) => {
-        const aAcc = a.correctCount / a.timesAsked;
-        const bAcc = b.correctCount / b.timesAsked;
-        if (aAcc !== bAcc) return aAcc - bAcc;
-        return b.avgTimeMs - a.avgTimeMs;
-      });
-      return eligible.slice(0, 3);
-    })()
-  );
+  function computeWeakest(stats: PerTargetStat[]): PerTargetStat[] {
+    const eligible = stats.filter(s => s.timesAsked >= 2);
+    eligible.sort((a, b) => {
+      const aAcc = a.correctCount / a.timesAsked;
+      const bAcc = b.correctCount / b.timesAsked;
+      if (aAcc !== bAcc) return aAcc - bAcc;
+      return b.avgTimeMs - a.avgTimeMs;
+    });
+    return eligible.slice(0, 3);
+  }
+  // Display reflects the active note filter; exports below stay whole-session.
+  const weakest = $derived<PerTargetStat[]>(computeWeakest(filteredStats));
 
+  // Exports describe the whole session regardless of the on-screen note
+  // filter; the JSON additionally carries each attempt's target note so a
+  // consumer can slice by note themselves.
   function buildTextReport(): string {
     const lines: string[] = [];
     lines.push(`Session report — ${titleSuffix}`);
-    lines.push(`Accuracy: ${accuracyPct}% (${report.correctCount}/${report.totalPrompts})`);
+    lines.push(`Accuracy: ${Math.round(report.accuracy * 100)}% (${report.correctCount}/${report.totalPrompts})`);
     lines.push(`Errors: ${report.incorrectCount}`);
-    lines.push(`Avg time: ${avgTimeSec.toFixed(1)}s`);
-    if (weakest.length > 0) {
+    lines.push(`Avg time: ${(report.avgTimeMs / 1000).toFixed(1)}s`);
+    const weakestAll = computeWeakest(report.perTargetStats);
+    if (weakestAll.length > 0) {
       lines.push('');
       lines.push('Weakest positions:');
-      for (const s of weakest) {
+      for (const s of weakestAll) {
         lines.push(`- ${statLabel(s)}: ${s.correctCount}/${s.timesAsked} correct · avg ${(s.avgTimeMs / 1000).toFixed(1)}s`);
       }
     }
@@ -118,11 +169,13 @@
       attempts: report.attempts.map((a, i) => ({
         index: i + 1,
         elapsedMs: a.elapsedMs,
-        correct: a.correct
+        correct: a.correct,
+        targetNote: a.targetNote
       })),
       perTargetStats: report.perTargetStats.map(s => ({
         string: s.position.string,
         fret: s.position.fret,
+        note: noteAt(s.position.string, s.position.fret),
         timesAsked: s.timesAsked,
         correctCount: s.correctCount,
         avgTimeMs: s.avgTimeMs
@@ -162,10 +215,27 @@
 <div class="report">
   <h2>Session report — {titleSuffix}</h2>
 
+  {#if showNoteFilters}
+    <div class="note-filters">
+      <span class="caption">Filter by note</span>
+      <div class="chips">
+        {#each targetedNotes as n}
+          <button
+            type="button"
+            class="chip note-toggle"
+            class:chip-active={isSelected(n)}
+            data-note={n}
+            onclick={() => toggleNote(n)}
+          >{n}</button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
   <div class="stats">
     <div class="card"><div class="caption">Accuracy</div><div class="big good">{accuracyPct}%</div></div>
-    <div class="card"><div class="caption">Correct / Total</div><div class="big">{report.correctCount} / {report.totalPrompts}</div></div>
-    <div class="card"><div class="caption">Errors</div><div class="big bad">{report.incorrectCount}</div></div>
+    <div class="card"><div class="caption">Correct / Total</div><div class="big">{view.correctCount} / {view.totalPrompts}</div></div>
+    <div class="card"><div class="caption">Errors</div><div class="big bad">{view.incorrectCount}</div></div>
     <div class="card"><div class="caption">Avg time</div><div class="big">{avgTimeSec.toFixed(1)}s</div></div>
   </div>
 
@@ -186,7 +256,7 @@
     </div>
   </div>
 
-  {#if report.attempts.length > 0}
+  {#if filteredAttempts.length > 0}
     <div class="section">
       <div class="caption">Response time per attempt (green = correct, red = wrong)</div>
       <div class="scatter">
@@ -215,7 +285,7 @@
             font-family="ui-sans-serif, system-ui"
             font-size="11"
             text-anchor="middle"
-          >Attempt # (1 → {report.attempts.length})</text>
+          >Attempt # (1 → {filteredAttempts.length})</text>
           <!-- Average line -->
           <line
             x1={SCAT_PAD_L} y1={avgY} x2={SCAT_W - SCAT_PAD_R} y2={avgY}
@@ -232,7 +302,7 @@
           >avg {avgTimeSec.toFixed(1)}s</text>
           <!-- Dots -->
           <g>
-            {#each report.attempts as a, i}
+            {#each filteredAttempts as a, i}
               <circle
                 cx={xFor(i)}
                 cy={yFor(a.elapsedMs / 1000)}
@@ -276,6 +346,19 @@
 
 <style>
   .report { max-width: 1200px; margin: 24px auto; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+  .note-filters { display: flex; flex-direction: column; gap: 8px; }
+  .note-filters .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 6px 16px;
+    border: 1px solid #888;
+    background: transparent;
+    border-radius: 999px;
+    cursor: pointer;
+    color: inherit;
+    font-weight: 700;
+    opacity: 0.55;
+  }
+  .chip-active { background: #ff8c42; color: #1a1a1a; border-color: #ff8c42; opacity: 1; }
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
   .card { background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; }
   .caption { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }

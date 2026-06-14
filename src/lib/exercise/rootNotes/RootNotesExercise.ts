@@ -17,6 +17,7 @@ interface AttemptLog {
   // The canonical (lowest string, then lowest fret) position out of the tied
   // set, used as the stable key for per-target aggregation.
   correctPosition: { string: StringNum; fret: Fret };
+  targetNote: Note;
   correct: boolean;
   elapsedMs: number;
 }
@@ -103,6 +104,7 @@ export class RootNotesExercise
     );
     this.attempts.push({
       correctPosition: canonicalPosition(this.currentCorrect),
+      targetNote: this.currentPrompt.targetNote,
       correct,
       elapsedMs
     });
@@ -164,7 +166,11 @@ export class RootNotesExercise
       accuracy,
       avgTimeMs,
       perTargetStats,
-      attempts: this.attempts.map(a => ({ elapsedMs: a.elapsedMs, correct: a.correct }))
+      attempts: this.attempts.map(a => ({
+        elapsedMs: a.elapsedMs,
+        correct: a.correct,
+        targetNote: a.targetNote
+      }))
     };
   }
 }
