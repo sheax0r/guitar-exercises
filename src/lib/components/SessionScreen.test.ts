@@ -7,6 +7,7 @@ vi.mock('../audio/pluck', () => ({ playPluck: () => {} }));
 
 function makeConfig(): RootNotesConfig {
   return {
+    exercise: 'root-notes',
     targetNote: 'A',
     durationSec: 300,
     continuous: false,
@@ -77,6 +78,33 @@ describe('SessionScreen — answer feedback gate', () => {
     const okN = parseInt(container.querySelector('.ok')!.textContent!.replace(/\D/g, ''), 10);
     const badN = parseInt(container.querySelector('.bad')!.textContent!.replace(/\D/g, ''), 10);
     expect(okN + badN).toBe(1);
+  });
+});
+
+describe('SessionScreen — per-prompt target (random-roots)', () => {
+  it('shows the prompt target drawn from {A,E,D}, not config.targetNote', () => {
+    // config.targetNote is deliberately 'C' (outside the random pool) so a
+    // header reading from config rather than the prompt would be caught.
+    const { container } = render(SessionScreen, {
+      props: {
+        config: { ...makeConfig(), exercise: 'random-roots', targetNote: 'C' },
+        onComplete: () => {},
+        onAbort: () => {}
+      }
+    });
+    const target = container.querySelector('.target strong')!.textContent;
+    expect(['A', 'E', 'D']).toContain(target);
+  });
+
+  it('shows config.targetNote in root-notes mode', () => {
+    const { container } = render(SessionScreen, {
+      props: {
+        config: { ...makeConfig(), targetNote: 'G' },
+        onComplete: () => {},
+        onAbort: () => {}
+      }
+    });
+    expect(container.querySelector('.target strong')!.textContent).toBe('G');
   });
 });
 

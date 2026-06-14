@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
+  import { noteAt } from '../music/notes';
   import type { RootNotesConfig, RootNotesReport, PerTargetStat } from '../exercise/rootNotes/types';
 
   type Props = {
@@ -15,6 +16,10 @@
   // shown here are intentionally captured once, not reactive.
   const targetNote = untrack(() => config.targetNote);
   const maxFret = untrack(() => config.maxFret);
+  const isRandomRoots = untrack(() => config.exercise === 'random-roots');
+  // 'random-roots' has no single target, so the report describes the pool the
+  // exercise drew from rather than one fixed note.
+  const titleSuffix = isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${targetNote}`;
 
   const accuracyPct = $derived(Math.round(report.accuracy * 100));
   const avgTimeSec = $derived(report.avgTimeMs / 1000);
@@ -23,7 +28,9 @@
     report.perTargetStats.map(s => ({
       string: s.position.string,
       fret: s.position.fret,
-      note: targetNote,
+      // Each answer position plays exactly one note, so derive the label from
+      // the position itself — correct whether the target was fixed or random.
+      note: noteAt(s.position.string, s.position.fret),
       kind: 'heatmap' as const,
       accuracy: s.timesAsked === 0 ? 0 : s.correctCount / s.timesAsked
     }))
@@ -83,7 +90,7 @@
 
   function buildTextReport(): string {
     const lines: string[] = [];
-    lines.push(`Session report — target note: ${targetNote}`);
+    lines.push(`Session report — ${titleSuffix}`);
     lines.push(`Accuracy: ${accuracyPct}% (${report.correctCount}/${report.totalPrompts})`);
     lines.push(`Errors: ${report.incorrectCount}`);
     lines.push(`Avg time: ${avgTimeSec.toFixed(1)}s`);
@@ -153,7 +160,7 @@
 </script>
 
 <div class="report">
-  <h2>Session report — target note: {targetNote}</h2>
+  <h2>Session report — {titleSuffix}</h2>
 
   <div class="stats">
     <div class="card"><div class="caption">Accuracy</div><div class="big good">{accuracyPct}%</div></div>
@@ -163,7 +170,7 @@
   </div>
 
   <div class="section">
-    <div class="caption">Heatmap — {targetNote} positions you saw this session</div>
+    <div class="caption">Heatmap — {isRandomRoots ? 'positions' : `${targetNote} positions`} you saw this session</div>
     <div class="board">
       <Fretboard maxFret={maxFret} highlights={heatmapHighlights} />
     </div>

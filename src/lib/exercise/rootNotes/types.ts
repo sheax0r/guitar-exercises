@@ -1,7 +1,10 @@
 import type { Note, Fret, ClosestAlgorithm } from '../../music/notes';
 import type { StringNum } from '../../music/tuning';
 
+export type ExerciseKind = 'root-notes' | 'random-roots';
+
 export interface RootNotesConfig {
+  exercise: ExerciseKind;
   targetNote: Note;
   durationSec: number;
   continuous: boolean;
@@ -16,6 +19,9 @@ export interface RootNotesConfig {
 export interface RootNotesPrompt {
   highlight: { string: StringNum; fret: Fret };
   highlightNote: Note;
+  // The note to find for this prompt. For 'root-notes' this is always
+  // config.targetNote; for 'random-roots' it is re-randomized per prompt.
+  targetNote: Note;
 }
 
 export type RootNotesAnswer = { string: StringNum; fret: Fret };

@@ -4,6 +4,7 @@ import { noteAt, closestPositionOf } from '../../music/notes';
 import type { RootNotesConfig } from './types';
 
 const DEFAULT_CONFIG: RootNotesConfig = {
+  exercise: 'root-notes',
   targetNote: 'A',
   durationSec: 60,
   continuous: false,
@@ -39,6 +40,45 @@ describe('RootNotesExercise.start + getNextPrompt', () => {
         next.highlight.fret === prev.highlight.fret
       ).toBe(false);
       prev = next;
+    }
+  });
+});
+
+describe('RootNotesExercise random-roots mode', () => {
+  const RANDOM_CONFIG: RootNotesConfig = { ...DEFAULT_CONFIG, exercise: 'random-roots' };
+
+  it('carries the prompt target on root-notes mode (equals config.targetNote)', () => {
+    const ex = new RootNotesExercise();
+    ex.start(DEFAULT_CONFIG);
+    for (let i = 0; i < 20; i++) {
+      expect(ex.getNextPrompt().targetNote).toBe('A');
+    }
+  });
+
+  it('draws each prompt target only from {A, E, D}', () => {
+    const ex = new RootNotesExercise();
+    ex.start(RANDOM_CONFIG);
+    for (let i = 0; i < 100; i++) {
+      expect(['A', 'E', 'D']).toContain(ex.getNextPrompt().targetNote);
+    }
+  });
+
+  it('randomizes the target across prompts (not a single fixed note)', () => {
+    const ex = new RootNotesExercise();
+    ex.start(RANDOM_CONFIG);
+    const seen = new Set<string>();
+    for (let i = 0; i < 100; i++) seen.add(ex.getNextPrompt().targetNote);
+    expect(seen.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it('accepts the closest position computed against the prompt target', () => {
+    const ex = new RootNotesExercise();
+    ex.start(RANDOM_CONFIG);
+    for (let i = 0; i < 30; i++) {
+      const prompt = ex.getNextPrompt();
+      const correct = closestPositionOf(prompt.targetNote, prompt.highlight, 22, 'fret-first');
+      const result = ex.submitAnswer(correct[0]);
+      expect(result.correct).toBe(true);
     }
   });
 });

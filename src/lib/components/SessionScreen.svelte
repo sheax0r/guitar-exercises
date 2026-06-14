@@ -178,6 +178,7 @@
       return;
     }
     if (!currentPrompt) return;
+    const promptTarget = currentPrompt.targetNote;
 
     if (config.playSound) {
       try { playPluck(pos.string, pos.fret); } catch { /* ignore */ }
@@ -209,9 +210,9 @@
       // the root-marker style so it reads as orientation rather than the
       // "real" correct answer.
       const clickedNote = noteAt(pos.string, pos.fret);
-      const fromClick: Highlight[] = clickedNote === config.targetNote
+      const fromClick: Highlight[] = clickedNote === promptTarget
         ? []
-        : closestPositionOf(config.targetNote, pos, config.maxFret, config.algorithm).map(c => ({
+        : closestPositionOf(promptTarget, pos, config.maxFret, config.algorithm).map(c => ({
             string: c.string,
             fret: c.fret,
             note: noteAt(c.string, c.fret),
@@ -241,6 +242,12 @@
     paused ? [] : (flashHighlights.length > 0 ? flashHighlights : buildPromptHighlight())
   );
 
+  // The note to find for the current prompt. For 'random-roots' this changes
+  // every prompt, so we read it from the prompt rather than config.targetNote.
+  // Falls back to config.targetNote only in the brief window before the first
+  // prompt is generated.
+  const currentTarget = $derived(currentPrompt?.targetNote ?? config.targetNote);
+
   function confirmAndAbort() {
     if (sessionEnded) return;
     if (window.confirm('End the session now? Stats so far will be shown.')) {
@@ -257,7 +264,7 @@
 
 <div class="session">
   <header>
-    <div class="target">Target: <strong>{config.targetNote}</strong></div>
+    <div class="target">Target: <strong>{currentTarget}</strong></div>
     <div class="timer">
       {#if config.continuous}
         ⏱ {mmss(elapsedSec)}
@@ -286,7 +293,7 @@
       maxFret={config.maxFret}
       labelsVisible={config.showAllLabels}
       fretNumbersVisible={showFretNumbers}
-      targetHighlightNote={config.targetNote}
+      targetHighlightNote={currentTarget}
       showRootMarkers={showRootMarkers}
       highlights={highlights}
       onSelect={handleSelect}

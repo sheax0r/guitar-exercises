@@ -1,5 +1,5 @@
 import { CHROMATIC, type Note, type ClosestAlgorithm } from '../music/notes';
-import type { RootNotesConfig } from '../exercise/rootNotes/types';
+import type { RootNotesConfig, ExerciseKind } from '../exercise/rootNotes/types';
 
 export type Route =
   | { screen: 'start' }
@@ -9,6 +9,7 @@ export const START_HASH = '#/';
 
 const VALID_NOTES = new Set<string>(CHROMATIC);
 const VALID_ALGOS = new Set<string>(['fret-first', 'manhattan']);
+const VALID_EXERCISES = new Set<string>(['root-notes', 'random-roots']);
 
 function parseBool(v: string | null, fallback: boolean): boolean {
   if (v === null) return fallback;
@@ -31,8 +32,21 @@ export function parseHash(hash: string): Route {
   const qIdx = h.indexOf('?');
   const params = new URLSearchParams(qIdx >= 0 ? h.slice(qIdx + 1) : '');
 
+  const exRaw = params.get('ex') ?? 'root-notes';
+  if (!VALID_EXERCISES.has(exRaw)) return { screen: 'start' };
+  const exercise = exRaw as ExerciseKind;
+
+  // 'random-roots' randomizes its target per prompt, so it has no fixed note to
+  // validate. We still keep a harmless targetNote on the config (unused by the
+  // random engine) — default to 'A' when absent/invalid.
   const note = params.get('note');
-  if (!note || !VALID_NOTES.has(note)) return { screen: 'start' };
+  let targetNote: Note;
+  if (exercise === 'random-roots') {
+    targetNote = note && VALID_NOTES.has(note) ? (note as Note) : 'A';
+  } else {
+    if (!note || !VALID_NOTES.has(note)) return { screen: 'start' };
+    targetNote = note as Note;
+  }
 
   const durationRaw = params.get('duration');
   let durationSec: number;
@@ -55,7 +69,8 @@ export function parseHash(hash: string): Route {
   if (!VALID_ALGOS.has(algoRaw)) return { screen: 'start' };
 
   const config: RootNotesConfig = {
-    targetNote: note as Note,
+    exercise,
+    targetNote,
     durationSec,
     continuous,
     maxFret: frets,
@@ -70,6 +85,7 @@ export function parseHash(hash: string): Route {
 
 export function sessionHash(config: RootNotesConfig): string {
   const params = new URLSearchParams();
+  params.set('ex', config.exercise);
   params.set('note', config.targetNote);
   params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
   params.set('frets', String(config.maxFret));
