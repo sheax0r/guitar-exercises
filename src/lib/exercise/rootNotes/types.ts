@@ -36,6 +36,9 @@ export interface PerTargetStat {
 export interface AttemptRecord {
   elapsedMs: number;
   correct: boolean;
+  // The note the player was asked to find on this attempt. Constant across a
+  // 'root-notes' session; varies per attempt for 'random-roots'.
+  targetNote: Note;
 }
 
 export interface RootNotesReport {
