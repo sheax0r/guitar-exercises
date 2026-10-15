@@ -4,7 +4,7 @@
   import { FretboardExercise } from '../exercise/FretboardExercise';
   import type { ExerciseConfig, ExercisePrompt, ExerciseReport } from '../exercise/types';
   import type { StringNum } from '../music/tuning';
-  import { noteAt, closestPositionOf, type Fret } from '../music/notes';
+  import { noteAt, closestPositionOf, NOTE_DISPLAY, type Fret } from '../music/notes';
   import { playPluck, playInterval } from '../audio/pluck';
 
   type Props = {
@@ -218,7 +218,7 @@
       const clickedNote = noteAt(pos.string, pos.fret);
       const fromClick: Highlight[] = clickedNote === promptTarget
         ? []
-        : closestPositionOf(promptTarget, pos, config.maxFret, config.algorithm).map(c => ({
+        : closestPositionOf(promptTarget, pos, config.maxFret, config.algorithm, config.direction).map(c => ({
             string: c.string,
             fret: c.fret,
             note: noteAt(c.string, c.fret),
@@ -273,8 +273,8 @@
   <header>
     <div class="target">
       {#if isIntervals && currentPrompt}
-        Find the <strong>{currentPrompt.interval}</strong> of <strong>{currentPrompt.highlightNote}</strong>
-        — key of {currentPrompt.keyRoot} {currentPrompt.keyQuality}
+        Find the <strong>{currentPrompt.interval}</strong> of <strong>{NOTE_DISPLAY[currentPrompt.highlightNote]}</strong>
+        — key of {NOTE_DISPLAY[currentPrompt.keyRoot!]} {currentPrompt.keyQuality}
       {:else}
         Target: <strong>{currentTarget}</strong>
       {/if}

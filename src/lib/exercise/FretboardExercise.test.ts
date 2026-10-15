@@ -287,6 +287,14 @@ describe('FretboardExercise intervals mode', () => {
     expect(quals.size).toBe(2);
   });
 
+  it('throws (rather than looping) when no in-scale position exists', () => {
+    // maxFret 0 + C# major: none of the open strings (E,A,D,G,B) are in the
+    // scale, so the picker can never satisfy the constraint. Must terminate.
+    const ex = new FretboardExercise();
+    ex.start({ ...INTERVALS_CONFIG, keyRoot: 'C#', keyQuality: 'major', maxFret: 0 });
+    expect(() => ex.getNextPrompt()).toThrow(/maxFret=0/);
+  });
+
   it('honors the direction setting when computing accepted answers', () => {
     const ex = new FretboardExercise();
     ex.start({ ...INTERVALS_CONFIG, direction: 'ascending' });

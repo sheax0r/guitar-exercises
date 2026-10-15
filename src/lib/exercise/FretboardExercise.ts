@@ -69,20 +69,23 @@ export class FretboardExercise
 
   // A random fretboard position, never a repeat of the previous prompt. When
   // `allowed` is given, only positions whose note is in that set are drawn.
+  // Reject sampling with bounded tries: throws rather than spinning forever if
+  // the constraints can't be met (e.g. a key with no in-scale position within
+  // maxFret — only reachable at a degenerate maxFret the UI never offers).
   private pickPosition(allowed?: Set<Note>): { string: StringNum; fret: Fret } {
     const maxFret = this.config.maxFret;
-    let pick: { string: StringNum; fret: Fret };
-    do {
+    const MAX_TRIES = 1000;
+    for (let tries = 0; tries < MAX_TRIES; tries++) {
       const string = ((Math.floor(Math.random() * 6) + 1) as StringNum);
       const fret = Math.floor(Math.random() * (maxFret + 1));
-      pick = { string, fret };
-    } while (
-      (allowed && !allowed.has(noteAt(pick.string, pick.fret))) ||
-      (this.prevPrompt &&
+      const pick = { string, fret };
+      const outOfScale = allowed && !allowed.has(noteAt(pick.string, pick.fret));
+      const repeat = this.prevPrompt &&
         pick.string === this.prevPrompt.string &&
-        pick.fret === this.prevPrompt.fret)
-    );
-    return pick;
+        pick.fret === this.prevPrompt.fret;
+      if (!outOfScale && !repeat) return pick;
+    }
+    throw new Error(`Could not pick a prompt position within maxFret=${maxFret}`);
   }
 
   getNextPrompt(): ExercisePrompt {
