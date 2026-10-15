@@ -94,6 +94,19 @@ describe('StartScreen — exercise selector', () => {
     }
   });
 
+  it('disables Start when the box span is cleared (prevents an infeasible config)', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
+    // Switch to the box shape, which reveals the span number input.
+    const boxChip = Array.from(container.querySelectorAll('.chip'))
+      .find(c => c.textContent?.trim() === 'Position box') as HTMLButtonElement;
+    await fireEvent.click(boxChip);
+    const span = container.querySelector('#span') as HTMLInputElement;
+    expect(span).toBeTruthy();
+    await fireEvent.input(span, { target: { value: '' } });
+    expect((container.querySelector('.start-button') as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('disables Start when every mode is toggled off', async () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });

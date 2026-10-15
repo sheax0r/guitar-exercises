@@ -79,7 +79,13 @@
   }
 
   const durationValid = $derived(continuous || durationSec > 0);
-  const valid = $derived(durationValid && (!isModes || enabledModes.length > 0));
+  // A box shape needs a sane span; an empty number input binds to null.
+  const boxSpanValid = $derived(
+    exercise !== 'play-shape' || shapeVariant !== 'box' || (Number.isInteger(boxSpan) && boxSpan >= 3)
+  );
+  const valid = $derived(
+    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid
+  );
 
   function handleStart() {
     if (!valid) return;

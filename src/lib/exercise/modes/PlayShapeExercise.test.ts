@@ -84,6 +84,20 @@ describe('PlayShapeExercise octave reachability', () => {
   });
 });
 
+describe('PlayShapeExercise infeasible configs', () => {
+  it('throws instead of hanging when the box span makes every shape empty', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({ ...base, shapeVariant: 'box', boxSpan: 0 });
+    expect(() => ex.getNextPrompt()).toThrow();
+  });
+
+  it('throws instead of hanging when no root can fit an octave (maxFret 1)', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({ ...base, shapeVariant: 'octave', octaveJudge: 'fixed', maxFret: 1 });
+    expect(() => ex.getNextPrompt()).toThrow();
+  });
+});
+
 describe('PlayShapeExercise box', () => {
   it('completes only when every box position is clicked, any order', () => {
     const ex = new PlayShapeExercise();

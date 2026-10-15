@@ -57,9 +57,15 @@ export class PlayShapeExercise
     let pitches: number[] = [];
 
     // Keep drawing until the shape is reachable within maxFret and the
-    // (root, mode) pair differs from the previous prompt.
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    // (root, mode) pair differs from the previous prompt. Bounded so an
+    // infeasible config (e.g. maxFret too small for any octave, or a
+    // non-positive box span) throws instead of spinning the event loop and
+    // freezing the tab.
+    const MAX_ATTEMPTS = 500;
+    let found = false;
+    root = { string: 1, fret: 0 };
+    mode = this.config.enabledModes[0];
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const string = ((Math.floor(Math.random() * 6) + 1)) as Pos['string'];
       const fret = Math.floor(Math.random() * (maxFret + 1));
       root = { string, fret };
@@ -78,7 +84,15 @@ export class PlayShapeExercise
         positions = boxPositions(root, mode, maxFret, boxSpan);
         if (positions.length === 0) continue;
       }
+      found = true;
       break;
+    }
+
+    if (!found) {
+      throw new Error(
+        `No playable ${shapeVariant} shape for the enabled modes within maxFret=${maxFret}` +
+        (shapeVariant === 'box' ? ` (boxSpan=${boxSpan})` : '')
+      );
     }
 
     this.prev = { root, mode };
