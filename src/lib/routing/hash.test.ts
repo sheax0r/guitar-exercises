@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseHash, sessionHash } from './hash';
 import type { ExerciseConfig } from '../exercise/types';
+import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 
 describe('parseHash', () => {
   it('returns start for empty / root hashes', () => {
@@ -44,7 +45,7 @@ describe('parseHash', () => {
   it('decodes sharp notes', () => {
     const r = parseHash('#/session?note=C%23&duration=300&frets=12');
     expect(r.screen).toBe('session');
-    if (r.screen === 'session') {
+    if (r.screen === 'session' && r.config.exercise === 'root-notes') {
       expect(r.config.targetNote).toBe('C#');
     }
   });
@@ -97,7 +98,7 @@ describe('parseHash', () => {
   it('defaults optional fields when omitted', () => {
     const r = parseHash('#/session?note=A&duration=300&frets=12');
     expect(r.screen).toBe('session');
-    if (r.screen === 'session') {
+    if (r.screen === 'session' && r.config.exercise === 'root-notes') {
       expect(r.config.showAllLabels).toBe(false);
       expect(r.config.showRootMarkers).toBe(false);
       expect(r.config.showFretNumbers).toBe(true);
@@ -198,5 +199,81 @@ describe('sessionHash round-trip', () => {
       direction: 'nearest'
     };
     expect(sessionHash(config)).toContain('duration=continuous');
+  });
+});
+
+describe('parseHash / sessionHash — play-shape', () => {
+  it('round-trips a play-shape config', () => {
+    const config: PlayShapeConfig = {
+      exercise: 'play-shape',
+      enabledModes: ['ionian', 'dorian'],
+      shapeVariant: 'octave',
+      octaveJudge: 'fixed',
+      boxSpan: 4,
+      maxFret: 12,
+      durationSec: 300,
+      continuous: false,
+      showFretNumbers: true,
+      playSound: true
+    };
+    const r = parseHash(sessionHash(config));
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session') {
+      expect(r.config).toEqual(config);
+    }
+  });
+
+  it('round-trips a box play-shape config', () => {
+    const config: PlayShapeConfig = {
+      exercise: 'play-shape',
+      enabledModes: ['mixolydian'],
+      shapeVariant: 'box',
+      octaveJudge: 'pitch',
+      boxSpan: 5,
+      maxFret: 24,
+      durationSec: 180,
+      continuous: false,
+      showFretNumbers: false,
+      playSound: false
+    };
+    const r = parseHash(sessionHash(config));
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session') {
+      expect(r.config).toEqual(config);
+    }
+  });
+
+  it('falls back to start when no modes are enabled', () => {
+    expect(parseHash('#/session?ex=play-shape&modes=&duration=300&frets=12'))
+      .toEqual({ screen: 'start' });
+  });
+
+  it('falls back to start on an unknown mode name', () => {
+    expect(parseHash('#/session?ex=play-shape&modes=bogus&duration=300&frets=12'))
+      .toEqual({ screen: 'start' });
+  });
+});
+
+describe('parseHash / sessionHash — identify-mode', () => {
+  it('round-trips an identify-mode config', () => {
+    const config: IdentifyModeConfig = {
+      exercise: 'identify-mode',
+      enabledModes: ['ionian', 'aeolian'],
+      maxFret: 12,
+      durationSec: 300,
+      continuous: false,
+      showFretNumbers: true,
+      playSound: false
+    };
+    const r = parseHash(sessionHash(config));
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session') {
+      expect(r.config).toEqual(config);
+    }
+  });
+
+  it('falls back to start when no modes are enabled', () => {
+    expect(parseHash('#/session?ex=identify-mode&modes=&duration=300&frets=12'))
+      .toEqual({ screen: 'start' });
   });
 });

@@ -97,6 +97,7 @@ describe('FretboardExercise.submitAnswer', () => {
     const result = ex.submitAnswer(correctAnswers[0]);
     expect(result.correct).toBe(true);
     expect(result.correctAnswers).toEqual(correctAnswers);
+    expect(result.promptComplete).toBe(true);
     expect(typeof result.elapsedMs).toBe('number');
     expect(result.elapsedMs).toBeGreaterThanOrEqual(0);
   });

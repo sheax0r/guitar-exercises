@@ -1,18 +1,22 @@
 import { CHROMATIC, type Note, type ClosestAlgorithm } from '../music/notes';
+import { MODE_ORDER, type Mode } from '../music/modes';
 import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
+import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
+import type { AnyConfig } from '../exercise/config';
 
 export type Route =
   | { screen: 'start' }
-  | { screen: 'session'; config: ExerciseConfig };
+  | { screen: 'session'; config: AnyConfig };
 
 export const START_HASH = '#/';
 
 const VALID_NOTES = new Set<string>(CHROMATIC);
 const VALID_ALGOS = new Set<string>(['fret-first', 'manhattan']);
-const VALID_EXERCISES = new Set<string>(['root-notes', 'random-roots', 'intervals']);
+const VALID_FRETBOARD_EXERCISES = new Set<string>(['root-notes', 'random-roots', 'intervals']);
 const VALID_INTERVALS = new Set<string>(['3rd', '5th', 'random']);
 const VALID_QUALITIES = new Set<string>(['major', 'minor', 'random']);
 const VALID_DIRECTIONS = new Set<string>(['nearest', 'ascending']);
+const VALID_MODES = new Set<string>(MODE_ORDER);
 
 // Reads a param against an allowed set, falling back to `fallback` when absent
 // or invalid. Intervals-only params use this so legacy URLs (without them) and
@@ -35,20 +39,26 @@ function parsePositiveInt(v: string | null): number | null {
   return n;
 }
 
-export function parseHash(hash: string): Route {
-  const h = hash.startsWith('#') ? hash.slice(1) : hash;
-  if (!h.startsWith('/session')) return { screen: 'start' };
+// duration=continuous → continuous mode; a positive integer → fixed duration.
+// Returns null when the value is present but invalid.
+function parseDuration(raw: string | null): { durationSec: number; continuous: boolean } | null {
+  if (raw === 'continuous') return { durationSec: 300, continuous: true };
+  const d = parsePositiveInt(raw);
+  if (d === null) return null;
+  return { durationSec: d, continuous: false };
+}
 
-  const qIdx = h.indexOf('?');
-  const params = new URLSearchParams(qIdx >= 0 ? h.slice(qIdx + 1) : '');
+function parseModes(raw: string | null): Mode[] | null {
+  if (raw === null || raw === '') return null;
+  const parts = raw.split(',').filter(p => p.length > 0);
+  if (parts.length === 0) return null;
+  for (const p of parts) {
+    if (!VALID_MODES.has(p)) return null;
+  }
+  return parts as Mode[];
+}
 
-  const exRaw = params.get('ex') ?? 'root-notes';
-  if (!VALID_EXERCISES.has(exRaw)) return { screen: 'start' };
-  const exercise = exRaw as ExerciseKind;
-
-  // 'random-roots' randomizes its target per prompt, so it has no fixed note to
-  // validate. We still keep a harmless targetNote on the config (unused by the
-  // random engine) — default to 'A' when absent/invalid.
+function parseFretboard(params: URLSearchParams, exercise: ExerciseKind): Route {
   const note = params.get('note');
   let targetNote: Note;
   if (exercise === 'random-roots' || exercise === 'intervals') {
@@ -58,19 +68,8 @@ export function parseHash(hash: string): Route {
     targetNote = note as Note;
   }
 
-  const durationRaw = params.get('duration');
-  let durationSec: number;
-  let continuous: boolean;
-  if (durationRaw === 'continuous') {
-    continuous = true;
-    // durationSec is unused while continuous, but the config requires a value.
-    durationSec = 300;
-  } else {
-    const d = parsePositiveInt(durationRaw);
-    if (d === null) return { screen: 'start' };
-    durationSec = d;
-    continuous = false;
-  }
+  const duration = parseDuration(params.get('duration'));
+  if (duration === null) return { screen: 'start' };
 
   const frets = parsePositiveInt(params.get('frets'));
   if (frets === null) return { screen: 'start' };
@@ -87,8 +86,8 @@ export function parseHash(hash: string): Route {
   const config: ExerciseConfig = {
     exercise,
     targetNote,
-    durationSec,
-    continuous,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
     maxFret: frets,
     showAllLabels: parseBool(params.get('labels'), false),
     showRootMarkers: parseBool(params.get('roots'), false),
@@ -103,20 +102,107 @@ export function parseHash(hash: string): Route {
   return { screen: 'session', config };
 }
 
-export function sessionHash(config: ExerciseConfig): string {
+function parsePlayShape(params: URLSearchParams): Route {
+  const enabledModes = parseModes(params.get('modes'));
+  if (enabledModes === null) return { screen: 'start' };
+
+  const duration = parseDuration(params.get('duration'));
+  if (duration === null) return { screen: 'start' };
+
+  const frets = parsePositiveInt(params.get('frets'));
+  if (frets === null) return { screen: 'start' };
+
+  const variantRaw = params.get('variant') ?? 'octave';
+  if (variantRaw !== 'octave' && variantRaw !== 'box') return { screen: 'start' };
+
+  const judgeRaw = params.get('judge') ?? 'fixed';
+  if (judgeRaw !== 'pitch' && judgeRaw !== 'fixed') return { screen: 'start' };
+
+  const span = parsePositiveInt(params.get('span')) ?? 4;
+
+  const config: PlayShapeConfig = {
+    exercise: 'play-shape',
+    enabledModes,
+    shapeVariant: variantRaw,
+    octaveJudge: judgeRaw,
+    boxSpan: span,
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true)
+  };
+  return { screen: 'session', config };
+}
+
+function parseIdentifyMode(params: URLSearchParams): Route {
+  const enabledModes = parseModes(params.get('modes'));
+  if (enabledModes === null) return { screen: 'start' };
+
+  const duration = parseDuration(params.get('duration'));
+  if (duration === null) return { screen: 'start' };
+
+  const frets = parsePositiveInt(params.get('frets'));
+  if (frets === null) return { screen: 'start' };
+
+  const config: IdentifyModeConfig = {
+    exercise: 'identify-mode',
+    enabledModes,
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true)
+  };
+  return { screen: 'session', config };
+}
+
+export function parseHash(hash: string): Route {
+  const h = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (!h.startsWith('/session')) return { screen: 'start' };
+
+  const qIdx = h.indexOf('?');
+  const params = new URLSearchParams(qIdx >= 0 ? h.slice(qIdx + 1) : '');
+
+  const ex = params.get('ex') ?? 'root-notes';
+  if (VALID_FRETBOARD_EXERCISES.has(ex)) return parseFretboard(params, ex as ExerciseKind);
+  if (ex === 'play-shape') return parsePlayShape(params);
+  if (ex === 'identify-mode') return parseIdentifyMode(params);
+  return { screen: 'start' };
+}
+
+export function sessionHash(config: AnyConfig): string {
   const params = new URLSearchParams();
   params.set('ex', config.exercise);
-  params.set('note', config.targetNote);
-  params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
-  params.set('frets', String(config.maxFret));
-  params.set('roots', config.showRootMarkers ? '1' : '0');
-  params.set('labels', config.showAllLabels ? '1' : '0');
-  params.set('fretnums', config.showFretNumbers ? '1' : '0');
-  params.set('sound', config.playSound ? '1' : '0');
-  params.set('algo', config.algorithm);
-  params.set('int', config.intervalKind);
-  params.set('keyroot', config.keyRoot);
-  params.set('keyqual', config.keyQuality);
-  params.set('dir', config.direction);
+
+  if (config.exercise === 'play-shape') {
+    params.set('modes', config.enabledModes.join(','));
+    params.set('variant', config.shapeVariant);
+    params.set('judge', config.octaveJudge);
+    params.set('span', String(config.boxSpan));
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+  } else if (config.exercise === 'identify-mode') {
+    params.set('modes', config.enabledModes.join(','));
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+  } else {
+    params.set('note', config.targetNote);
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('roots', config.showRootMarkers ? '1' : '0');
+    params.set('labels', config.showAllLabels ? '1' : '0');
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+    params.set('algo', config.algorithm);
+    params.set('int', config.intervalKind);
+    params.set('keyroot', config.keyRoot);
+    params.set('keyqual', config.keyQuality);
+    params.set('dir', config.direction);
+  }
   return '#/session?' + params.toString();
 }

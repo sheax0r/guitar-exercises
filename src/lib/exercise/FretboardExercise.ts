@@ -152,7 +152,8 @@ export class FretboardExercise
     const result: AnswerResult<ExerciseAnswer> = {
       correct,
       correctAnswers: this.currentCorrect,
-      elapsedMs
+      elapsedMs,
+      promptComplete: true
     };
     this.currentPrompt = null;
     this.currentCorrect = null;

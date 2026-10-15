@@ -4,6 +4,10 @@ export interface AnswerResult<Answer> {
   // produces a unique closest position this has length 1; ties produce >1.
   correctAnswers: Answer[];
   elapsedMs: number;
+  // True when this answer completes the prompt. Single-answer exercises (Root
+  // Notes) are always true; multi-click exercises are false until the last
+  // required click.
+  promptComplete: boolean;
 }
 
 export interface Exercise<Config, Prompt, Answer, Report> {

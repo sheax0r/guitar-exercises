@@ -32,6 +32,27 @@ describe('prefs', () => {
     expect(loadPrefs()).toEqual(FULL_PREFS);
   });
 
+  it('loads legacy v1 prefs (no modes keys) without throwing', () => {
+    localStorage.setItem('guitar-exercises.prefs.v1', JSON.stringify(FULL_PREFS));
+    const loaded = loadPrefs();
+    expect(loaded.exercise).toBe('root-notes');
+    expect(loaded.enabledModes).toBeUndefined();
+    expect(loaded.shapeVariant).toBeUndefined();
+  });
+
+  it('round-trips modes prefs', () => {
+    const p: Prefs = {
+      ...FULL_PREFS,
+      exercise: 'play-shape',
+      enabledModes: ['ionian', 'dorian'],
+      shapeVariant: 'box',
+      octaveJudge: 'pitch',
+      boxSpan: 5
+    };
+    savePrefs(p);
+    expect(loadPrefs()).toEqual(p);
+  });
+
   it('returns empty object on malformed JSON', () => {
     localStorage.setItem('guitar-exercises.prefs.v1', '{not-json');
     expect(loadPrefs()).toEqual({});

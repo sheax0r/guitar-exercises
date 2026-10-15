@@ -1,11 +1,14 @@
 <script lang="ts">
   import { CHROMATIC, NOTE_DISPLAY, type Note, type ClosestAlgorithm, type Direction } from '../music/notes';
   import type { Interval, ScaleQuality } from '../music/scales';
+  import { MODE_ORDER, MODE_DISPLAY, type Mode } from '../music/modes';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
-  import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
+  import type { ExerciseConfig } from '../exercise/types';
+  import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
+  import type { AnyConfig } from '../exercise/config';
 
   type Props = {
-    onStart: (config: ExerciseConfig) => void;
+    onStart: (config: AnyConfig) => void;
   };
 
   let { onStart }: Props = $props();
@@ -20,7 +23,7 @@
     && window.matchMedia('(max-width: 768px)').matches;
   const DEFAULT_MAX_FRET = isNarrowViewport ? 12 : 24;
 
-  let exercise = $state<ExerciseKind>(stored.exercise ?? 'root-notes');
+  let exercise = $state<AnyConfig['exercise']>(stored.exercise ?? 'root-notes');
   let targetNote = $state<Note>(stored.targetNote ?? 'A');
   let durationSec = $state<number>(stored.durationSec ?? 300);
   let maxFret = $state<number>(stored.maxFret ?? DEFAULT_MAX_FRET);
@@ -36,6 +39,14 @@
   let direction = $state<Direction>(stored.direction ?? 'nearest');
   let customMode = $state<boolean>(!continuous && ![60, 180, 300, 600].includes(durationSec));
   let customValue = $state<number>(customMode ? durationSec : 120);
+
+  // Modes-exercise settings.
+  let enabledModes = $state<Mode[]>(stored.enabledModes ?? [...MODE_ORDER]);
+  let shapeVariant = $state<'octave' | 'box'>(stored.shapeVariant ?? 'octave');
+  let octaveJudge = $state<'pitch' | 'fixed'>(stored.octaveJudge ?? 'fixed');
+  let boxSpan = $state<number>(stored.boxSpan ?? 4);
+
+  const isModes = $derived(exercise === 'play-shape' || exercise === 'identify-mode');
 
   const DURATIONS = [
     { label: '1m', sec: 60 },
@@ -73,11 +84,68 @@
     if (customMode) durationSec = v;
   }
 
-  const valid = $derived(continuous || durationSec > 0);
+  function toggleMode(m: Mode) {
+    enabledModes = enabledModes.includes(m)
+      ? enabledModes.filter(x => x !== m)
+      : [...enabledModes, m];
+  }
+
+  const durationValid = $derived(continuous || durationSec > 0);
+  // A box shape needs a sane span; an empty number input binds to null.
+  const boxSpanValid = $derived(
+    exercise !== 'play-shape' || shapeVariant !== 'box' || (Number.isInteger(boxSpan) && boxSpan >= 3)
+  );
+  const valid = $derived(
+    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid
+  );
 
   function handleStart() {
     if (!valid) return;
-    const config: ExerciseConfig = {
+    let config: AnyConfig;
+    if (exercise === 'play-shape') {
+      const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
+      config = {
+        exercise: 'play-shape',
+        enabledModes: modes,
+        shapeVariant,
+        octaveJudge,
+        boxSpan,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound
+      } satisfies PlayShapeConfig;
+    } else if (exercise === 'identify-mode') {
+      const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
+      config = {
+        exercise: 'identify-mode',
+        enabledModes: modes,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound
+      } satisfies IdentifyModeConfig;
+    } else {
+      config = {
+        exercise,
+        targetNote,
+        durationSec,
+        continuous,
+        maxFret,
+        showAllLabels,
+        showRootMarkers,
+        showFretNumbers,
+        playSound,
+        algorithm,
+        intervalKind,
+        keyRoot,
+        keyQuality,
+        direction
+      } satisfies ExerciseConfig;
+    }
+    const prefs: Prefs = {
       exercise,
       targetNote,
       durationSec,
@@ -91,9 +159,12 @@
       intervalKind,
       keyRoot,
       keyQuality,
-      direction
+      direction,
+      enabledModes,
+      shapeVariant,
+      octaveJudge,
+      boxSpan
     };
-    const prefs: Prefs = { exercise, targetNote, durationSec, continuous, maxFret, showAllLabels, showRootMarkers, showFretNumbers, playSound, algorithm, intervalKind, keyRoot, keyQuality, direction };
     savePrefs(prefs);
     onStart(config);
   }
@@ -108,6 +179,8 @@
       <option value="root-notes">Root Notes</option>
       <option value="random-roots">Random Roots</option>
       <option value="intervals">Intervals</option>
+      <option value="play-shape">Play the Shape (modes)</option>
+      <option value="identify-mode">Identify the Mode</option>
     </select>
   </div>
 
@@ -149,6 +222,48 @@
         <option value="ascending">Ascending (higher pitch)</option>
       </select>
     </div>
+  {:else if isModes}
+    <div class="row">
+      <span class="label">Modes</span>
+      <div class="chips">
+        {#each MODE_ORDER as m}
+          <button
+            type="button"
+            class:chip={true}
+            class:chip-active={enabledModes.includes(m)}
+            onclick={() => toggleMode(m)}
+          >{MODE_DISPLAY[m]}</button>
+        {/each}
+      </div>
+      {#if enabledModes.length === 0}
+        <span class="hint warn">Enable at least one mode.</span>
+      {/if}
+    </div>
+
+    {#if exercise === 'play-shape'}
+      <div class="row">
+        <span class="label">Shape</span>
+        <div class="chips">
+          <button type="button" class:chip={true} class:chip-active={shapeVariant === 'octave'} onclick={() => (shapeVariant = 'octave')}>One octave</button>
+          <button type="button" class:chip={true} class:chip-active={shapeVariant === 'box'} onclick={() => (shapeVariant = 'box')}>Position box</button>
+        </div>
+      </div>
+
+      {#if shapeVariant === 'octave'}
+        <div class="row">
+          <span class="label">Judging</span>
+          <div class="chips">
+            <button type="button" class:chip={true} class:chip-active={octaveJudge === 'fixed'} onclick={() => (octaveJudge = 'fixed')}>Fixed fingering</button>
+            <button type="button" class:chip={true} class:chip-active={octaveJudge === 'pitch'} onclick={() => (octaveJudge = 'pitch')}>Any position (by pitch)</button>
+          </div>
+        </div>
+      {:else}
+        <div class="row">
+          <label for="span">Box span (frets)</label>
+          <input id="span" type="number" min="3" step="1" bind:value={boxSpan} />
+        </div>
+      {/if}
+    {/if}
   {:else}
     <div class="row">
       <label for="note">Root note</label>
@@ -211,19 +326,21 @@
     </div>
   </div>
 
-  <div class="row">
-    <label>
-      <input type="checkbox" bind:checked={showAllLabels} />
-      Show all labels (warm-up mode)
-    </label>
-  </div>
+  {#if !isModes}
+    <div class="row">
+      <label>
+        <input type="checkbox" bind:checked={showAllLabels} />
+        Show all labels (warm-up mode)
+      </label>
+    </div>
 
-  <div class="row">
-    <label>
-      <input type="checkbox" bind:checked={showRootMarkers} />
-      Show root note positions
-    </label>
-  </div>
+    <div class="row">
+      <label>
+        <input type="checkbox" bind:checked={showRootMarkers} />
+        Show root note positions
+      </label>
+    </div>
+  {/if}
 
   <div class="row">
     <label>
@@ -239,13 +356,15 @@
     </label>
   </div>
 
-  <div class="row">
-    <label for="algorithm">Closest-position algorithm</label>
-    <select id="algorithm" bind:value={algorithm}>
-      <option value="fret-first">Same fret first (then closest string)</option>
-      <option value="manhattan">Manhattan (fret + string distance)</option>
-    </select>
-  </div>
+  {#if !isModes}
+    <div class="row">
+      <label for="algorithm">Closest-position algorithm</label>
+      <select id="algorithm" bind:value={algorithm}>
+        <option value="fret-first">Same fret first (then closest string)</option>
+        <option value="manhattan">Manhattan (fret + string distance)</option>
+      </select>
+    </div>
+  {/if}
 
   <button class="start-button" disabled={!valid} onclick={handleStart}>Start</button>
 </div>
@@ -261,6 +380,8 @@
   }
   .row { display: flex; flex-direction: column; gap: 8px; }
   .label { font-weight: 600; }
+  .hint { opacity: 0.7; font-size: 14px; }
+  .hint.warn { color: #e07a5f; opacity: 1; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .chip {
     padding: 8px 16px;

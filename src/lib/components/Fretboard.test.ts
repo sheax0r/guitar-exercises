@@ -78,6 +78,27 @@ describe('Fretboard — labels and highlights', () => {
     expect(dot?.textContent?.trim()).toContain('A');
   });
 
+  it('renders scale-note and scale-root highlight kinds', () => {
+    const { container } = render(Fretboard, {
+      props: {
+        maxFret: 22,
+        highlights: [
+          { string: 6, fret: 5, note: 'A', kind: 'scale-root' },
+          { string: 6, fret: 7, note: 'B', kind: 'scale-note' }
+        ]
+      }
+    });
+    const root = container.querySelector('[data-role="highlight"][data-kind="scale-root"] circle');
+    const note = container.querySelector('[data-role="highlight"][data-kind="scale-note"] circle');
+    const rootFill = root?.getAttribute('fill') ?? '';
+    const noteFill = note?.getAttribute('fill') ?? '';
+    // Both kinds must have a defined colour, and the root must read differently
+    // from an ordinary scale note.
+    expect(rootFill).toMatch(/^#|rgb/);
+    expect(noteFill).toMatch(/^#|rgb/);
+    expect(rootFill).not.toBe(noteFill);
+  });
+
   it('renders multiple highlights of different kinds', () => {
     const { container } = render(Fretboard, {
       props: {
