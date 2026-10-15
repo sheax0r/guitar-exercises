@@ -35,6 +35,20 @@ function assertFret(f: number): void {
   }
 }
 
+// Standard-tuning open-string absolute pitches (MIDI note numbers):
+// string 1 = e4 (64) … string 6 = E2 (40).
+const STRING_BASE_MIDI: Record<StringNum, number> = {
+  1: 64, 2: 59, 3: 55, 4: 50, 5: 45, 6: 40
+};
+
+// Absolute pitch (MIDI semitone) of a fretboard position. Lets callers order
+// notes by true pitch across strings, which pitch-class alone can't do.
+export function pitchOf(string: StringNum, fret: Fret): number {
+  assertString(string);
+  assertFret(fret);
+  return STRING_BASE_MIDI[string] + fret;
+}
+
 export function noteAt(string: StringNum, fret: Fret): Note {
   assertString(string);
   assertFret(fret);

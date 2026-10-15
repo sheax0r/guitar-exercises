@@ -1,6 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import { CHROMATIC, NOTE_DISPLAY, noteAt, allPositionsOf, closestPositionOf } from './notes';
+import { CHROMATIC, NOTE_DISPLAY, noteAt, allPositionsOf, closestPositionOf, pitchOf } from './notes';
 import { STANDARD_TUNING } from './tuning';
+
+describe('pitchOf', () => {
+  it('low E open = 40, high e open = 64', () => {
+    expect(pitchOf(6, 0)).toBe(40);
+    expect(pitchOf(1, 0)).toBe(64);
+  });
+  it('fret 12 is an octave above open', () => {
+    expect(pitchOf(6, 12)).toBe(52);
+  });
+  it('A string (5) fret 5 = D (50)', () => {
+    expect(pitchOf(5, 5)).toBe(50);
+  });
+});
 
 describe('CHROMATIC', () => {
   it('has 12 distinct notes starting at C', () => {
