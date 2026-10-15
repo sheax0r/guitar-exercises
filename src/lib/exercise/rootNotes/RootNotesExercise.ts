@@ -109,7 +109,8 @@ export class RootNotesExercise
     const result: AnswerResult<RootNotesAnswer> = {
       correct,
       correctAnswers: this.currentCorrect,
-      elapsedMs
+      elapsedMs,
+      promptComplete: true
     };
     this.currentPrompt = null;
     this.currentCorrect = null;
