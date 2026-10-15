@@ -1,5 +1,5 @@
 import type { Note, ClosestAlgorithm } from '../music/notes';
-import type { ExerciseKind } from '../exercise/rootNotes/types';
+import type { ExerciseKind } from '../exercise/types';
 
 const KEY = 'guitar-exercises.prefs.v1';
 

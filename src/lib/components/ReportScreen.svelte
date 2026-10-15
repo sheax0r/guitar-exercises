@@ -2,11 +2,11 @@
   import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
   import { noteAt } from '../music/notes';
-  import type { RootNotesConfig, RootNotesReport, PerTargetStat } from '../exercise/rootNotes/types';
+  import type { ExerciseConfig, ExerciseReport, PerTargetStat } from '../exercise/types';
 
   type Props = {
-    report: RootNotesReport;
-    config: RootNotesConfig;
+    report: ExerciseReport;
+    config: ExerciseConfig;
     onPracticeAgain: () => void;
     onBack: () => void;
   };

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { CHROMATIC, NOTE_DISPLAY, type Note, type ClosestAlgorithm } from '../music/notes';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
-  import type { RootNotesConfig, ExerciseKind } from '../exercise/rootNotes/types';
+  import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 
   type Props = {
-    onStart: (config: RootNotesConfig) => void;
+    onStart: (config: ExerciseConfig) => void;
   };
 
   let { onStart }: Props = $props();
@@ -72,7 +72,7 @@
 
   function handleStart() {
     if (!valid) return;
-    const config: RootNotesConfig = {
+    const config: ExerciseConfig = {
       exercise,
       targetNote,
       durationSec,

@@ -1,13 +1,13 @@
-import type { Exercise, AnswerResult } from '../Exercise';
+import type { Exercise, AnswerResult } from './Exercise';
 import type {
-  RootNotesConfig,
-  RootNotesPrompt,
-  RootNotesAnswer,
-  RootNotesReport,
+  ExerciseConfig,
+  ExercisePrompt,
+  ExerciseAnswer,
+  ExerciseReport,
   PerTargetStat
 } from './types';
-import { noteAt, closestPositionOf, type Fret, type Note } from '../../music/notes';
-import type { StringNum } from '../../music/tuning';
+import { noteAt, closestPositionOf, type Fret, type Note } from '../music/notes';
+import type { StringNum } from '../music/tuning';
 
 // The fixed pool the 'random-roots' exercise re-draws its target from on every
 // prompt.
@@ -34,17 +34,17 @@ function canonicalPosition(
   return best;
 }
 
-export class RootNotesExercise
-  implements Exercise<RootNotesConfig, RootNotesPrompt, RootNotesAnswer, RootNotesReport>
+export class FretboardExercise
+  implements Exercise<ExerciseConfig, ExercisePrompt, ExerciseAnswer, ExerciseReport>
 {
-  private config!: RootNotesConfig;
-  private currentPrompt: RootNotesPrompt | null = null;
+  private config!: ExerciseConfig;
+  private currentPrompt: ExercisePrompt | null = null;
   private currentCorrect: Array<{ string: StringNum; fret: Fret }> | null = null;
   private promptStartedAt = 0;
   private prevPrompt: { string: StringNum; fret: Fret } | null = null;
   private attempts: AttemptLog[] = [];
 
-  start(config: RootNotesConfig): void {
+  start(config: ExerciseConfig): void {
     this.config = config;
     this.currentPrompt = null;
     this.currentCorrect = null;
@@ -62,7 +62,7 @@ export class RootNotesExercise
     return this.config.targetNote;
   }
 
-  getNextPrompt(): RootNotesPrompt {
+  getNextPrompt(): ExercisePrompt {
     const maxFret = this.config.maxFret;
     let pick: { string: StringNum; fret: Fret };
     do {
@@ -77,7 +77,7 @@ export class RootNotesExercise
 
     this.prevPrompt = pick;
     const targetNote = this.pickTarget();
-    const prompt: RootNotesPrompt = {
+    const prompt: ExercisePrompt = {
       highlight: pick,
       highlightNote: noteAt(pick.string, pick.fret),
       targetNote
@@ -93,7 +93,7 @@ export class RootNotesExercise
     return prompt;
   }
 
-  submitAnswer(answer: RootNotesAnswer): AnswerResult<RootNotesAnswer> {
+  submitAnswer(answer: ExerciseAnswer): AnswerResult<ExerciseAnswer> {
     if (!this.currentPrompt || !this.currentCorrect) {
       throw new Error('submitAnswer called before getNextPrompt');
     }
@@ -106,7 +106,7 @@ export class RootNotesExercise
       correct,
       elapsedMs
     });
-    const result: AnswerResult<RootNotesAnswer> = {
+    const result: AnswerResult<ExerciseAnswer> = {
       correct,
       correctAnswers: this.currentCorrect,
       elapsedMs
@@ -123,7 +123,7 @@ export class RootNotesExercise
     this.promptStartedAt += pauseDurationMs;
   }
 
-  getReport(): RootNotesReport {
+  getReport(): ExerciseReport {
     const total = this.attempts.length;
     const correct = this.attempts.filter(a => a.correct).length;
     const incorrect = total - correct;

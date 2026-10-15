@@ -1,16 +1,16 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
-  import { RootNotesExercise } from '../exercise/rootNotes/RootNotesExercise';
-  import type { RootNotesConfig, RootNotesPrompt, RootNotesReport } from '../exercise/rootNotes/types';
+  import { FretboardExercise } from '../exercise/FretboardExercise';
+  import type { ExerciseConfig, ExercisePrompt, ExerciseReport } from '../exercise/types';
   import type { StringNum } from '../music/tuning';
   import { noteAt, closestPositionOf, type Fret } from '../music/notes';
   import { playPluck } from '../audio/pluck';
 
   type Props = {
-    config: RootNotesConfig;
-    onComplete: (report: RootNotesReport) => void;
-    onAbort: (report: RootNotesReport) => void;
+    config: ExerciseConfig;
+    onComplete: (report: ExerciseReport) => void;
+    onAbort: (report: ExerciseReport) => void;
   };
 
   let { config, onComplete, onAbort }: Props = $props();
@@ -20,10 +20,10 @@
   // the top-level reads in untrack() to make that intent explicit and silence
   // state_referenced_locally — we deliberately do NOT want these reads to be
   // reactive.
-  const exercise = new RootNotesExercise();
+  const exercise = new FretboardExercise();
   untrack(() => exercise.start(config));
 
-  let currentPrompt = $state<RootNotesPrompt | null>(null);
+  let currentPrompt = $state<ExercisePrompt | null>(null);
   let awaitingAdvance = $state(false);
   let flashHighlights = $state<Highlight[]>([]);
   let correctCount = $state(0);

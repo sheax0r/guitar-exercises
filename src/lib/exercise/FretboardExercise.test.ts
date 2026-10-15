@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { RootNotesExercise } from './RootNotesExercise';
-import { noteAt, closestPositionOf } from '../../music/notes';
-import type { RootNotesConfig } from './types';
+import { FretboardExercise } from './FretboardExercise';
+import { noteAt, closestPositionOf } from '../music/notes';
+import type { ExerciseConfig } from './types';
 
-const DEFAULT_CONFIG: RootNotesConfig = {
+const DEFAULT_CONFIG: ExerciseConfig = {
   exercise: 'root-notes',
   targetNote: 'A',
   durationSec: 60,
@@ -16,9 +16,9 @@ const DEFAULT_CONFIG: RootNotesConfig = {
   algorithm: 'fret-first'
 };
 
-describe('RootNotesExercise.start + getNextPrompt', () => {
+describe('FretboardExercise.start + getNextPrompt', () => {
   it('produces prompts that are valid fretboard positions', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(DEFAULT_CONFIG);
     for (let i = 0; i < 50; i++) {
       const prompt = ex.getNextPrompt();
@@ -30,7 +30,7 @@ describe('RootNotesExercise.start + getNextPrompt', () => {
     }
   });
   it('does not produce the same prompt twice in a row', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(DEFAULT_CONFIG);
     let prev = ex.getNextPrompt();
     for (let i = 0; i < 200; i++) {
@@ -44,11 +44,11 @@ describe('RootNotesExercise.start + getNextPrompt', () => {
   });
 });
 
-describe('RootNotesExercise random-roots mode', () => {
-  const RANDOM_CONFIG: RootNotesConfig = { ...DEFAULT_CONFIG, exercise: 'random-roots' };
+describe('FretboardExercise random-roots mode', () => {
+  const RANDOM_CONFIG: ExerciseConfig = { ...DEFAULT_CONFIG, exercise: 'random-roots' };
 
   it('carries the prompt target on root-notes mode (equals config.targetNote)', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(DEFAULT_CONFIG);
     for (let i = 0; i < 20; i++) {
       expect(ex.getNextPrompt().targetNote).toBe('A');
@@ -56,7 +56,7 @@ describe('RootNotesExercise random-roots mode', () => {
   });
 
   it('draws each prompt target only from {A, E, D}', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(RANDOM_CONFIG);
     for (let i = 0; i < 100; i++) {
       expect(['A', 'E', 'D']).toContain(ex.getNextPrompt().targetNote);
@@ -64,7 +64,7 @@ describe('RootNotesExercise random-roots mode', () => {
   });
 
   it('randomizes the target across prompts (not a single fixed note)', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(RANDOM_CONFIG);
     const seen = new Set<string>();
     for (let i = 0; i < 100; i++) seen.add(ex.getNextPrompt().targetNote);
@@ -72,7 +72,7 @@ describe('RootNotesExercise random-roots mode', () => {
   });
 
   it('accepts the closest position computed against the prompt target', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(RANDOM_CONFIG);
     for (let i = 0; i < 30; i++) {
       const prompt = ex.getNextPrompt();
@@ -83,9 +83,9 @@ describe('RootNotesExercise random-roots mode', () => {
   });
 });
 
-describe('RootNotesExercise.submitAnswer', () => {
+describe('FretboardExercise.submitAnswer', () => {
   it('marks an answer correct when it matches one of the closest positions', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(DEFAULT_CONFIG);
     const prompt = ex.getNextPrompt();
     const correctAnswers = closestPositionOf('A', prompt.highlight, 22, 'fret-first');
@@ -96,7 +96,7 @@ describe('RootNotesExercise.submitAnswer', () => {
     expect(result.elapsedMs).toBeGreaterThanOrEqual(0);
   });
   it('accepts any tied position when the algorithm produces multiple closest matches', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(DEFAULT_CONFIG);
     // Hand-set a prompt that produces a fret-first tie: from (s=4, f=1), the
     // tied A positions are (s=3, f=2) and (s=5, f=0). We can't easily inject
@@ -106,7 +106,7 @@ describe('RootNotesExercise.submitAnswer', () => {
     expect(tied).toHaveLength(2);
   });
   it('marks an answer incorrect when it does not match any closest position', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(DEFAULT_CONFIG);
     const prompt = ex.getNextPrompt();
     const correctAnswers = closestPositionOf('A', prompt.highlight, 22, 'fret-first');
@@ -125,7 +125,7 @@ describe('RootNotesExercise.submitAnswer', () => {
   it('measures elapsed time between getNextPrompt and submitAnswer', () => {
     vi.useFakeTimers();
     try {
-      const ex = new RootNotesExercise();
+      const ex = new FretboardExercise();
       ex.start(DEFAULT_CONFIG);
       ex.getNextPrompt();
       vi.advanceTimersByTime(2500);
@@ -140,7 +140,7 @@ describe('RootNotesExercise.submitAnswer', () => {
   it('subtracts paused time from elapsedMs via notifyResumed', () => {
     vi.useFakeTimers();
     try {
-      const ex = new RootNotesExercise();
+      const ex = new FretboardExercise();
       ex.start(DEFAULT_CONFIG);
       ex.getNextPrompt();
       vi.advanceTimersByTime(1000);  // 1s of thinking before pause
@@ -157,9 +157,9 @@ describe('RootNotesExercise.submitAnswer', () => {
   });
 });
 
-describe('RootNotesExercise.getReport', () => {
+describe('FretboardExercise.getReport', () => {
   it('returns zeroed stats when no prompts have been answered', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(DEFAULT_CONFIG);
     const report = ex.getReport();
     expect(report.totalPrompts).toBe(0);
@@ -172,7 +172,7 @@ describe('RootNotesExercise.getReport', () => {
   });
 
   it('aggregates a scripted sequence correctly', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start(DEFAULT_CONFIG);
     let correctSubmitted = 0;
     let incorrectSubmitted = 0;
@@ -206,7 +206,7 @@ describe('RootNotesExercise.getReport', () => {
   });
 
   it('keys perTargetStats by correct-answer position, not prompt position', () => {
-    const ex = new RootNotesExercise();
+    const ex = new FretboardExercise();
     ex.start({ ...DEFAULT_CONFIG, maxFret: 4 });
     for (let i = 0; i < 8; i++) {
       const p = ex.getNextPrompt();

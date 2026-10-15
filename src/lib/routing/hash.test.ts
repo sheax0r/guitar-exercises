@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseHash, sessionHash } from './hash';
-import type { RootNotesConfig } from '../exercise/rootNotes/types';
+import type { ExerciseConfig } from '../exercise/types';
 
 describe('parseHash', () => {
   it('returns start for empty / root hashes', () => {
@@ -105,7 +105,7 @@ describe('parseHash', () => {
 
 describe('sessionHash round-trip', () => {
   it('round-trips a typical timed config', () => {
-    const original: RootNotesConfig = {
+    const original: ExerciseConfig = {
       exercise: 'root-notes',
       targetNote: 'C#',
       durationSec: 180,
@@ -125,7 +125,7 @@ describe('sessionHash round-trip', () => {
   });
 
   it('round-trips a random-roots config', () => {
-    const original: RootNotesConfig = {
+    const original: ExerciseConfig = {
       exercise: 'random-roots',
       targetNote: 'A',
       durationSec: 300,
@@ -145,7 +145,7 @@ describe('sessionHash round-trip', () => {
   });
 
   it('serializes continuous mode using the literal "continuous"', () => {
-    const config: RootNotesConfig = {
+    const config: ExerciseConfig = {
       exercise: 'root-notes',
       targetNote: 'A',
       durationSec: 300,

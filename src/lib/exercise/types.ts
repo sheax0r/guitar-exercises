@@ -1,9 +1,9 @@
-import type { Note, Fret, ClosestAlgorithm } from '../../music/notes';
-import type { StringNum } from '../../music/tuning';
+import type { Note, Fret, ClosestAlgorithm } from '../music/notes';
+import type { StringNum } from '../music/tuning';
 
 export type ExerciseKind = 'root-notes' | 'random-roots';
 
-export interface RootNotesConfig {
+export interface ExerciseConfig {
   exercise: ExerciseKind;
   targetNote: Note;
   durationSec: number;
@@ -16,7 +16,7 @@ export interface RootNotesConfig {
   algorithm: ClosestAlgorithm;
 }
 
-export interface RootNotesPrompt {
+export interface ExercisePrompt {
   highlight: { string: StringNum; fret: Fret };
   highlightNote: Note;
   // The note to find for this prompt. For 'root-notes' this is always
@@ -24,7 +24,7 @@ export interface RootNotesPrompt {
   targetNote: Note;
 }
 
-export type RootNotesAnswer = { string: StringNum; fret: Fret };
+export type ExerciseAnswer = { string: StringNum; fret: Fret };
 
 export interface PerTargetStat {
   position: { string: StringNum; fret: Fret };
@@ -38,7 +38,7 @@ export interface AttemptRecord {
   correct: boolean;
 }
 
-export interface RootNotesReport {
+export interface ExerciseReport {
   totalPrompts: number;
   correctCount: number;
   incorrectCount: number;

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import SessionScreen from './SessionScreen.svelte';
-import type { RootNotesConfig } from '../exercise/rootNotes/types';
+import type { ExerciseConfig } from '../exercise/types';
 
 vi.mock('../audio/pluck', () => ({ playPluck: () => {} }));
 
-function makeConfig(): RootNotesConfig {
+function makeConfig(): ExerciseConfig {
   return {
     exercise: 'root-notes',
     targetNote: 'A',

@@ -1,9 +1,9 @@
 import { CHROMATIC, type Note, type ClosestAlgorithm } from '../music/notes';
-import type { RootNotesConfig, ExerciseKind } from '../exercise/rootNotes/types';
+import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 
 export type Route =
   | { screen: 'start' }
-  | { screen: 'session'; config: RootNotesConfig };
+  | { screen: 'session'; config: ExerciseConfig };
 
 export const START_HASH = '#/';
 
@@ -68,7 +68,7 @@ export function parseHash(hash: string): Route {
   const algoRaw = params.get('algo') ?? 'fret-first';
   if (!VALID_ALGOS.has(algoRaw)) return { screen: 'start' };
 
-  const config: RootNotesConfig = {
+  const config: ExerciseConfig = {
     exercise,
     targetNote,
     durationSec,
@@ -83,7 +83,7 @@ export function parseHash(hash: string): Route {
   return { screen: 'session', config };
 }
 
-export function sessionHash(config: RootNotesConfig): string {
+export function sessionHash(config: ExerciseConfig): string {
   const params = new URLSearchParams();
   params.set('ex', config.exercise);
   params.set('note', config.targetNote);
