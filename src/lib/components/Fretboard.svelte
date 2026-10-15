@@ -8,6 +8,8 @@
     | 'user-correct'
     | 'user-wrong'
     | 'closest-from-click'
+    | 'scale-note'
+    | 'scale-root'
     | 'heatmap';
 
   export interface Highlight {
@@ -105,6 +107,8 @@
       case 'user-correct':       return '#a3d977';
       case 'user-wrong':         return '#d65a3d';
       case 'closest-from-click': return '#14b8a6';
+      case 'scale-note':         return '#c9a24b';
+      case 'scale-root':         return '#ff8c42';
       case 'heatmap':            return heatmapColor(h.accuracy ?? 0);
     }
   }
