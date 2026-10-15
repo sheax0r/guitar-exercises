@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseHash, sessionHash } from './hash';
 import type { RootNotesConfig } from '../exercise/rootNotes/types';
-import type { PlayShapeConfig } from '../exercise/modes/types';
+import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 
 describe('parseHash', () => {
   it('returns start for empty / root hashes', () => {
@@ -210,6 +210,30 @@ describe('parseHash / sessionHash — play-shape', () => {
 
   it('falls back to start on an unknown mode name', () => {
     expect(parseHash('#/session?ex=play-shape&modes=bogus&duration=300&frets=12'))
+      .toEqual({ screen: 'start' });
+  });
+});
+
+describe('parseHash / sessionHash — identify-mode', () => {
+  it('round-trips an identify-mode config', () => {
+    const config: IdentifyModeConfig = {
+      exercise: 'identify-mode',
+      enabledModes: ['ionian', 'aeolian'],
+      maxFret: 12,
+      durationSec: 300,
+      continuous: false,
+      showFretNumbers: true,
+      playSound: false
+    };
+    const r = parseHash(sessionHash(config));
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session') {
+      expect(r.config).toEqual(config);
+    }
+  });
+
+  it('falls back to start when no modes are enabled', () => {
+    expect(parseHash('#/session?ex=identify-mode&modes=&duration=300&frets=12'))
       .toEqual({ screen: 'start' });
   });
 });

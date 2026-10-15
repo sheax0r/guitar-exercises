@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import SessionScreen from './SessionScreen.svelte';
 import type { RootNotesConfig } from '../exercise/rootNotes/types';
-import type { PlayShapeConfig } from '../exercise/modes/types';
+import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 
 vi.mock('../audio/pluck', () => ({ playPluck: () => {} }));
 
@@ -153,6 +153,43 @@ describe('SessionScreen — play-shape', () => {
       if (container.querySelector('.progress')!.textContent!.startsWith('1 /')) break;
     }
     expect(container.querySelector('.progress')!.textContent!.startsWith('1 /')).toBe(true);
+  });
+});
+
+describe('SessionScreen — identify-mode', () => {
+  function identifyConfig(): IdentifyModeConfig {
+    return {
+      exercise: 'identify-mode',
+      enabledModes: ['ionian', 'dorian', 'aeolian'],
+      maxFret: 22,
+      durationSec: 300,
+      continuous: true,
+      showFretNumbers: true,
+      playSound: false
+    };
+  }
+
+  it('renders scale highlights and a mode button per enabled mode', () => {
+    const { container } = render(SessionScreen, {
+      props: { config: identifyConfig(), onComplete: () => {}, onAbort: () => {} }
+    });
+    expect(container.querySelector('[data-role="highlight"][data-kind="scale-root"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-role="highlight"][data-kind="scale-note"]').length).toBeGreaterThan(0);
+    const choiceText = Array.from(container.querySelectorAll('.choice')).map(b => b.textContent?.trim());
+    expect(choiceText).toEqual(['Ionian', 'Dorian', 'Aeolian']);
+  });
+
+  it('records an answer when a mode button is clicked', async () => {
+    const { container } = render(SessionScreen, {
+      props: { config: identifyConfig(), onComplete: () => {}, onAbort: () => {} }
+    });
+    const firstChoice = container.querySelector('.choice') as HTMLButtonElement;
+    await fireEvent.click(firstChoice);
+    const okN = parseInt(container.querySelector('.ok')!.textContent!.replace(/\D/g, ''), 10);
+    const badN = parseInt(container.querySelector('.bad')!.textContent!.replace(/\D/g, ''), 10);
+    expect(okN + badN).toBe(1);
+    // After answering, the buttons are disabled.
+    expect(firstChoice.disabled).toBe(true);
   });
 });
 

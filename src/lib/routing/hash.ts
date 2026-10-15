@@ -1,7 +1,7 @@
 import { CHROMATIC, type Note, type ClosestAlgorithm } from '../music/notes';
 import { MODE_ORDER, type Mode } from '../music/modes';
 import type { RootNotesConfig, ExerciseKind } from '../exercise/rootNotes/types';
-import type { PlayShapeConfig } from '../exercise/modes/types';
+import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 import type { AnyConfig } from '../exercise/config';
 
 export type Route =
@@ -115,6 +115,28 @@ function parsePlayShape(params: URLSearchParams): Route {
   return { screen: 'session', config };
 }
 
+function parseIdentifyMode(params: URLSearchParams): Route {
+  const enabledModes = parseModes(params.get('modes'));
+  if (enabledModes === null) return { screen: 'start' };
+
+  const duration = parseDuration(params.get('duration'));
+  if (duration === null) return { screen: 'start' };
+
+  const frets = parsePositiveInt(params.get('frets'));
+  if (frets === null) return { screen: 'start' };
+
+  const config: IdentifyModeConfig = {
+    exercise: 'identify-mode',
+    enabledModes,
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true)
+  };
+  return { screen: 'session', config };
+}
+
 export function parseHash(hash: string): Route {
   const h = hash.startsWith('#') ? hash.slice(1) : hash;
   if (!h.startsWith('/session')) return { screen: 'start' };
@@ -125,6 +147,7 @@ export function parseHash(hash: string): Route {
   const ex = params.get('ex') ?? 'root-notes';
   if (VALID_ROOT_EXERCISES.has(ex)) return parseRootNotes(params, ex as ExerciseKind);
   if (ex === 'play-shape') return parsePlayShape(params);
+  if (ex === 'identify-mode') return parseIdentifyMode(params);
   return { screen: 'start' };
 }
 
@@ -146,6 +169,12 @@ export function sessionHash(config: AnyConfig): string {
     params.set('variant', config.shapeVariant);
     params.set('judge', config.octaveJudge);
     params.set('span', String(config.boxSpan));
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+  } else if (config.exercise === 'identify-mode') {
+    params.set('modes', config.enabledModes.join(','));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
     params.set('frets', String(config.maxFret));
     params.set('fretnums', config.showFretNumbers ? '1' : '0');

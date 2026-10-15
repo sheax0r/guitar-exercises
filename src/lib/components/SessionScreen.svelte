@@ -1,6 +1,7 @@
 <script lang="ts">
   import RootNotesBody from './RootNotesBody.svelte';
   import PlayShapeBody from './PlayShapeBody.svelte';
+  import IdentifyModeBody from './IdentifyModeBody.svelte';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
@@ -16,4 +17,6 @@
   <RootNotesBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'play-shape'}
   <PlayShapeBody {config} {onComplete} {onAbort} />
+{:else if config.exercise === 'identify-mode'}
+  <IdentifyModeBody {config} {onComplete} {onAbort} />
 {/if}

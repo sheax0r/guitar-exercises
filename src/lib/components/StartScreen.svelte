@@ -3,7 +3,7 @@
   import { MODE_ORDER, MODE_DISPLAY, type Mode } from '../music/modes';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
   import type { RootNotesConfig } from '../exercise/rootNotes/types';
-  import type { PlayShapeConfig } from '../exercise/modes/types';
+  import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
   import type { AnyConfig } from '../exercise/config';
 
   type Props = {
@@ -99,6 +99,17 @@
         showFretNumbers,
         playSound
       } satisfies PlayShapeConfig;
+    } else if (exercise === 'identify-mode') {
+      const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
+      config = {
+        exercise: 'identify-mode',
+        enabledModes: modes,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound
+      } satisfies IdentifyModeConfig;
     } else if (exercise === 'root-notes' || exercise === 'random-roots') {
       config = {
         exercise,
@@ -145,6 +156,7 @@
       <option value="root-notes">Root Notes</option>
       <option value="random-roots">Random Roots</option>
       <option value="play-shape">Play the Shape (modes)</option>
+      <option value="identify-mode">Identify the Mode</option>
     </select>
   </div>
 

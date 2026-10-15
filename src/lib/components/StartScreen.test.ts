@@ -44,10 +44,29 @@ describe('StartScreen — exercise selector', () => {
     expect(onStart.mock.calls[0][0].exercise).toBe('root-notes');
   });
 
-  it('offers the play-shape exercise', () => {
+  it('offers the modes exercises', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     const values = Array.from(exerciseSelect(container).options).map(o => o.value);
     expect(values).toContain('play-shape');
+    expect(values).toContain('identify-mode');
+  });
+
+  it('shows mode chips but no shape controls for identify-mode', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'identify-mode' } });
+    const chipText = Array.from(container.querySelectorAll('.chip')).map(c => c.textContent?.trim());
+    expect(chipText).toContain('Dorian');
+    // Shape / judging controls belong to play-shape only.
+    expect(chipText).not.toContain('One octave');
+    expect(chipText).not.toContain('Position box');
+  });
+
+  it('emits an identify-mode config', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'identify-mode' } });
+    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    expect(onStart.mock.calls[0][0].exercise).toBe('identify-mode');
   });
 
   it('shows mode chips and shape controls when play-shape is selected', async () => {
