@@ -1,4 +1,4 @@
-import { STANDARD_TUNING, type StringNum } from './tuning';
+import { STANDARD_TUNING, STANDARD_TUNING_MIDI, type StringNum } from './tuning';
 
 export const CHROMATIC = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'] as const;
 export type Note = typeof CHROMATIC[number];
@@ -35,18 +35,11 @@ function assertFret(f: number): void {
   }
 }
 
-// Standard-tuning open-string absolute pitches (MIDI note numbers):
-// string 1 = e4 (64) … string 6 = E2 (40).
-const STRING_BASE_MIDI: Record<StringNum, number> = {
-  1: 64, 2: 59, 3: 55, 4: 50, 5: 45, 6: 40
-};
-
-// Absolute pitch (MIDI semitone) of a fretboard position. Lets callers order
-// notes by true pitch across strings, which pitch-class alone can't do.
+// Absolute pitch (MIDI number) of a fretted note. Higher = higher pitch.
 export function pitchOf(string: StringNum, fret: Fret): number {
   assertString(string);
   assertFret(fret);
-  return STRING_BASE_MIDI[string] + fret;
+  return STANDARD_TUNING_MIDI[string] + fret;
 }
 
 export function noteAt(string: StringNum, fret: Fret): Note {
@@ -95,18 +88,29 @@ function compareKeys(a: number[], b: number[]): number {
   return 0;
 }
 
+export type Direction = 'nearest' | 'ascending';
+
 export function closestPositionOf(
   target: Note,
   from: { string: StringNum; fret: Fret },
   maxFret: Fret,
-  algorithm: ClosestAlgorithm = 'fret-first'
+  algorithm: ClosestAlgorithm = 'fret-first',
+  direction: Direction = 'nearest'
 ): Array<{ string: StringNum; fret: Fret }> {
   assertString(from.string);
   assertFret(from.fret);
-  const candidates = allPositionsOf(target, maxFret);
-  if (candidates.length === 0) {
+  const all = allPositionsOf(target, maxFret);
+  if (all.length === 0) {
     throw new Error(`No positions found for note ${target} within maxFret=${maxFret}`);
   }
+  // 'ascending' accepts only positions strictly higher in pitch than `from`.
+  // ponytail: if none are higher within maxFret (player is near the top of the
+  // neck), fall back to the overall-nearest so the prompt stays answerable.
+  const fromPitch = pitchOf(from.string, from.fret);
+  const higher = direction === 'ascending'
+    ? all.filter(p => pitchOf(p.string, p.fret) > fromPitch)
+    : all;
+  const candidates = higher.length > 0 ? higher : all;
   let bestKey = distanceKey(algorithm, candidates[0], from);
   let best: Array<{ string: StringNum; fret: Fret }> = [candidates[0]];
   for (let i = 1; i < candidates.length; i++) {

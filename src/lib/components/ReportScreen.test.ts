@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import ReportScreen from './ReportScreen.svelte';
-import type { RootNotesConfig, RootNotesReport } from '../exercise/rootNotes/types';
+import type { ExerciseConfig, ExerciseReport } from '../exercise/types';
 
-function makeConfig(overrides: Partial<RootNotesConfig> = {}): RootNotesConfig {
+function makeConfig(overrides: Partial<ExerciseConfig> = {}): ExerciseConfig {
   return {
     exercise: 'root-notes',
     targetNote: 'A',
@@ -15,11 +15,15 @@ function makeConfig(overrides: Partial<RootNotesConfig> = {}): RootNotesConfig {
     showFretNumbers: true,
     playSound: false,
     algorithm: 'fret-first',
+    intervalKind: 'random',
+    keyRoot: 'C',
+    keyQuality: 'major',
+    direction: 'nearest',
     ...overrides
   };
 }
 
-const EMPTY_REPORT: RootNotesReport = {
+const EMPTY_REPORT: ExerciseReport = {
   totalPrompts: 0,
   correctCount: 0,
   incorrectCount: 0,
@@ -29,7 +33,7 @@ const EMPTY_REPORT: RootNotesReport = {
   attempts: []
 };
 
-function renderReport(config: RootNotesConfig) {
+function renderReport(config: ExerciseConfig) {
   return render(ReportScreen, {
     props: { report: EMPTY_REPORT, config, onPracticeAgain: () => {}, onBack: () => {} }
   });

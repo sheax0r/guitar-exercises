@@ -1,6 +1,6 @@
 import { CHROMATIC, type Note, type ClosestAlgorithm } from '../music/notes';
 import { MODE_ORDER, type Mode } from '../music/modes';
-import type { RootNotesConfig, ExerciseKind } from '../exercise/rootNotes/types';
+import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 import type { AnyConfig } from '../exercise/config';
 
@@ -12,8 +12,18 @@ export const START_HASH = '#/';
 
 const VALID_NOTES = new Set<string>(CHROMATIC);
 const VALID_ALGOS = new Set<string>(['fret-first', 'manhattan']);
-const VALID_ROOT_EXERCISES = new Set<string>(['root-notes', 'random-roots']);
+const VALID_FRETBOARD_EXERCISES = new Set<string>(['root-notes', 'random-roots', 'intervals']);
+const VALID_INTERVALS = new Set<string>(['3rd', '5th', 'random']);
+const VALID_QUALITIES = new Set<string>(['major', 'minor', 'random']);
+const VALID_DIRECTIONS = new Set<string>(['nearest', 'ascending']);
 const VALID_MODES = new Set<string>(MODE_ORDER);
+
+// Reads a param against an allowed set, falling back to `fallback` when absent
+// or invalid. Intervals-only params use this so legacy URLs (without them) and
+// non-intervals exercises still parse.
+function parseEnum<T extends string>(v: string | null, valid: Set<string>, fallback: T): T {
+  return v !== null && valid.has(v) ? (v as T) : fallback;
+}
 
 function parseBool(v: string | null, fallback: boolean): boolean {
   if (v === null) return fallback;
@@ -48,10 +58,10 @@ function parseModes(raw: string | null): Mode[] | null {
   return parts as Mode[];
 }
 
-function parseRootNotes(params: URLSearchParams, exercise: ExerciseKind): Route {
+function parseFretboard(params: URLSearchParams, exercise: ExerciseKind): Route {
   const note = params.get('note');
   let targetNote: Note;
-  if (exercise === 'random-roots') {
+  if (exercise === 'random-roots' || exercise === 'intervals') {
     targetNote = note && VALID_NOTES.has(note) ? (note as Note) : 'A';
   } else {
     if (!note || !VALID_NOTES.has(note)) return { screen: 'start' };
@@ -67,7 +77,13 @@ function parseRootNotes(params: URLSearchParams, exercise: ExerciseKind): Route 
   const algoRaw = params.get('algo') ?? 'fret-first';
   if (!VALID_ALGOS.has(algoRaw)) return { screen: 'start' };
 
-  const config: RootNotesConfig = {
+  const keyRootRaw = params.get('keyroot');
+  const keyRoot: Note | 'random' =
+    keyRootRaw === 'random' ? 'random'
+    : keyRootRaw && VALID_NOTES.has(keyRootRaw) ? (keyRootRaw as Note)
+    : 'C';
+
+  const config: ExerciseConfig = {
     exercise,
     targetNote,
     durationSec: duration.durationSec,
@@ -77,7 +93,11 @@ function parseRootNotes(params: URLSearchParams, exercise: ExerciseKind): Route 
     showRootMarkers: parseBool(params.get('roots'), false),
     showFretNumbers: parseBool(params.get('fretnums'), true),
     playSound: parseBool(params.get('sound'), true),
-    algorithm: algoRaw as ClosestAlgorithm
+    algorithm: algoRaw as ClosestAlgorithm,
+    intervalKind: parseEnum(params.get('int'), VALID_INTERVALS, 'random'),
+    keyRoot,
+    keyQuality: parseEnum(params.get('keyqual'), VALID_QUALITIES, 'major'),
+    direction: parseEnum(params.get('dir'), VALID_DIRECTIONS, 'nearest')
   };
   return { screen: 'session', config };
 }
@@ -145,7 +165,7 @@ export function parseHash(hash: string): Route {
   const params = new URLSearchParams(qIdx >= 0 ? h.slice(qIdx + 1) : '');
 
   const ex = params.get('ex') ?? 'root-notes';
-  if (VALID_ROOT_EXERCISES.has(ex)) return parseRootNotes(params, ex as ExerciseKind);
+  if (VALID_FRETBOARD_EXERCISES.has(ex)) return parseFretboard(params, ex as ExerciseKind);
   if (ex === 'play-shape') return parsePlayShape(params);
   if (ex === 'identify-mode') return parseIdentifyMode(params);
   return { screen: 'start' };
@@ -155,16 +175,7 @@ export function sessionHash(config: AnyConfig): string {
   const params = new URLSearchParams();
   params.set('ex', config.exercise);
 
-  if (config.exercise === 'root-notes' || config.exercise === 'random-roots') {
-    params.set('note', config.targetNote);
-    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
-    params.set('frets', String(config.maxFret));
-    params.set('roots', config.showRootMarkers ? '1' : '0');
-    params.set('labels', config.showAllLabels ? '1' : '0');
-    params.set('fretnums', config.showFretNumbers ? '1' : '0');
-    params.set('sound', config.playSound ? '1' : '0');
-    params.set('algo', config.algorithm);
-  } else if (config.exercise === 'play-shape') {
+  if (config.exercise === 'play-shape') {
     params.set('modes', config.enabledModes.join(','));
     params.set('variant', config.shapeVariant);
     params.set('judge', config.octaveJudge);
@@ -179,6 +190,19 @@ export function sessionHash(config: AnyConfig): string {
     params.set('frets', String(config.maxFret));
     params.set('fretnums', config.showFretNumbers ? '1' : '0');
     params.set('sound', config.playSound ? '1' : '0');
+  } else {
+    params.set('note', config.targetNote);
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('roots', config.showRootMarkers ? '1' : '0');
+    params.set('labels', config.showAllLabels ? '1' : '0');
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+    params.set('algo', config.algorithm);
+    params.set('int', config.intervalKind);
+    params.set('keyroot', config.keyRoot);
+    params.set('keyqual', config.keyQuality);
+    params.set('dir', config.direction);
   }
   return '#/session?' + params.toString();
 }

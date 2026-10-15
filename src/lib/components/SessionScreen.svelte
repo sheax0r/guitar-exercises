@@ -1,5 +1,5 @@
 <script lang="ts">
-  import RootNotesBody from './RootNotesBody.svelte';
+  import FretboardSession from './FretboardSession.svelte';
   import PlayShapeBody from './PlayShapeBody.svelte';
   import IdentifyModeBody from './IdentifyModeBody.svelte';
   import type { AnyConfig, AnyReport } from '../exercise/config';
@@ -13,10 +13,10 @@
   let { config, onComplete, onAbort }: Props = $props();
 </script>
 
-{#if config.exercise === 'root-notes' || config.exercise === 'random-roots'}
-  <RootNotesBody {config} {onComplete} {onAbort} />
-{:else if config.exercise === 'play-shape'}
+{#if config.exercise === 'play-shape'}
   <PlayShapeBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'identify-mode'}
   <IdentifyModeBody {config} {onComplete} {onAbort} />
+{:else}
+  <FretboardSession {config} {onComplete} {onAbort} />
 {/if}

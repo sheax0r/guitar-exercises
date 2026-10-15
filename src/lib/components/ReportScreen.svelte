@@ -3,7 +3,7 @@
   import Fretboard, { type Highlight } from './Fretboard.svelte';
   import { noteAt } from '../music/notes';
   import { MODE_DISPLAY } from '../music/modes';
-  import type { RootNotesConfig, RootNotesReport, PerTargetStat } from '../exercise/rootNotes/types';
+  import type { ExerciseConfig, ExerciseReport, PerTargetStat } from '../exercise/types';
   import type { ModesReport, PerModeStat } from '../exercise/modes/types';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
@@ -16,14 +16,18 @@
 
   let { report, config, onPracticeAgain, onBack }: Props = $props();
 
+  // Fretboard exercises (root-notes, random-roots, intervals) share the
+  // position heatmap report; modes exercises get a per-mode report instead.
   const isRoot = untrack(() =>
-    config.exercise === 'root-notes' || config.exercise === 'random-roots'
+    config.exercise === 'root-notes'
+    || config.exercise === 'random-roots'
+    || config.exercise === 'intervals'
   );
 
   // Narrowed views. Only one is non-null for a given report. The report is a
   // static snapshot of a finished session, so these are captured once.
-  const rootConfig = untrack(() => (isRoot ? (config as RootNotesConfig) : null));
-  const rootReport = untrack(() => (isRoot ? (report as RootNotesReport) : null));
+  const rootConfig = untrack(() => (isRoot ? (config as ExerciseConfig) : null));
+  const rootReport = untrack(() => (isRoot ? (report as ExerciseReport) : null));
   const modesReport = untrack(() => (!isRoot ? (report as ModesReport) : null));
 
   const isRandomRoots = untrack(() => config.exercise === 'random-roots');

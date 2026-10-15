@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { CHROMATIC, NOTE_DISPLAY, type Note, type ClosestAlgorithm } from '../music/notes';
+  import { CHROMATIC, NOTE_DISPLAY, type Note, type ClosestAlgorithm, type Direction } from '../music/notes';
+  import type { Interval, ScaleQuality } from '../music/scales';
   import { MODE_ORDER, MODE_DISPLAY, type Mode } from '../music/modes';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
-  import type { RootNotesConfig } from '../exercise/rootNotes/types';
+  import type { ExerciseConfig } from '../exercise/types';
   import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
   import type { AnyConfig } from '../exercise/config';
 
@@ -13,6 +14,10 @@
   let { onStart }: Props = $props();
 
   const stored = loadPrefs();
+  // Narrow-viewport heuristic for the default fret count: phones (and most
+  // small tablets) can't comfortably render 24 frets at the board's 800px
+  // min-width. We only consult this when no stored preference exists — once
+  // the user picks a value it sticks across visits.
   const isNarrowViewport = typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
     && window.matchMedia('(max-width: 768px)').matches;
@@ -28,6 +33,10 @@
   let playSound = $state<boolean>(stored.playSound ?? true);
   let continuous = $state<boolean>(stored.continuous ?? false);
   let algorithm = $state<ClosestAlgorithm>(stored.algorithm ?? 'fret-first');
+  let intervalKind = $state<Interval | 'random'>(stored.intervalKind ?? 'random');
+  let keyRoot = $state<Note | 'random'>(stored.keyRoot ?? 'C');
+  let keyQuality = $state<ScaleQuality | 'random'>(stored.keyQuality ?? 'major');
+  let direction = $state<Direction>(stored.direction ?? 'nearest');
   let customMode = $state<boolean>(!continuous && ![60, 180, 300, 600].includes(durationSec));
   let customValue = $state<number>(customMode ? durationSec : 120);
 
@@ -53,15 +62,18 @@
     customMode = false;
     durationSec = sec;
   }
+
   function pickCustom() {
     continuous = false;
     customMode = true;
     durationSec = customValue > 0 ? customValue : 120;
   }
+
   function pickContinuous() {
     continuous = true;
     customMode = false;
   }
+
   function onCustomChange(e: Event) {
     const v = parseInt((e.target as HTMLInputElement).value, 10);
     if (!Number.isFinite(v) || v <= 0) {
@@ -91,7 +103,6 @@
     if (!valid) return;
     let config: AnyConfig;
     if (exercise === 'play-shape') {
-      // Keep enabled modes in canonical display order.
       const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
       config = {
         exercise: 'play-shape',
@@ -116,7 +127,7 @@
         showFretNumbers,
         playSound
       } satisfies IdentifyModeConfig;
-    } else if (exercise === 'root-notes' || exercise === 'random-roots') {
+    } else {
       config = {
         exercise,
         targetNote,
@@ -127,10 +138,12 @@
         showRootMarkers,
         showFretNumbers,
         playSound,
-        algorithm
-      } satisfies RootNotesConfig;
-    } else {
-      return;
+        algorithm,
+        intervalKind,
+        keyRoot,
+        keyQuality,
+        direction
+      } satisfies ExerciseConfig;
     }
     const prefs: Prefs = {
       exercise,
@@ -143,6 +156,10 @@
       showFretNumbers,
       playSound,
       algorithm,
+      intervalKind,
+      keyRoot,
+      keyQuality,
+      direction,
       enabledModes,
       shapeVariant,
       octaveJudge,
@@ -161,6 +178,7 @@
     <select id="exercise" bind:value={exercise}>
       <option value="root-notes">Root Notes</option>
       <option value="random-roots">Random Roots</option>
+      <option value="intervals">Intervals</option>
       <option value="play-shape">Play the Shape (modes)</option>
       <option value="identify-mode">Identify the Mode</option>
     </select>
@@ -171,18 +189,40 @@
       <span class="label">Target notes</span>
       <span class="hint">A, E, D — randomized each prompt</span>
     </div>
-  {:else if exercise === 'root-notes'}
+  {:else if exercise === 'intervals'}
     <div class="row">
-      <label for="note">Root note</label>
-      <select id="note" bind:value={targetNote}>
+      <label for="interval">Interval</label>
+      <select id="interval" bind:value={intervalKind}>
+        <option value="3rd">3rd</option>
+        <option value="5th">5th</option>
+        <option value="random">Random each prompt</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="keyroot">Key</label>
+      <select id="keyroot" bind:value={keyRoot}>
+        <option value="random">Random each prompt</option>
         {#each CHROMATIC as n}
           <option value={n}>{NOTE_DISPLAY[n]}</option>
         {/each}
       </select>
     </div>
-  {/if}
-
-  {#if isModes}
+    <div class="row">
+      <label for="keyqual">Key quality</label>
+      <select id="keyqual" bind:value={keyQuality}>
+        <option value="major">Major</option>
+        <option value="minor">Minor</option>
+        <option value="random">Random each prompt</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="direction">Direction</label>
+      <select id="direction" bind:value={direction}>
+        <option value="nearest">Nearest (either way)</option>
+        <option value="ascending">Ascending (higher pitch)</option>
+      </select>
+    </div>
+  {:else if isModes}
     <div class="row">
       <span class="label">Modes</span>
       <div class="chips">
@@ -224,6 +264,15 @@
         </div>
       {/if}
     {/if}
+  {:else}
+    <div class="row">
+      <label for="note">Root note</label>
+      <select id="note" bind:value={targetNote}>
+        {#each CHROMATIC as n}
+          <option value={n}>{NOTE_DISPLAY[n]}</option>
+        {/each}
+      </select>
+    </div>
   {/if}
 
   <div class="row">

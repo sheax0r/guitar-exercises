@@ -1,6 +1,7 @@
-import type { Note, ClosestAlgorithm } from '../music/notes';
+import type { Note, ClosestAlgorithm, Direction } from '../music/notes';
 import type { Mode } from '../music/modes';
-import type { ExerciseKind } from '../exercise/rootNotes/types';
+import type { Interval, ScaleQuality } from '../music/scales';
+import type { ExerciseKind } from '../exercise/types';
 import type { ModeExerciseKind } from '../exercise/modes/types';
 
 const KEY = 'guitar-exercises.prefs.v1';
@@ -16,6 +17,11 @@ export interface Prefs {
   showFretNumbers: boolean;
   playSound: boolean;
   algorithm: ClosestAlgorithm;
+  // 'intervals' exercise settings.
+  intervalKind: Interval | 'random';
+  keyRoot: Note | 'random';
+  keyQuality: ScaleQuality | 'random';
+  direction: Direction;
   // Modes-exercise settings (optional; absent in legacy v1 prefs).
   enabledModes?: Mode[];
   shapeVariant?: 'octave' | 'box';

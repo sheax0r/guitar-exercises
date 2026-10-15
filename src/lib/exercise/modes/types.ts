@@ -1,6 +1,6 @@
 import type { Note } from '../../music/notes';
 import type { Mode } from '../../music/modes';
-import type { AttemptRecord } from '../rootNotes/types';
+import type { AttemptRecord } from '../types';
 import type { Pos } from './shape';
 
 export type { Pos };
