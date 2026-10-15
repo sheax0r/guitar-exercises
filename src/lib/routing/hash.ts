@@ -1,15 +1,25 @@
 import { CHROMATIC, type Note, type ClosestAlgorithm } from '../music/notes';
-import type { RootNotesConfig, ExerciseKind } from '../exercise/rootNotes/types';
+import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 
 export type Route =
   | { screen: 'start' }
-  | { screen: 'session'; config: RootNotesConfig };
+  | { screen: 'session'; config: ExerciseConfig };
 
 export const START_HASH = '#/';
 
 const VALID_NOTES = new Set<string>(CHROMATIC);
 const VALID_ALGOS = new Set<string>(['fret-first', 'manhattan']);
-const VALID_EXERCISES = new Set<string>(['root-notes', 'random-roots']);
+const VALID_EXERCISES = new Set<string>(['root-notes', 'random-roots', 'intervals']);
+const VALID_INTERVALS = new Set<string>(['3rd', '5th', 'random']);
+const VALID_QUALITIES = new Set<string>(['major', 'minor', 'random']);
+const VALID_DIRECTIONS = new Set<string>(['nearest', 'ascending']);
+
+// Reads a param against an allowed set, falling back to `fallback` when absent
+// or invalid. Intervals-only params use this so legacy URLs (without them) and
+// non-intervals exercises still parse.
+function parseEnum<T extends string>(v: string | null, valid: Set<string>, fallback: T): T {
+  return v !== null && valid.has(v) ? (v as T) : fallback;
+}
 
 function parseBool(v: string | null, fallback: boolean): boolean {
   if (v === null) return fallback;
@@ -41,7 +51,7 @@ export function parseHash(hash: string): Route {
   // random engine) — default to 'A' when absent/invalid.
   const note = params.get('note');
   let targetNote: Note;
-  if (exercise === 'random-roots') {
+  if (exercise === 'random-roots' || exercise === 'intervals') {
     targetNote = note && VALID_NOTES.has(note) ? (note as Note) : 'A';
   } else {
     if (!note || !VALID_NOTES.has(note)) return { screen: 'start' };
@@ -68,7 +78,13 @@ export function parseHash(hash: string): Route {
   const algoRaw = params.get('algo') ?? 'fret-first';
   if (!VALID_ALGOS.has(algoRaw)) return { screen: 'start' };
 
-  const config: RootNotesConfig = {
+  const keyRootRaw = params.get('keyroot');
+  const keyRoot: Note | 'random' =
+    keyRootRaw === 'random' ? 'random'
+    : keyRootRaw && VALID_NOTES.has(keyRootRaw) ? (keyRootRaw as Note)
+    : 'C';
+
+  const config: ExerciseConfig = {
     exercise,
     targetNote,
     durationSec,
@@ -78,12 +94,16 @@ export function parseHash(hash: string): Route {
     showRootMarkers: parseBool(params.get('roots'), false),
     showFretNumbers: parseBool(params.get('fretnums'), true),
     playSound: parseBool(params.get('sound'), true),
-    algorithm: algoRaw as ClosestAlgorithm
+    algorithm: algoRaw as ClosestAlgorithm,
+    intervalKind: parseEnum(params.get('int'), VALID_INTERVALS, 'random'),
+    keyRoot,
+    keyQuality: parseEnum(params.get('keyqual'), VALID_QUALITIES, 'major'),
+    direction: parseEnum(params.get('dir'), VALID_DIRECTIONS, 'nearest')
   };
   return { screen: 'session', config };
 }
 
-export function sessionHash(config: RootNotesConfig): string {
+export function sessionHash(config: ExerciseConfig): string {
   const params = new URLSearchParams();
   params.set('ex', config.exercise);
   params.set('note', config.targetNote);
@@ -94,5 +114,9 @@ export function sessionHash(config: RootNotesConfig): string {
   params.set('fretnums', config.showFretNumbers ? '1' : '0');
   params.set('sound', config.playSound ? '1' : '0');
   params.set('algo', config.algorithm);
+  params.set('int', config.intervalKind);
+  params.set('keyroot', config.keyRoot);
+  params.set('keyqual', config.keyQuality);
+  params.set('dir', config.direction);
   return '#/session?' + params.toString();
 }

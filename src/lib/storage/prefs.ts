@@ -1,5 +1,6 @@
-import type { Note, ClosestAlgorithm } from '../music/notes';
-import type { ExerciseKind } from '../exercise/rootNotes/types';
+import type { Note, ClosestAlgorithm, Direction } from '../music/notes';
+import type { ExerciseKind } from '../exercise/types';
+import type { Interval, ScaleQuality } from '../music/scales';
 
 const KEY = 'guitar-exercises.prefs.v1';
 
@@ -14,6 +15,10 @@ export interface Prefs {
   showFretNumbers: boolean;
   playSound: boolean;
   algorithm: ClosestAlgorithm;
+  intervalKind: Interval | 'random';
+  keyRoot: Note | 'random';
+  keyQuality: ScaleQuality | 'random';
+  direction: Direction;
 }
 
 export function loadPrefs(): Partial<Prefs> {

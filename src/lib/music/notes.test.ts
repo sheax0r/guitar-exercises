@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CHROMATIC, NOTE_DISPLAY, noteAt, allPositionsOf, closestPositionOf } from './notes';
+import { CHROMATIC, NOTE_DISPLAY, noteAt, allPositionsOf, closestPositionOf, pitchOf } from './notes';
 import { STANDARD_TUNING } from './tuning';
 
 describe('CHROMATIC', () => {
@@ -155,5 +155,33 @@ describe('closestPositionOf (manhattan)', () => {
     expect(result).toHaveLength(2);
     expect(result).toContainEqual({ string: 5, fret: 0 });
     expect(result).toContainEqual({ string: 3, fret: 2 });
+  });
+});
+
+describe('pitchOf', () => {
+  it('gives low E on string 6 fret 0 and high E on string 1 fret 0', () => {
+    expect(pitchOf(6, 0)).toBe(40);
+    expect(pitchOf(1, 0)).toBe(64);
+  });
+
+  it('rises by one per fret and by the string interval', () => {
+    expect(pitchOf(1, 12)).toBe(76);
+    expect(pitchOf(6, 5)).toBe(pitchOf(5, 0)); // 5th-fret low E == open A
+  });
+});
+
+describe('closestPositionOf ascending', () => {
+  it('only returns positions strictly higher in pitch than the start', () => {
+    const from = { string: 6 as const, fret: 0 }; // low E, pitch 40
+    const result = closestPositionOf('E', from, 12, 'fret-first', 'ascending');
+    for (const p of result) {
+      expect(pitchOf(p.string, p.fret)).toBeGreaterThan(pitchOf(from.string, from.fret));
+    }
+  });
+
+  it('falls back to the overall nearest when no position is higher', () => {
+    const from = { string: 1 as const, fret: 8 }; // C, pitch 72, highest C within fret 8
+    const result = closestPositionOf('C', from, 8, 'fret-first', 'ascending');
+    expect(result.length).toBeGreaterThan(0);
   });
 });

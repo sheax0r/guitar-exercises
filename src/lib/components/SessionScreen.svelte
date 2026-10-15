@@ -1,16 +1,16 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
-  import { RootNotesExercise } from '../exercise/rootNotes/RootNotesExercise';
-  import type { RootNotesConfig, RootNotesPrompt, RootNotesReport } from '../exercise/rootNotes/types';
+  import { FretboardExercise } from '../exercise/FretboardExercise';
+  import type { ExerciseConfig, ExercisePrompt, ExerciseReport } from '../exercise/types';
   import type { StringNum } from '../music/tuning';
-  import { noteAt, closestPositionOf, type Fret } from '../music/notes';
-  import { playPluck } from '../audio/pluck';
+  import { noteAt, closestPositionOf, NOTE_DISPLAY, type Fret } from '../music/notes';
+  import { playPluck, playInterval } from '../audio/pluck';
 
   type Props = {
-    config: RootNotesConfig;
-    onComplete: (report: RootNotesReport) => void;
-    onAbort: (report: RootNotesReport) => void;
+    config: ExerciseConfig;
+    onComplete: (report: ExerciseReport) => void;
+    onAbort: (report: ExerciseReport) => void;
   };
 
   let { config, onComplete, onAbort }: Props = $props();
@@ -20,10 +20,10 @@
   // the top-level reads in untrack() to make that intent explicit and silence
   // state_referenced_locally — we deliberately do NOT want these reads to be
   // reactive.
-  const exercise = new RootNotesExercise();
+  const exercise = new FretboardExercise();
   untrack(() => exercise.start(config));
 
-  let currentPrompt = $state<RootNotesPrompt | null>(null);
+  let currentPrompt = $state<ExercisePrompt | null>(null);
   let awaitingAdvance = $state(false);
   let flashHighlights = $state<Highlight[]>([]);
   let correctCount = $state(0);
@@ -179,8 +179,11 @@
     }
     if (!currentPrompt) return;
     const promptTarget = currentPrompt.targetNote;
+    const promptHighlight = currentPrompt.highlight;
 
-    if (config.playSound) {
+    // In intervals mode we sound out the whole interval on a correct answer
+    // instead, so skip the immediate click pluck here.
+    if (config.playSound && config.exercise !== 'intervals') {
       try { playPluck(pos.string, pos.fret); } catch { /* ignore */ }
     }
 
@@ -197,6 +200,9 @@
           kind: 'user-correct'
         }
       ];
+      if (config.playSound && config.exercise === 'intervals') {
+        try { playInterval(promptHighlight, pos); } catch { /* ignore */ }
+      }
     } else {
       incorrectCount += 1;
       const correctFlashes: Highlight[] = result.correctAnswers.map(c => ({
@@ -212,7 +218,7 @@
       const clickedNote = noteAt(pos.string, pos.fret);
       const fromClick: Highlight[] = clickedNote === promptTarget
         ? []
-        : closestPositionOf(promptTarget, pos, config.maxFret, config.algorithm).map(c => ({
+        : closestPositionOf(promptTarget, pos, config.maxFret, config.algorithm, config.direction).map(c => ({
             string: c.string,
             fret: c.fret,
             note: noteAt(c.string, c.fret),
@@ -247,6 +253,7 @@
   // Falls back to config.targetNote only in the brief window before the first
   // prompt is generated.
   const currentTarget = $derived(currentPrompt?.targetNote ?? config.targetNote);
+  const isIntervals = $derived(config.exercise === 'intervals' && !!currentPrompt?.interval);
 
   function confirmAndAbort() {
     if (sessionEnded) return;
@@ -264,7 +271,14 @@
 
 <div class="session">
   <header>
-    <div class="target">Target: <strong>{currentTarget}</strong></div>
+    <div class="target">
+      {#if isIntervals && currentPrompt}
+        Find the <strong>{currentPrompt.interval}</strong> of <strong>{NOTE_DISPLAY[currentPrompt.highlightNote]}</strong>
+        — key of {NOTE_DISPLAY[currentPrompt.keyRoot!]} {currentPrompt.keyQuality}
+      {:else}
+        Target: <strong>{currentTarget}</strong>
+      {/if}
+    </div>
     <div class="timer">
       {#if config.continuous}
         ⏱ {mmss(elapsedSec)}

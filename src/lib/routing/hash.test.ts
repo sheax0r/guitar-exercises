@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseHash, sessionHash } from './hash';
-import type { RootNotesConfig } from '../exercise/rootNotes/types';
+import type { ExerciseConfig } from '../exercise/types';
 
 describe('parseHash', () => {
   it('returns start for empty / root hashes', () => {
@@ -24,7 +24,11 @@ describe('parseHash', () => {
         showRootMarkers: false,
         showFretNumbers: true,
         playSound: true,
-        algorithm: 'fret-first'
+        algorithm: 'fret-first',
+        intervalKind: 'random',
+        keyRoot: 'C',
+        keyQuality: 'major',
+        direction: 'nearest'
       });
     }
   });
@@ -105,7 +109,7 @@ describe('parseHash', () => {
 
 describe('sessionHash round-trip', () => {
   it('round-trips a typical timed config', () => {
-    const original: RootNotesConfig = {
+    const original: ExerciseConfig = {
       exercise: 'root-notes',
       targetNote: 'C#',
       durationSec: 180,
@@ -115,7 +119,35 @@ describe('sessionHash round-trip', () => {
       showRootMarkers: false,
       showFretNumbers: false,
       playSound: false,
-      algorithm: 'manhattan'
+      algorithm: 'manhattan',
+      intervalKind: 'random',
+      keyRoot: 'C',
+      keyQuality: 'major',
+      direction: 'nearest'
+    };
+    const parsed = parseHash(sessionHash(original));
+    expect(parsed.screen).toBe('session');
+    if (parsed.screen === 'session') {
+      expect(parsed.config).toEqual(original);
+    }
+  });
+
+  it('round-trips an intervals config', () => {
+    const original: ExerciseConfig = {
+      exercise: 'intervals',
+      targetNote: 'A',
+      durationSec: 300,
+      continuous: false,
+      maxFret: 15,
+      showAllLabels: false,
+      showRootMarkers: false,
+      showFretNumbers: true,
+      playSound: true,
+      algorithm: 'fret-first',
+      intervalKind: '5th',
+      keyRoot: 'G',
+      keyQuality: 'minor',
+      direction: 'ascending'
     };
     const parsed = parseHash(sessionHash(original));
     expect(parsed.screen).toBe('session');
@@ -125,7 +157,7 @@ describe('sessionHash round-trip', () => {
   });
 
   it('round-trips a random-roots config', () => {
-    const original: RootNotesConfig = {
+    const original: ExerciseConfig = {
       exercise: 'random-roots',
       targetNote: 'A',
       durationSec: 300,
@@ -135,7 +167,11 @@ describe('sessionHash round-trip', () => {
       showRootMarkers: false,
       showFretNumbers: true,
       playSound: true,
-      algorithm: 'fret-first'
+      algorithm: 'fret-first',
+      intervalKind: 'random',
+      keyRoot: 'C',
+      keyQuality: 'major',
+      direction: 'nearest'
     };
     const parsed = parseHash(sessionHash(original));
     expect(parsed.screen).toBe('session');
@@ -145,7 +181,7 @@ describe('sessionHash round-trip', () => {
   });
 
   it('serializes continuous mode using the literal "continuous"', () => {
-    const config: RootNotesConfig = {
+    const config: ExerciseConfig = {
       exercise: 'root-notes',
       targetNote: 'A',
       durationSec: 300,
@@ -155,7 +191,11 @@ describe('sessionHash round-trip', () => {
       showRootMarkers: false,
       showFretNumbers: true,
       playSound: true,
-      algorithm: 'fret-first'
+      algorithm: 'fret-first',
+      intervalKind: 'random',
+      keyRoot: 'C',
+      keyQuality: 'major',
+      direction: 'nearest'
     };
     expect(sessionHash(config)).toContain('duration=continuous');
   });

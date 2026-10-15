@@ -11,7 +11,11 @@ const FULL_PREFS: Prefs = {
   showRootMarkers: false,
   showFretNumbers: true,
   playSound: true,
-  algorithm: 'fret-first'
+  algorithm: 'fret-first',
+  intervalKind: 'random',
+  keyRoot: 'C',
+  keyQuality: 'major',
+  direction: 'nearest'
 };
 
 describe('prefs', () => {

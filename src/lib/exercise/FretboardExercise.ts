@@ -1,17 +1,22 @@
-import type { Exercise, AnswerResult } from '../Exercise';
+import type { Exercise, AnswerResult } from './Exercise';
 import type {
-  RootNotesConfig,
-  RootNotesPrompt,
-  RootNotesAnswer,
-  RootNotesReport,
+  ExerciseConfig,
+  ExercisePrompt,
+  ExerciseAnswer,
+  ExerciseReport,
   PerTargetStat
 } from './types';
-import { noteAt, closestPositionOf, type Fret, type Note } from '../../music/notes';
-import type { StringNum } from '../../music/tuning';
+import { noteAt, closestPositionOf, CHROMATIC, type Fret, type Note } from '../music/notes';
+import { scaleNotes, diatonicInterval, type Interval, type ScaleQuality } from '../music/scales';
+import type { StringNum } from '../music/tuning';
 
 // The fixed pool the 'random-roots' exercise re-draws its target from on every
 // prompt.
 const RANDOM_ROOT_NOTES: Note[] = ['A', 'E', 'D'];
+
+function randomOf<T>(xs: readonly T[]): T {
+  return xs[Math.floor(Math.random() * xs.length)];
+}
 
 interface AttemptLog {
   // The canonical (lowest string, then lowest fret) position out of the tied
@@ -34,17 +39,17 @@ function canonicalPosition(
   return best;
 }
 
-export class RootNotesExercise
-  implements Exercise<RootNotesConfig, RootNotesPrompt, RootNotesAnswer, RootNotesReport>
+export class FretboardExercise
+  implements Exercise<ExerciseConfig, ExercisePrompt, ExerciseAnswer, ExerciseReport>
 {
-  private config!: RootNotesConfig;
-  private currentPrompt: RootNotesPrompt | null = null;
+  private config!: ExerciseConfig;
+  private currentPrompt: ExercisePrompt | null = null;
   private currentCorrect: Array<{ string: StringNum; fret: Fret }> | null = null;
   private promptStartedAt = 0;
   private prevPrompt: { string: StringNum; fret: Fret } | null = null;
   private attempts: AttemptLog[] = [];
 
-  start(config: RootNotesConfig): void {
+  start(config: ExerciseConfig): void {
     this.config = config;
     this.currentPrompt = null;
     this.currentCorrect = null;
@@ -57,43 +62,81 @@ export class RootNotesExercise
   // 'random-roots' it is re-drawn uniformly from RANDOM_ROOT_NOTES each prompt.
   private pickTarget(): Note {
     if (this.config.exercise === 'random-roots') {
-      return RANDOM_ROOT_NOTES[Math.floor(Math.random() * RANDOM_ROOT_NOTES.length)];
+      return randomOf(RANDOM_ROOT_NOTES);
     }
     return this.config.targetNote;
   }
 
-  getNextPrompt(): RootNotesPrompt {
+  // A random fretboard position, never a repeat of the previous prompt. When
+  // `allowed` is given, only positions whose note is in that set are drawn.
+  // Reject sampling with bounded tries: throws rather than spinning forever if
+  // the constraints can't be met (e.g. a key with no in-scale position within
+  // maxFret — only reachable at a degenerate maxFret the UI never offers).
+  private pickPosition(allowed?: Set<Note>): { string: StringNum; fret: Fret } {
     const maxFret = this.config.maxFret;
-    let pick: { string: StringNum; fret: Fret };
-    do {
+    const MAX_TRIES = 1000;
+    for (let tries = 0; tries < MAX_TRIES; tries++) {
       const string = ((Math.floor(Math.random() * 6) + 1) as StringNum);
       const fret = Math.floor(Math.random() * (maxFret + 1));
-      pick = { string, fret };
-    } while (
-      this.prevPrompt &&
-      pick.string === this.prevPrompt.string &&
-      pick.fret === this.prevPrompt.fret
-    );
+      const pick = { string, fret };
+      const outOfScale = allowed && !allowed.has(noteAt(pick.string, pick.fret));
+      const repeat = this.prevPrompt &&
+        pick.string === this.prevPrompt.string &&
+        pick.fret === this.prevPrompt.fret;
+      if (!outOfScale && !repeat) return pick;
+    }
+    throw new Error(`Could not pick a prompt position within maxFret=${maxFret}`);
+  }
 
-    this.prevPrompt = pick;
-    const targetNote = this.pickTarget();
-    const prompt: RootNotesPrompt = {
-      highlight: pick,
-      highlightNote: noteAt(pick.string, pick.fret),
-      targetNote
-    };
+  getNextPrompt(): ExercisePrompt {
+    const prompt = this.config.exercise === 'intervals'
+      ? this.nextIntervalPrompt()
+      : this.nextNotePrompt();
+    this.prevPrompt = prompt.highlight;
     this.currentPrompt = prompt;
     this.currentCorrect = closestPositionOf(
-      targetNote,
-      pick,
-      maxFret,
-      this.config.algorithm
+      prompt.targetNote,
+      prompt.highlight,
+      this.config.maxFret,
+      this.config.algorithm,
+      this.config.direction
     );
     this.promptStartedAt = Date.now();
     return prompt;
   }
 
-  submitAnswer(answer: RootNotesAnswer): AnswerResult<RootNotesAnswer> {
+  private nextNotePrompt(): ExercisePrompt {
+    const pick = this.pickPosition();
+    return {
+      highlight: pick,
+      highlightNote: noteAt(pick.string, pick.fret),
+      targetNote: this.pickTarget()
+    };
+  }
+
+  // Resolves key + interval (each fixed or re-drawn per prompt), picks a shown
+  // note that is diatonic to that key, and targets its 3rd/5th.
+  private nextIntervalPrompt(): ExercisePrompt {
+    const keyRoot = this.config.keyRoot === 'random'
+      ? randomOf(CHROMATIC)
+      : this.config.keyRoot;
+    const keyQuality: ScaleQuality = this.config.keyQuality === 'random'
+      ? randomOf(['major', 'minor'] as const)
+      : this.config.keyQuality;
+    const interval: Interval = this.config.intervalKind === 'random'
+      ? randomOf(['3rd', '5th'] as const)
+      : this.config.intervalKind;
+
+    const scale = scaleNotes(keyRoot, keyQuality);
+    const pick = this.pickPosition(new Set(scale));
+    const highlightNote = noteAt(pick.string, pick.fret);
+    // Non-null: highlightNote was drawn from the scale.
+    const targetNote = diatonicInterval(keyRoot, keyQuality, highlightNote, interval)!;
+
+    return { highlight: pick, highlightNote, targetNote, interval, keyRoot, keyQuality };
+  }
+
+  submitAnswer(answer: ExerciseAnswer): AnswerResult<ExerciseAnswer> {
     if (!this.currentPrompt || !this.currentCorrect) {
       throw new Error('submitAnswer called before getNextPrompt');
     }
@@ -106,7 +149,7 @@ export class RootNotesExercise
       correct,
       elapsedMs
     });
-    const result: AnswerResult<RootNotesAnswer> = {
+    const result: AnswerResult<ExerciseAnswer> = {
       correct,
       correctAnswers: this.currentCorrect,
       elapsedMs
@@ -123,7 +166,7 @@ export class RootNotesExercise
     this.promptStartedAt += pauseDurationMs;
   }
 
-  getReport(): RootNotesReport {
+  getReport(): ExerciseReport {
     const total = this.attempts.length;
     const correct = this.attempts.filter(a => a.correct).length;
     const incorrect = total - correct;

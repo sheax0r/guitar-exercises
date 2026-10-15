@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import SessionScreen from './SessionScreen.svelte';
-import type { RootNotesConfig } from '../exercise/rootNotes/types';
+import type { ExerciseConfig } from '../exercise/types';
 
-vi.mock('../audio/pluck', () => ({ playPluck: () => {} }));
+vi.mock('../audio/pluck', () => ({ playPluck: () => {}, playInterval: () => {} }));
 
-function makeConfig(): RootNotesConfig {
+function makeConfig(): ExerciseConfig {
   return {
     exercise: 'root-notes',
     targetNote: 'A',
@@ -16,7 +16,11 @@ function makeConfig(): RootNotesConfig {
     showRootMarkers: false,
     showFretNumbers: true,
     playSound: false,
-    algorithm: 'fret-first'
+    algorithm: 'fret-first',
+    intervalKind: 'random',
+    keyRoot: 'C',
+    keyQuality: 'major',
+    direction: 'nearest'
   };
 }
 
@@ -105,6 +109,30 @@ describe('SessionScreen — per-prompt target (random-roots)', () => {
       }
     });
     expect(container.querySelector('.target strong')!.textContent).toBe('G');
+  });
+
+  it('asks for the interval in intervals mode without revealing the answer note', () => {
+    const { container } = render(SessionScreen, {
+      props: {
+        config: {
+          ...makeConfig(),
+          exercise: 'intervals',
+          keyRoot: 'C',
+          keyQuality: 'major',
+          intervalKind: '3rd'
+        },
+        onComplete: () => {},
+        onAbort: () => {}
+      }
+    });
+    const header = container.querySelector('.target')!.textContent!;
+    expect(header).toContain('Find the');
+    expect(header).toContain('3rd');
+    expect(header).toContain('key of C major');
+    // The header emphasises the shown note and the interval, never the target.
+    const emphasised = Array.from(container.querySelectorAll('.target strong'))
+      .map(e => e.textContent);
+    expect(emphasised).toContain('3rd');
   });
 });
 
