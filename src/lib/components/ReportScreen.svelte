@@ -2,34 +2,43 @@
   import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
   import { noteAt } from '../music/notes';
+  import { MODE_DISPLAY } from '../music/modes';
   import type { RootNotesConfig, RootNotesReport, PerTargetStat } from '../exercise/rootNotes/types';
+  import type { ModesReport, PerModeStat } from '../exercise/modes/types';
+  import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
-    report: RootNotesReport;
-    config: RootNotesConfig;
+    report: AnyReport;
+    config: AnyConfig;
     onPracticeAgain: () => void;
     onBack: () => void;
   };
 
   let { report, config, onPracticeAgain, onBack }: Props = $props();
-  // The report is a static snapshot of a completed session — config values
-  // shown here are intentionally captured once, not reactive.
-  const targetNote = untrack(() => config.targetNote);
-  const maxFret = untrack(() => config.maxFret);
+
+  const isRoot = untrack(() =>
+    config.exercise === 'root-notes' || config.exercise === 'random-roots'
+  );
+
+  // Narrowed views. Only one is non-null for a given report. The report is a
+  // static snapshot of a finished session, so these are captured once.
+  const rootConfig = untrack(() => (isRoot ? (config as RootNotesConfig) : null));
+  const rootReport = untrack(() => (isRoot ? (report as RootNotesReport) : null));
+  const modesReport = untrack(() => (!isRoot ? (report as ModesReport) : null));
+
   const isRandomRoots = untrack(() => config.exercise === 'random-roots');
-  // 'random-roots' has no single target, so the report describes the pool the
-  // exercise drew from rather than one fixed note.
-  const titleSuffix = isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${targetNote}`;
+  const titleSuffix = isRoot
+    ? (isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${rootConfig!.targetNote}`)
+    : (config.exercise === 'play-shape' ? 'Play the Shape' : 'Identify the Mode');
 
   const accuracyPct = $derived(Math.round(report.accuracy * 100));
   const avgTimeSec = $derived(report.avgTimeMs / 1000);
 
+  // --- Root-notes heatmap ----------------------------------------------
   const heatmapHighlights = $derived<Highlight[]>(
-    report.perTargetStats.map(s => ({
+    (rootReport?.perTargetStats ?? []).map(s => ({
       string: s.position.string,
       fret: s.position.fret,
-      // Each answer position plays exactly one note, so derive the label from
-      // the position itself — correct whether the target was fixed or random.
       note: noteAt(s.position.string, s.position.fret),
       kind: 'heatmap' as const,
       accuracy: s.timesAsked === 0 ? 0 : s.correctCount / s.timesAsked
@@ -42,7 +51,40 @@
     return `String ${stringName}${lowOrHigh}, fret ${s.position.fret}`;
   }
 
-  // --- Timeline scatter plot geometry ----------------------------------
+  const weakest = $derived<PerTargetStat[]>(
+    (() => {
+      const eligible = (rootReport?.perTargetStats ?? []).filter(s => s.timesAsked >= 2);
+      eligible.sort((a, b) => {
+        const aAcc = a.correctCount / a.timesAsked;
+        const bAcc = b.correctCount / b.timesAsked;
+        if (aAcc !== bAcc) return aAcc - bAcc;
+        return b.avgTimeMs - a.avgTimeMs;
+      });
+      return eligible.slice(0, 3);
+    })()
+  );
+
+  // --- Modes per-mode stats --------------------------------------------
+  const perModeSorted = $derived<PerModeStat[]>(
+    [...(modesReport?.perModeStats ?? [])].sort((a, b) =>
+      MODE_DISPLAY[a.mode].localeCompare(MODE_DISPLAY[b.mode])
+    )
+  );
+
+  const weakestModes = $derived<PerModeStat[]>(
+    (() => {
+      const eligible = (modesReport?.perModeStats ?? []).filter(s => s.timesAsked >= 2);
+      eligible.sort((a, b) => {
+        const aAcc = a.correctCount / a.timesAsked;
+        const bAcc = b.correctCount / b.timesAsked;
+        if (aAcc !== bAcc) return aAcc - bAcc;
+        return b.avgTimeMs - a.avgTimeMs;
+      });
+      return eligible.slice(0, 3);
+    })()
+  );
+
+  // --- Timeline scatter (shared) ---------------------------------------
   const SCAT_W = 720;
   const SCAT_H = 220;
   const SCAT_PAD_L = 44;
@@ -75,37 +117,32 @@
   }
   const avgY = $derived(yFor(avgTimeSec));
 
-  const weakest = $derived<PerTargetStat[]>(
-    (() => {
-      const eligible = report.perTargetStats.filter(s => s.timesAsked >= 2);
-      eligible.sort((a, b) => {
-        const aAcc = a.correctCount / a.timesAsked;
-        const bAcc = b.correctCount / b.timesAsked;
-        if (aAcc !== bAcc) return aAcc - bAcc;
-        return b.avgTimeMs - a.avgTimeMs;
-      });
-      return eligible.slice(0, 3);
-    })()
-  );
-
   function buildTextReport(): string {
     const lines: string[] = [];
     lines.push(`Session report — ${titleSuffix}`);
     lines.push(`Accuracy: ${accuracyPct}% (${report.correctCount}/${report.totalPrompts})`);
     lines.push(`Errors: ${report.incorrectCount}`);
     lines.push(`Avg time: ${avgTimeSec.toFixed(1)}s`);
-    if (weakest.length > 0) {
+    if (isRoot && weakest.length > 0) {
       lines.push('');
       lines.push('Weakest positions:');
       for (const s of weakest) {
         lines.push(`- ${statLabel(s)}: ${s.correctCount}/${s.timesAsked} correct · avg ${(s.avgTimeMs / 1000).toFixed(1)}s`);
       }
     }
+    if (!isRoot && perModeSorted.length > 0) {
+      lines.push('');
+      lines.push('Per mode:');
+      for (const s of perModeSorted) {
+        const acc = s.timesAsked === 0 ? 0 : Math.round((s.correctCount / s.timesAsked) * 100);
+        lines.push(`- ${MODE_DISPLAY[s.mode]}: ${s.correctCount}/${s.timesAsked} (${acc}%) · avg ${(s.avgTimeMs / 1000).toFixed(1)}s`);
+      }
+    }
     return lines.join('\n');
   }
 
   function buildJsonData(): string {
-    return JSON.stringify({
+    const base = {
       generatedAt: new Date().toISOString(),
       config: { ...config },
       summary: {
@@ -115,19 +152,27 @@
         accuracy: report.accuracy,
         avgTimeMs: report.avgTimeMs
       },
-      attempts: report.attempts.map((a, i) => ({
-        index: i + 1,
-        elapsedMs: a.elapsedMs,
-        correct: a.correct
-      })),
-      perTargetStats: report.perTargetStats.map(s => ({
-        string: s.position.string,
-        fret: s.position.fret,
-        timesAsked: s.timesAsked,
-        correctCount: s.correctCount,
-        avgTimeMs: s.avgTimeMs
-      }))
-    }, null, 2);
+      attempts: report.attempts.map((a, i) => ({ index: i + 1, elapsedMs: a.elapsedMs, correct: a.correct }))
+    };
+    const detail = isRoot
+      ? {
+          perTargetStats: (rootReport?.perTargetStats ?? []).map(s => ({
+            string: s.position.string,
+            fret: s.position.fret,
+            timesAsked: s.timesAsked,
+            correctCount: s.correctCount,
+            avgTimeMs: s.avgTimeMs
+          }))
+        }
+      : {
+          perModeStats: (modesReport?.perModeStats ?? []).map(s => ({
+            mode: s.mode,
+            timesAsked: s.timesAsked,
+            correctCount: s.correctCount,
+            avgTimeMs: s.avgTimeMs
+          }))
+        };
+    return JSON.stringify({ ...base, ...detail }, null, 2);
   }
 
   type CopyState = 'idle' | 'copied' | 'failed';
@@ -157,6 +202,10 @@
     if (copyDataResetHandle !== null) clearTimeout(copyDataResetHandle);
     copyDataResetHandle = setTimeout(() => { copyDataState = 'idle'; }, 2000);
   }
+
+  function modeAccPct(s: PerModeStat): number {
+    return s.timesAsked === 0 ? 0 : Math.round((s.correctCount / s.timesAsked) * 100);
+  }
 </script>
 
 <div class="report">
@@ -169,29 +218,53 @@
     <div class="card"><div class="caption">Avg time</div><div class="big">{avgTimeSec.toFixed(1)}s</div></div>
   </div>
 
-  <div class="section">
-    <div class="caption">Heatmap — {isRandomRoots ? 'positions' : `${targetNote} positions`} you saw this session</div>
-    <div class="board">
-      <Fretboard maxFret={maxFret} highlights={heatmapHighlights} />
+  {#if isRoot}
+    <div class="section">
+      <div class="caption">Heatmap — {isRandomRoots ? 'positions' : `${rootConfig!.targetNote} positions`} you saw this session</div>
+      <div class="board">
+        <Fretboard maxFret={rootConfig!.maxFret} highlights={heatmapHighlights} />
+      </div>
+      <div class="legend">
+        <span>Less accurate</span>
+        <span class="legend-swatch" style="background:#d65a3d"></span>
+        <span class="legend-swatch" style="background:#e07a5f"></span>
+        <span class="legend-swatch" style="background:#e0c54a"></span>
+        <span class="legend-swatch" style="background:#a3d977"></span>
+        <span class="legend-swatch" style="background:#5fb35a"></span>
+        <span>More accurate</span>
+        <span class="legend-blank">Blank = never asked this session</span>
+      </div>
     </div>
-    <div class="legend">
-      <span>Less accurate</span>
-      <span class="legend-swatch" style="background:#d65a3d"></span>
-      <span class="legend-swatch" style="background:#e07a5f"></span>
-      <span class="legend-swatch" style="background:#e0c54a"></span>
-      <span class="legend-swatch" style="background:#a3d977"></span>
-      <span class="legend-swatch" style="background:#5fb35a"></span>
-      <span>More accurate</span>
-      <span class="legend-blank">Blank = never asked this session</span>
+  {:else}
+    <div class="section">
+      <div class="caption">Per mode</div>
+      {#if perModeSorted.length === 0}
+        <div class="muted">No prompts this session.</div>
+      {:else}
+        <table class="per-mode">
+          <thead>
+            <tr><th>Mode</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
+          </thead>
+          <tbody>
+            {#each perModeSorted as s}
+              <tr>
+                <td>{MODE_DISPLAY[s.mode]}</td>
+                <td>{s.timesAsked}</td>
+                <td>{modeAccPct(s)}%</td>
+                <td>{(s.avgTimeMs / 1000).toFixed(1)}s</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
     </div>
-  </div>
+  {/if}
 
   {#if report.attempts.length > 0}
     <div class="section">
       <div class="caption">Response time per attempt (green = correct, red = wrong)</div>
       <div class="scatter">
         <svg viewBox="0 0 {SCAT_W} {SCAT_H}" class="scatter-svg" xmlns="http://www.w3.org/2000/svg">
-          <!-- Y axis gridlines + labels -->
           <g stroke="#3a3a3a" stroke-width="1">
             {#each yTicks as t}
               <line x1={SCAT_PAD_L} y1={yFor(t)} x2={SCAT_W - SCAT_PAD_R} y2={yFor(t)} />
@@ -202,7 +275,6 @@
               <text x={SCAT_PAD_L - 6} y={yFor(t) + 4}>{t}s</text>
             {/each}
           </g>
-          <!-- X axis baseline + label -->
           <line
             x1={SCAT_PAD_L} y1={SCAT_H - SCAT_PAD_B}
             x2={SCAT_W - SCAT_PAD_R} y2={SCAT_H - SCAT_PAD_B}
@@ -216,7 +288,6 @@
             font-size="11"
             text-anchor="middle"
           >Attempt # (1 → {report.attempts.length})</text>
-          <!-- Average line -->
           <line
             x1={SCAT_PAD_L} y1={avgY} x2={SCAT_W - SCAT_PAD_R} y2={avgY}
             stroke="#e8e3d3" stroke-width="1" stroke-dasharray="4 4" opacity="0.5"
@@ -230,7 +301,6 @@
             text-anchor="end"
             opacity="0.7"
           >avg {avgTimeSec.toFixed(1)}s</text>
-          <!-- Dots -->
           <g>
             {#each report.attempts as a, i}
               <circle
@@ -248,13 +318,27 @@
     </div>
   {/if}
 
-  {#if weakest.length > 0}
+  {#if isRoot && weakest.length > 0}
     <div class="section">
       <div class="caption">Weakest positions</div>
       <ul class="weakest">
         {#each weakest as s}
           <li>
             <span><strong>{statLabel(s)}</strong></span>
+            <span class="muted">{s.correctCount} / {s.timesAsked} correct · avg {(s.avgTimeMs/1000).toFixed(1)}s</span>
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
+  {#if !isRoot && weakestModes.length > 0}
+    <div class="section">
+      <div class="caption">Weakest modes</div>
+      <ul class="weakest">
+        {#each weakestModes as s}
+          <li>
+            <span><strong>{MODE_DISPLAY[s.mode]}</strong></span>
             <span class="muted">{s.correctCount} / {s.timesAsked} correct · avg {(s.avgTimeMs/1000).toFixed(1)}s</span>
           </li>
         {/each}
@@ -289,6 +373,10 @@
   .legend-blank { margin-left: 16px; }
   .scatter { background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; }
   .scatter-svg { width: 100%; display: block; max-width: 100%; }
+  .per-mode { width: 100%; border-collapse: collapse; }
+  .per-mode th, .per-mode td { text-align: left; padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .per-mode th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+  .per-mode td { font-variant-numeric: tabular-nums; }
   .weakest { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
   .weakest li { display: flex; justify-content: space-between; padding: 10px 14px; background: rgba(0,0,0,0.15); border-radius: 6px; }
   .muted { opacity: 0.6; }

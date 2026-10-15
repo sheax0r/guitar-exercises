@@ -1,14 +1,19 @@
 <script lang="ts">
   import RootNotesBody from './RootNotesBody.svelte';
-  import type { RootNotesConfig, RootNotesReport } from '../exercise/rootNotes/types';
+  import PlayShapeBody from './PlayShapeBody.svelte';
+  import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
-    config: RootNotesConfig;
-    onComplete: (report: RootNotesReport) => void;
-    onAbort: (report: RootNotesReport) => void;
+    config: AnyConfig;
+    onComplete: (report: AnyReport) => void;
+    onAbort: (report: AnyReport) => void;
   };
 
   let { config, onComplete, onAbort }: Props = $props();
 </script>
 
-<RootNotesBody {config} {onComplete} {onAbort} />
+{#if config.exercise === 'root-notes' || config.exercise === 'random-roots'}
+  <RootNotesBody {config} {onComplete} {onAbort} />
+{:else if config.exercise === 'play-shape'}
+  <PlayShapeBody {config} {onComplete} {onAbort} />
+{/if}

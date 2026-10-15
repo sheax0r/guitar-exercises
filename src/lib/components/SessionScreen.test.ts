@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import SessionScreen from './SessionScreen.svelte';
 import type { RootNotesConfig } from '../exercise/rootNotes/types';
+import type { PlayShapeConfig } from '../exercise/modes/types';
 
 vi.mock('../audio/pluck', () => ({ playPluck: () => {} }));
 
@@ -105,6 +106,53 @@ describe('SessionScreen — per-prompt target (random-roots)', () => {
       }
     });
     expect(container.querySelector('.target strong')!.textContent).toBe('G');
+  });
+});
+
+describe('SessionScreen — play-shape', () => {
+  function playShapeConfig(): PlayShapeConfig {
+    return {
+      exercise: 'play-shape',
+      enabledModes: ['ionian'],
+      shapeVariant: 'octave',
+      octaveJudge: 'fixed',
+      boxSpan: 4,
+      maxFret: 22,
+      durationSec: 300,
+      continuous: true,
+      showFretNumbers: true,
+      playSound: false
+    };
+  }
+
+  it('renders the mode label and a 0 / N progress counter', () => {
+    const { container } = render(SessionScreen, {
+      props: { config: playShapeConfig(), onComplete: () => {}, onAbort: () => {} }
+    });
+    expect(container.querySelector('.target strong')!.textContent).toBe('Ionian');
+    expect(container.querySelector('.progress')!.textContent).toMatch(/^0 \/ [1-9]/);
+    // The root is marked on the board so the player knows where to start.
+    expect(container.querySelector('[data-role="highlight"][data-kind="scale-root"]')).toBeTruthy();
+  });
+
+  it('marks a correct first click without completing the prompt', async () => {
+    const { container } = render(SessionScreen, {
+      props: { config: playShapeConfig(), onComplete: () => {}, onAbort: () => {} }
+    });
+    // The root is the first expected step; click it.
+    const rootCircle = container.querySelector('[data-role="highlight"][data-kind="scale-root"]');
+    expect(rootCircle).toBeTruthy();
+    // Find the root's string/fret from the progress and click via its hit-rect:
+    // the scale-root highlight sits at the root position, so click that cell.
+    // Derive it from the only scale-root highlight by matching its transform is
+    // brittle; instead click every hit until progress advances to 1.
+    const hits = Array.from(container.querySelectorAll('[data-role="hit"]')) as HTMLElement[];
+    for (const hit of hits) {
+      hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+      if (container.querySelector('.progress')!.textContent!.startsWith('1 /')) break;
+    }
+    expect(container.querySelector('.progress')!.textContent!.startsWith('1 /')).toBe(true);
   });
 });
 

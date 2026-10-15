@@ -2,7 +2,7 @@
   import StartScreen from './lib/components/StartScreen.svelte';
   import SessionScreen from './lib/components/SessionScreen.svelte';
   import ReportScreen from './lib/components/ReportScreen.svelte';
-  import type { RootNotesConfig, RootNotesReport } from './lib/exercise/rootNotes/types';
+  import type { AnyConfig, AnyReport } from './lib/exercise/config';
   import { parseHash, sessionHash, START_HASH } from './lib/routing/hash';
 
   type Screen = 'start' | 'session' | 'report';
@@ -12,10 +12,10 @@
   const initialRoute = parseHash(window.location.hash);
 
   let screen = $state<Screen>(initialRoute.screen === 'session' ? 'session' : 'start');
-  let activeConfig = $state<RootNotesConfig | null>(
+  let activeConfig = $state<AnyConfig | null>(
     initialRoute.screen === 'session' ? initialRoute.config : null
   );
-  let activeReport = $state<RootNotesReport | null>(null);
+  let activeReport = $state<AnyReport | null>(null);
 
   // Normalize the URL when we landed on start (either empty hash or invalid
   // session params). Use replaceState so we don't push a junk entry.
@@ -44,7 +44,7 @@
     return () => window.removeEventListener('hashchange', onHashChange);
   });
 
-  function handleStart(config: RootNotesConfig) {
+  function handleStart(config: AnyConfig) {
     // Setting location.hash pushes a new history entry and fires hashchange,
     // which updates state. Update state directly too so the transition is
     // synchronous (hashchange is async).
@@ -57,12 +57,12 @@
     }
   }
 
-  function handleComplete(report: RootNotesReport) {
+  function handleComplete(report: AnyReport) {
     activeReport = report;
     screen = 'report';
   }
 
-  function handleAbort(report: RootNotesReport) {
+  function handleAbort(report: AnyReport) {
     activeReport = report;
     screen = 'report';
   }
