@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { CHROMATIC, NOTE_DISPLAY, type Note, type ClosestAlgorithm } from '../music/notes';
+  import { CHROMATIC, NOTE_DISPLAY, type Note, type ClosestAlgorithm, type Direction } from '../music/notes';
+  import type { Interval, ScaleQuality } from '../music/scales';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
   import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 
@@ -29,6 +30,10 @@
   let playSound = $state<boolean>(stored.playSound ?? true);
   let continuous = $state<boolean>(stored.continuous ?? false);
   let algorithm = $state<ClosestAlgorithm>(stored.algorithm ?? 'fret-first');
+  let intervalKind = $state<Interval | 'random'>(stored.intervalKind ?? 'random');
+  let keyRoot = $state<Note | 'random'>(stored.keyRoot ?? 'C');
+  let keyQuality = $state<ScaleQuality | 'random'>(stored.keyQuality ?? 'major');
+  let direction = $state<Direction>(stored.direction ?? 'nearest');
   let customMode = $state<boolean>(!continuous && ![60, 180, 300, 600].includes(durationSec));
   let customValue = $state<number>(customMode ? durationSec : 120);
 
@@ -82,9 +87,13 @@
       showRootMarkers,
       showFretNumbers,
       playSound,
-      algorithm
+      algorithm,
+      intervalKind,
+      keyRoot,
+      keyQuality,
+      direction
     };
-    const prefs: Prefs = { exercise, targetNote, durationSec, continuous, maxFret, showAllLabels, showRootMarkers, showFretNumbers, playSound, algorithm };
+    const prefs: Prefs = { exercise, targetNote, durationSec, continuous, maxFret, showAllLabels, showRootMarkers, showFretNumbers, playSound, algorithm, intervalKind, keyRoot, keyQuality, direction };
     savePrefs(prefs);
     onStart(config);
   }
@@ -98,6 +107,7 @@
     <select id="exercise" bind:value={exercise}>
       <option value="root-notes">Root Notes</option>
       <option value="random-roots">Random Roots</option>
+      <option value="intervals">Intervals</option>
     </select>
   </div>
 
@@ -105,6 +115,39 @@
     <div class="row">
       <span class="label">Target notes</span>
       <span class="hint">A, E, D — randomized each prompt</span>
+    </div>
+  {:else if exercise === 'intervals'}
+    <div class="row">
+      <label for="interval">Interval</label>
+      <select id="interval" bind:value={intervalKind}>
+        <option value="3rd">3rd</option>
+        <option value="5th">5th</option>
+        <option value="random">Random each prompt</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="keyroot">Key</label>
+      <select id="keyroot" bind:value={keyRoot}>
+        <option value="random">Random each prompt</option>
+        {#each CHROMATIC as n}
+          <option value={n}>{NOTE_DISPLAY[n]}</option>
+        {/each}
+      </select>
+    </div>
+    <div class="row">
+      <label for="keyqual">Key quality</label>
+      <select id="keyqual" bind:value={keyQuality}>
+        <option value="major">Major</option>
+        <option value="minor">Minor</option>
+        <option value="random">Random each prompt</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="direction">Direction</label>
+      <select id="direction" bind:value={direction}>
+        <option value="nearest">Nearest (either way)</option>
+        <option value="ascending">Ascending (higher pitch)</option>
+      </select>
     </div>
   {:else}
     <div class="row">

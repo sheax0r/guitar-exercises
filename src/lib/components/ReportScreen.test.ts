@@ -15,6 +15,10 @@ function makeConfig(overrides: Partial<ExerciseConfig> = {}): ExerciseConfig {
     showFretNumbers: true,
     playSound: false,
     algorithm: 'fret-first',
+    intervalKind: 'random',
+    keyRoot: 'C',
+    keyQuality: 'major',
+    direction: 'nearest',
     ...overrides
   };
 }

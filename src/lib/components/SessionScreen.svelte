@@ -5,7 +5,7 @@
   import type { ExerciseConfig, ExercisePrompt, ExerciseReport } from '../exercise/types';
   import type { StringNum } from '../music/tuning';
   import { noteAt, closestPositionOf, type Fret } from '../music/notes';
-  import { playPluck } from '../audio/pluck';
+  import { playPluck, playInterval } from '../audio/pluck';
 
   type Props = {
     config: ExerciseConfig;
@@ -179,8 +179,11 @@
     }
     if (!currentPrompt) return;
     const promptTarget = currentPrompt.targetNote;
+    const promptHighlight = currentPrompt.highlight;
 
-    if (config.playSound) {
+    // In intervals mode we sound out the whole interval on a correct answer
+    // instead, so skip the immediate click pluck here.
+    if (config.playSound && config.exercise !== 'intervals') {
       try { playPluck(pos.string, pos.fret); } catch { /* ignore */ }
     }
 
@@ -197,6 +200,9 @@
           kind: 'user-correct'
         }
       ];
+      if (config.playSound && config.exercise === 'intervals') {
+        try { playInterval(promptHighlight, pos); } catch { /* ignore */ }
+      }
     } else {
       incorrectCount += 1;
       const correctFlashes: Highlight[] = result.correctAnswers.map(c => ({
@@ -247,6 +253,7 @@
   // Falls back to config.targetNote only in the brief window before the first
   // prompt is generated.
   const currentTarget = $derived(currentPrompt?.targetNote ?? config.targetNote);
+  const isIntervals = $derived(config.exercise === 'intervals' && !!currentPrompt?.interval);
 
   function confirmAndAbort() {
     if (sessionEnded) return;
@@ -264,7 +271,14 @@
 
 <div class="session">
   <header>
-    <div class="target">Target: <strong>{currentTarget}</strong></div>
+    <div class="target">
+      {#if isIntervals && currentPrompt}
+        Find the <strong>{currentPrompt.interval}</strong> of <strong>{currentPrompt.highlightNote}</strong>
+        — key of {currentPrompt.keyRoot} {currentPrompt.keyQuality}
+      {:else}
+        Target: <strong>{currentTarget}</strong>
+      {/if}
+    </div>
     <div class="timer">
       {#if config.continuous}
         ⏱ {mmss(elapsedSec)}

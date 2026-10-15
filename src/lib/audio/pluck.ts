@@ -1,9 +1,4 @@
-import type { StringNum } from '../music/tuning';
-
-// MIDI numbers for the open strings (string 1 = high E = E4 = MIDI 64).
-const OPEN_MIDI: Record<StringNum, number> = {
-  1: 64, 2: 59, 3: 55, 4: 50, 5: 45, 6: 40
-};
+import { STANDARD_TUNING_MIDI, type StringNum } from '../music/tuning';
 
 let ctx: AudioContext | null = null;
 let ctxFailed = false;
@@ -30,7 +25,7 @@ function getCtx(): AudioContext | null {
 }
 
 function frequencyFor(string: StringNum, fret: number): number {
-  const midi = OPEN_MIDI[string] + fret;
+  const midi = STANDARD_TUNING_MIDI[string] + fret;
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
@@ -81,4 +76,16 @@ export function playPluck(string: StringNum, fret: number, durationSec = 1.5): v
   } catch {
     // Any audio playback failure: silently skip.
   }
+}
+
+// Plays two notes in sequence to sound out an interval: `first`, then `second`
+// after a short gap. Used by the intervals exercise to let the player hear the
+// 3rd/5th they just found.
+export function playInterval(
+  first: { string: StringNum; fret: number },
+  second: { string: StringNum; fret: number },
+  gapMs = 450
+): void {
+  playPluck(first.string, first.fret);
+  setTimeout(() => playPluck(second.string, second.fret), gapMs);
 }

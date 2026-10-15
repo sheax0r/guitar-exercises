@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { FretboardExercise } from './FretboardExercise';
 import { noteAt, closestPositionOf } from '../music/notes';
+import { scaleNotes, diatonicInterval } from '../music/scales';
 import type { ExerciseConfig } from './types';
 
 const DEFAULT_CONFIG: ExerciseConfig = {
@@ -13,7 +14,11 @@ const DEFAULT_CONFIG: ExerciseConfig = {
   showRootMarkers: false,
   showFretNumbers: true,
   playSound: false,
-  algorithm: 'fret-first'
+  algorithm: 'fret-first',
+  intervalKind: 'random',
+  keyRoot: 'C',
+  keyQuality: 'major',
+  direction: 'nearest'
 };
 
 describe('FretboardExercise.start + getNextPrompt', () => {
@@ -216,6 +221,81 @@ describe('FretboardExercise.getReport', () => {
     const report = ex.getReport();
     for (const stat of report.perTargetStats) {
       expect(noteAt(stat.position.string, stat.position.fret)).toBe('A');
+    }
+  });
+});
+
+describe('FretboardExercise intervals mode', () => {
+  const INTERVALS_CONFIG: ExerciseConfig = {
+    ...DEFAULT_CONFIG,
+    exercise: 'intervals',
+    keyRoot: 'C',
+    keyQuality: 'major',
+    intervalKind: '3rd',
+    direction: 'nearest'
+  };
+
+  it('only shows notes that belong to the resolved key', () => {
+    const ex = new FretboardExercise();
+    ex.start(INTERVALS_CONFIG);
+    const scale = scaleNotes('C', 'major');
+    for (let i = 0; i < 100; i++) {
+      const p = ex.getNextPrompt();
+      expect(scale).toContain(p.highlightNote);
+    }
+  });
+
+  it('targets the diatonic interval of the shown note', () => {
+    const ex = new FretboardExercise();
+    ex.start(INTERVALS_CONFIG);
+    for (let i = 0; i < 100; i++) {
+      const p = ex.getNextPrompt();
+      expect(p.interval).toBe('3rd');
+      expect(p.keyRoot).toBe('C');
+      expect(p.keyQuality).toBe('major');
+      expect(p.targetNote).toBe(diatonicInterval('C', 'major', p.highlightNote, '3rd'));
+    }
+  });
+
+  it('draws a fresh interval each prompt when intervalKind is random', () => {
+    const ex = new FretboardExercise();
+    ex.start({ ...INTERVALS_CONFIG, intervalKind: 'random' });
+    const seen = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      const p = ex.getNextPrompt();
+      expect(p.interval === '3rd' || p.interval === '5th').toBe(true);
+      expect(p.targetNote).toBe(diatonicInterval('C', 'major', p.highlightNote, p.interval!));
+      seen.add(p.interval!);
+    }
+    expect(seen.size).toBe(2);
+  });
+
+  it('draws a fresh key each prompt when keyRoot/keyQuality are random', () => {
+    const ex = new FretboardExercise();
+    ex.start({ ...INTERVALS_CONFIG, keyRoot: 'random', keyQuality: 'random' });
+    const roots = new Set<string>();
+    const quals = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      const p = ex.getNextPrompt();
+      const scale = scaleNotes(p.keyRoot!, p.keyQuality!);
+      expect(scale).toContain(p.highlightNote);
+      expect(p.targetNote).toBe(diatonicInterval(p.keyRoot!, p.keyQuality!, p.highlightNote, p.interval!));
+      roots.add(p.keyRoot!);
+      quals.add(p.keyQuality!);
+    }
+    expect(roots.size).toBeGreaterThan(1);
+    expect(quals.size).toBe(2);
+  });
+
+  it('honors the direction setting when computing accepted answers', () => {
+    const ex = new FretboardExercise();
+    ex.start({ ...INTERVALS_CONFIG, direction: 'ascending' });
+    for (let i = 0; i < 50; i++) {
+      const p = ex.getNextPrompt();
+      const expected = closestPositionOf(p.targetNote, p.highlight, 22, 'fret-first', 'ascending');
+      const result = ex.submitAnswer(expected[0]);
+      expect(result.correct).toBe(true);
+      expect(result.correctAnswers).toEqual(expected);
     }
   });
 });

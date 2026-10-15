@@ -24,7 +24,11 @@ describe('parseHash', () => {
         showRootMarkers: false,
         showFretNumbers: true,
         playSound: true,
-        algorithm: 'fret-first'
+        algorithm: 'fret-first',
+        intervalKind: 'random',
+        keyRoot: 'C',
+        keyQuality: 'major',
+        direction: 'nearest'
       });
     }
   });
@@ -115,7 +119,35 @@ describe('sessionHash round-trip', () => {
       showRootMarkers: false,
       showFretNumbers: false,
       playSound: false,
-      algorithm: 'manhattan'
+      algorithm: 'manhattan',
+      intervalKind: 'random',
+      keyRoot: 'C',
+      keyQuality: 'major',
+      direction: 'nearest'
+    };
+    const parsed = parseHash(sessionHash(original));
+    expect(parsed.screen).toBe('session');
+    if (parsed.screen === 'session') {
+      expect(parsed.config).toEqual(original);
+    }
+  });
+
+  it('round-trips an intervals config', () => {
+    const original: ExerciseConfig = {
+      exercise: 'intervals',
+      targetNote: 'A',
+      durationSec: 300,
+      continuous: false,
+      maxFret: 15,
+      showAllLabels: false,
+      showRootMarkers: false,
+      showFretNumbers: true,
+      playSound: true,
+      algorithm: 'fret-first',
+      intervalKind: '5th',
+      keyRoot: 'G',
+      keyQuality: 'minor',
+      direction: 'ascending'
     };
     const parsed = parseHash(sessionHash(original));
     expect(parsed.screen).toBe('session');
@@ -135,7 +167,11 @@ describe('sessionHash round-trip', () => {
       showRootMarkers: false,
       showFretNumbers: true,
       playSound: true,
-      algorithm: 'fret-first'
+      algorithm: 'fret-first',
+      intervalKind: 'random',
+      keyRoot: 'C',
+      keyQuality: 'major',
+      direction: 'nearest'
     };
     const parsed = parseHash(sessionHash(original));
     expect(parsed.screen).toBe('session');
@@ -155,7 +191,11 @@ describe('sessionHash round-trip', () => {
       showRootMarkers: false,
       showFretNumbers: true,
       playSound: true,
-      algorithm: 'fret-first'
+      algorithm: 'fret-first',
+      intervalKind: 'random',
+      keyRoot: 'C',
+      keyQuality: 'major',
+      direction: 'nearest'
     };
     expect(sessionHash(config)).toContain('duration=continuous');
   });
