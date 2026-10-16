@@ -53,11 +53,16 @@
     return () => { droneHandle?.stop(); droneHandle = null; };
   });
 
+  // Cancels any in-flight scale so a new prompt / repeated Replay never overlaps.
+  let cancelScale: (() => void) | null = null;
   function playScale() {
     if (!currentPrompt) return;
     const seq = octaveFixedPositions(currentPrompt.root, currentPrompt.mode, config.maxFret);
-    if (seq) playSequence(seq);
+    if (!seq) return;
+    cancelScale?.();
+    cancelScale = playSequence(seq);
   }
+  $effect(() => () => cancelScale?.()); // stop a playing scale on teardown
 
   function endSession(soft: boolean) {
     const report = exercise.getReport();

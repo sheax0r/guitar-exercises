@@ -11,4 +11,11 @@ describe('playSequence', () => {
       playSequence([{ string: 6, fret: 0 }, { string: 5, fret: 2 }], 10)
     ).not.toThrow();
   });
+
+  it('returns a canceller that is safe to call', () => {
+    const cancel = playSequence([{ string: 6, fret: 0 }, { string: 5, fret: 2 }], 1000);
+    expect(typeof cancel).toBe('function');
+    expect(() => cancel()).not.toThrow();
+    expect(() => cancel()).not.toThrow(); // idempotent
+  });
 });

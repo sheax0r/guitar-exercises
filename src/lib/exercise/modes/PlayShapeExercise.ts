@@ -68,14 +68,16 @@ export class PlayShapeExercise
     // Parallel framing: when a fixed root note is configured, every prompt uses
     // that pitch-class (still a random fretboard position of it), so the player
     // compares modes over one root. null = the original random-root behaviour.
-    const rootPool = this.config.fixedRootNote
+    // A fixed root with no position within maxFret (e.g. C#/F# at maxFret 1)
+    // degrades to random roots rather than failing.
+    const rawPool = this.config.fixedRootNote
       ? allPositionsOf(this.config.fixedRootNote, maxFret)
       : null;
+    const rootPool = rawPool && rawPool.length > 0 ? rawPool : null;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       let string: Pos['string'];
       let fret: number;
       if (rootPool) {
-        if (rootPool.length === 0) continue; // no position for this note within maxFret
         const p = rootPool[Math.floor(Math.random() * rootPool.length)];
         string = p.string;
         fret = p.fret;
