@@ -175,6 +175,11 @@ export class PlayShapeExercise
     if (!this.currentPrompt) {
       throw new Error('submitMicNote called before getNextPrompt');
     }
+    // Mic has no position, so fixed-fingering octave can't be judged by ear.
+    // The UI/hash gate this out; enforce it so misuse fails loudly, not silently.
+    if (this.config.shapeVariant === 'octave' && this.config.octaveJudge === 'fixed') {
+      throw new Error('mic input is not supported for octave + fixed fingering');
+    }
     let correct: boolean;
     let correctAnswers: Pos[];
 
