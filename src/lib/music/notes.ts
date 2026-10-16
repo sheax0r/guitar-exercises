@@ -42,19 +42,6 @@ export function pitchOf(string: StringNum, fret: Fret): number {
   return STANDARD_TUNING_MIDI[string] + fret;
 }
 
-// Inverse of pitchOf: the first fretboard position (lowest string number) whose
-// absolute pitch equals `midi`, within [0, maxFret]. Null when unreachable.
-// Used by mic input, where detection gives a pitch but no string/fret.
-export function positionForPitch(midi: number, maxFret: Fret): { string: StringNum; fret: Fret } | null {
-  for (let s = 1 as StringNum; s <= 6; s = (s + 1) as StringNum) {
-    const fret = midi - STANDARD_TUNING_MIDI[s];
-    if (Number.isInteger(fret) && fret >= 0 && fret <= maxFret) {
-      return { string: s, fret };
-    }
-  }
-  return null;
-}
-
 export function noteAt(string: StringNum, fret: Fret): Note {
   assertString(string);
   assertFret(fret);

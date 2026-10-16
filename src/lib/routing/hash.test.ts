@@ -251,8 +251,16 @@ describe('parseHash / sessionHash — play-shape', () => {
     }
   });
 
-  it('coerces input=mic to click for the box variant', () => {
+  it('keeps input=mic for the box variant', () => {
     const r = parseHash('#/session?ex=play-shape&modes=ionian&duration=300&frets=12&variant=box&input=mic');
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session' && r.config.exercise === 'play-shape') {
+      expect(r.config.inputMode).toBe('mic');
+    }
+  });
+
+  it('coerces input=mic to click for octave + fixed fingering', () => {
+    const r = parseHash('#/session?ex=play-shape&modes=ionian&duration=300&frets=12&variant=octave&judge=fixed&input=mic');
     expect(r.screen).toBe('session');
     if (r.screen === 'session' && r.config.exercise === 'play-shape') {
       expect(r.config.inputMode).toBe('click');

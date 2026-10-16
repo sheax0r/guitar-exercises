@@ -162,15 +162,63 @@ export class PlayShapeExercise
       correctAnswers = this.expectedPositions.filter((_, i) => !this.clicked[i]);
     }
 
+    return this.finalize(correct, correctAnswers);
+  }
+
+  // Mic input: a detected absolute pitch (MIDI) instead of a clicked position.
+  // Only reached for octave+pitch and box variants (the start screen gates it).
+  //  - octave: correct iff the pitch matches the expected next step.
+  //  - box: a note is matched by pitch CLASS and claims the lowest-pitch
+  //    un-taken box position of that note (its first low->high occurrence), so
+  //    a note with several spots in the window fills them bottom-up as replayed.
+  submitMicNote(midi: number): AnswerResult<Pos> {
+    if (!this.currentPrompt) {
+      throw new Error('submitMicNote called before getNextPrompt');
+    }
+    let correct: boolean;
+    let correctAnswers: Pos[];
+
+    if (this.config.shapeVariant === 'octave') {
+      const expectedPos = this.expectedPositions[this.stepIndex];
+      correct = midi === this.expectedPitches[this.stepIndex];
+      correctAnswers = [expectedPos];
+      if (correct) this.stepIndex += 1;
+    } else {
+      const pc = ((midi % 12) + 12) % 12;
+      let best = -1;
+      for (let i = 0; i < this.expectedPositions.length; i++) {
+        if (this.clicked[i]) continue;
+        const p = this.expectedPositions[i];
+        if (pitchOf(p.string, p.fret) % 12 !== pc) continue;
+        if (best < 0 || pitchOf(p.string, p.fret) < pitchOf(this.expectedPositions[best].string, this.expectedPositions[best].fret)) {
+          best = i;
+        }
+      }
+      correct = best >= 0;
+      if (correct) {
+        this.clicked[best] = true;
+        this.clickedCount += 1;
+        correctAnswers = [this.expectedPositions[best]];
+      } else {
+        correctAnswers = this.expectedPositions.filter((_, i) => !this.clicked[i]);
+      }
+    }
+
+    return this.finalize(correct, correctAnswers);
+  }
+
+  // Shared tail for click and mic answers: flags wrong, computes completion,
+  // records the per-prompt attempt once, and clears the prompt when done.
+  private finalize(correct: boolean, correctAnswers: Pos[]): AnswerResult<Pos> {
     if (!correct) this.hadWrong = true;
 
-    const promptComplete = shapeVariant === 'octave'
+    const promptComplete = this.config.shapeVariant === 'octave'
       ? this.stepIndex >= this.expectedPositions.length
       : this.clickedCount >= this.expectedPositions.length;
 
     const elapsedMs = Date.now() - this.promptStartedAt;
 
-    if (promptComplete) {
+    if (promptComplete && this.currentPrompt) {
       this.attempts.push({
         mode: this.currentPrompt.mode,
         correct: !this.hadWrong,
