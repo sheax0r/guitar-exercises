@@ -8,7 +8,8 @@
   import { MODE_DISPLAY, characteristicNote } from '../music/modes';
   import { playPluck } from '../audio/pluck';
   import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
-  import { startPitchListener, type PitchListener } from '../audio/pitch';
+  import { startPitchListener, listAudioInputs, type PitchListener } from '../audio/pitch';
+  import MicSettings from './MicSettings.svelte';
 
   type Props = {
     config: PlayShapeConfig;
@@ -52,10 +53,20 @@
   let micError = $state<string | null>(null);
   let lastHeard = $state<string | null>(null);
   let micAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
+  // In-session mic settings, adjustable from the pause overlay.
+  let micSensitivity = $state(untrack(() => config.micSensitivity));
+  let micDeviceId = $state(untrack(() => config.micDeviceId));
+  let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
+  let micListener: PitchListener | null = null;
+
+  // (Re)start the mic listener. Re-runs when the chosen device changes (the
+  // only tracked dependency); sensitivity is applied live below without a
+  // restart, so changing it does not re-acquire the mic.
   $effect(() => {
     if (config.inputMode !== 'mic') return;
-    let listener: PitchListener | null = null;
+    const deviceId = micDeviceId; // tracked: device change restarts the listener
     let cancelled = false;
+    micListener = null;
     startPitchListener((midi) => {
       if (cancelled) return;
       lastHeard = CHROMATIC[((midi % 12) + 12) % 12];
@@ -64,11 +75,20 @@
       // "advance" trigger. In mic mode advance is driven by the timer below.
       if (paused || awaitingAdvance) return;
       handleMic(midi);
-    })
-      .then((l) => { if (cancelled) l.stop(); else listener = l; })
+    }, { sensitivity: untrack(() => micSensitivity), deviceId })
+      .then((l) => {
+        if (cancelled) { l.stop(); return; }
+        micListener = l;
+        micError = null;
+        // Labels are available now that permission is granted.
+        listAudioInputs().then((d) => { micDevices = d; });
+      })
       .catch(() => { micError = 'Microphone unavailable — use clicks instead.'; });
-    return () => { cancelled = true; listener?.stop(); clearTimeout(micAdvanceTimer); };
+    return () => { cancelled = true; micListener?.stop(); micListener = null; clearTimeout(micAdvanceTimer); };
   });
+
+  // Apply sensitivity changes live (no mic restart).
+  $effect(() => { micListener?.setSensitivity(micSensitivity); });
 
   function endSession(soft: boolean) {
     const report = exercise.getReport();
@@ -245,6 +265,11 @@
       <div class="paused-overlay">
         <div class="paused-text">Paused</div>
         <div class="paused-hint">Press space or click Resume</div>
+        {#if config.inputMode === 'mic'}
+          <div class="pause-mic">
+            <MicSettings bind:sensitivity={micSensitivity} bind:deviceId={micDeviceId} devices={micDevices} />
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
@@ -276,6 +301,15 @@
     color: rgba(232, 227, 211, 0.7); text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   }
   .paused-hint { font-size: 14px; opacity: 0.8; color: #cfc6b3; }
+  .pause-mic {
+    pointer-events: auto;
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: rgba(20, 16, 12, 0.92);
+    border: 1px solid #4a3f33;
+    border-radius: 8px;
+    max-width: 440px;
+  }
   .continue-hint {
     text-align: center; font-size: 14px; opacity: 0.7; padding: 8px;
     animation: pulse 1.4s ease-in-out infinite;

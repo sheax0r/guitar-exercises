@@ -33,6 +33,8 @@ export interface Prefs {
   fixedRootNote?: Note | 'random'; // 'random' sentinel ↔ config null
   inputMode?: 'click' | 'mic';
   identifyPromptMode?: 'visual' | 'audio';
+  micSensitivity?: number;          // 0..1
+  micDeviceId?: string | null;      // chosen audio input (device-specific)
 }
 
 export function loadPrefs(): Partial<Prefs> {

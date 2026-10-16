@@ -218,7 +218,9 @@ describe('parseHash / sessionHash — play-shape', () => {
       drone: true,
       highlightCharacteristic: true,
       fixedRootNote: 'G',
-      inputMode: 'mic'
+      inputMode: 'mic',
+      micSensitivity: 0.3,
+      micDeviceId: null
     };
     const r = parseHash(sessionHash(config));
     expect(r.screen).toBe('session');
@@ -242,7 +244,9 @@ describe('parseHash / sessionHash — play-shape', () => {
       drone: false,
       highlightCharacteristic: false,
       fixedRootNote: null,
-      inputMode: 'click'
+      inputMode: 'mic',
+      micSensitivity: 0.8,
+      micDeviceId: null
     };
     const r = parseHash(sessionHash(config));
     expect(r.screen).toBe('session');

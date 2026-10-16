@@ -23,6 +23,8 @@ export interface PlayShapeConfig {
   highlightCharacteristic: boolean;  // mark the mode's characteristic degree
   fixedRootNote: Note | null;        // null = random root per prompt
   inputMode: 'click' | 'mic';        // 'mic' valid only for octave + pitch judge
+  micSensitivity: number;            // 0 (chill) .. 1 (sensitive); mic only
+  micDeviceId: string | null;        // chosen audio input; null = default
 }
 
 export interface PlayShapePrompt {

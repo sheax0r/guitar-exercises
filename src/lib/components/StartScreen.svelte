@@ -6,6 +6,9 @@
   import type { ExerciseConfig } from '../exercise/types';
   import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
   import type { AnyConfig } from '../exercise/config';
+  import { DEFAULT_MIC_SENSITIVITY } from '../audio/pitchMath';
+  import { listAudioInputs } from '../audio/pitch';
+  import MicSettings from './MicSettings.svelte';
 
   type Props = {
     onStart: (config: AnyConfig) => void;
@@ -52,6 +55,11 @@
   let fixedRootNote = $state<Note | 'random'>(stored.fixedRootNote ?? 'random');
   let inputMode = $state<'click' | 'mic'>(stored.inputMode ?? 'click');
   let identifyPromptMode = $state<'visual' | 'audio'>(stored.identifyPromptMode ?? 'visual');
+  let micSensitivity = $state<number>(stored.micSensitivity ?? DEFAULT_MIC_SENSITIVITY);
+  let micDeviceId = $state<string | null>(stored.micDeviceId ?? null);
+  let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
+  // Best-effort device list (labels appear only after mic permission).
+  $effect(() => { listAudioInputs().then(d => { micDevices = d; }); });
 
   const isModes = $derived(exercise === 'play-shape' || exercise === 'identify-mode');
   // Mic input works for the box (notes matched by pitch) and for the octave run
@@ -135,7 +143,9 @@
         drone,
         highlightCharacteristic,
         fixedRootNote: fixedRootNote === 'random' ? null : fixedRootNote,
-        inputMode: micEligible ? inputMode : 'click'
+        inputMode: micEligible ? inputMode : 'click',
+        micSensitivity,
+        micDeviceId
       } satisfies PlayShapeConfig;
     } else if (exercise === 'identify-mode') {
       const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
@@ -193,7 +203,9 @@
       highlightCharacteristic,
       fixedRootNote,
       inputMode,
-      identifyPromptMode
+      identifyPromptMode,
+      micSensitivity,
+      micDeviceId
     };
     savePrefs(prefs);
     onStart(config);
@@ -311,6 +323,14 @@
           <span class="hint">Mic input works with Position box, or One octave + Any position (by pitch).</span>
         {/if}
       </div>
+
+      {#if micEligible && inputMode === 'mic'}
+        <div class="row">
+          <span class="label">Mic settings</span>
+          <MicSettings bind:sensitivity={micSensitivity} bind:deviceId={micDeviceId} devices={micDevices} />
+          <span class="hint">Adjustable mid-session from the pause screen too. Device names appear after you allow mic access.</span>
+        </div>
+      {/if}
     {/if}
 
     {#if exercise === 'identify-mode'}

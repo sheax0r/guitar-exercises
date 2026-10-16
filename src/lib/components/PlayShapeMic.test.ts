@@ -29,7 +29,9 @@ function micConfig(): PlayShapeConfig {
     drone: false,
     highlightCharacteristic: false,
     fixedRootNote: null,
-    inputMode: 'mic'
+    inputMode: 'mic',
+    micSensitivity: 0.5,
+    micDeviceId: null
   };
 }
 

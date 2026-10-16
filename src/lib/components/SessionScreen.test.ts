@@ -153,7 +153,9 @@ describe('SessionScreen — play-shape', () => {
       drone: false,
       highlightCharacteristic: false,
       fixedRootNote: null,
-      inputMode: 'click'
+      inputMode: 'click',
+      micSensitivity: 0.5,
+      micDeviceId: null
     };
   }
 
