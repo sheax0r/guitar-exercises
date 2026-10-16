@@ -4,10 +4,11 @@
   import SessionShell from './SessionShell.svelte';
   import { PlayShapeExercise } from '../exercise/modes/PlayShapeExercise';
   import type { PlayShapeConfig, PlayShapePrompt, ModesReport, Pos } from '../exercise/modes/types';
-  import { noteAt } from '../music/notes';
+  import { noteAt, positionForPitch, CHROMATIC } from '../music/notes';
   import { MODE_DISPLAY, characteristicNote } from '../music/modes';
   import { playPluck } from '../audio/pluck';
   import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
+  import { startPitchListener, type PitchListener } from '../audio/pitch';
 
   type Props = {
     config: PlayShapeConfig;
@@ -44,6 +45,26 @@
       droneHandle = null;
     }
     return () => { droneHandle?.stop(); droneHandle = null; };
+  });
+
+  // Mic input: detected pitches drive the same answer path as clicks. Only
+  // reached for the octave/pitch variant (enforced by the start screen).
+  let micError = $state<string | null>(null);
+  let lastHeard = $state<string | null>(null);
+  $effect(() => {
+    if (config.inputMode !== 'mic') return;
+    let listener: PitchListener | null = null;
+    let cancelled = false;
+    startPitchListener((midi) => {
+      if (cancelled) return;
+      lastHeard = CHROMATIC[((midi % 12) + 12) % 12];
+      if (paused) return;
+      const pos = positionForPitch(midi, config.maxFret);
+      if (pos) handleSelect(pos);
+    })
+      .then((l) => { if (cancelled) l.stop(); else listener = l; })
+      .catch(() => { micError = 'Microphone unavailable — use clicks instead.'; });
+    return () => { cancelled = true; listener?.stop(); };
   });
 
   function endSession(soft: boolean) {
@@ -165,6 +186,11 @@
       <strong>{modeLabel}</strong> from {currentPrompt?.rootNote}
     </div>
     <div class="progress">{litCorrect.length} / {currentPrompt?.expectedCount ?? 0}</div>
+    {#if config.inputMode === 'mic'}
+      <div class="mic" class:mic-error={micError !== null}>
+        {#if micError}{micError}{:else}🎤 listening{lastHeard ? ` — heard ${lastHeard}` : '…'}{/if}
+      </div>
+    {/if}
     <label class="toggle">
       <input type="checkbox" bind:checked={showFretNumbers} />
       Fret numbers
@@ -194,6 +220,8 @@
 <style>
   .target { font-size: 22px; }
   .progress { font-size: 18px; font-variant-numeric: tabular-nums; opacity: 0.85; }
+  .mic { font-size: 14px; opacity: 0.85; }
+  .mic-error { color: #e07a5f; opacity: 1; }
   .toggle {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 14px; cursor: pointer; user-select: none;
