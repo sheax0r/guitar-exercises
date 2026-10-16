@@ -51,6 +51,7 @@
   // reached for the octave/pitch variant (enforced by the start screen).
   let micError = $state<string | null>(null);
   let lastHeard = $state<string | null>(null);
+  let micAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
     if (config.inputMode !== 'mic') return;
     let listener: PitchListener | null = null;
@@ -58,13 +59,16 @@
     startPitchListener((midi) => {
       if (cancelled) return;
       lastHeard = CHROMATIC[((midi % 12) + 12) % 12];
-      if (paused) return;
+      // Ignore onsets while paused or waiting to advance: otherwise the player's
+      // first note of the next run (or stray noise) would be eaten as the
+      // "advance" trigger. In mic mode advance is driven by the timer below.
+      if (paused || awaitingAdvance) return;
       const pos = positionForPitch(midi, config.maxFret);
       if (pos) handleSelect(pos);
     })
       .then((l) => { if (cancelled) l.stop(); else listener = l; })
       .catch(() => { micError = 'Microphone unavailable — use clicks instead.'; });
-    return () => { cancelled = true; listener?.stop(); };
+    return () => { cancelled = true; listener?.stop(); clearTimeout(micAdvanceTimer); };
   });
 
   function endSession(soft: boolean) {
@@ -88,6 +92,7 @@
   });
 
   function nextPrompt() {
+    clearTimeout(micAdvanceTimer);
     litCorrect = [];
     wrongFlash = null;
     hintPositions = [];
@@ -106,7 +111,9 @@
     }
     if (!currentPrompt) return;
 
-    if (config.playSound) {
+    // In mic mode the player already produced the sound; re-plucking would echo
+    // their note back (and feed the detector), so only pluck for click input.
+    if (config.playSound && config.inputMode !== 'mic') {
       try { playPluck(pos.string, pos.fret); } catch { /* ignore */ }
     }
 
@@ -129,6 +136,14 @@
       awaitingAdvance = true;
       wrongFlash = null;
       hintPositions = [];
+      // Click mode advances on the next click-anywhere; mic mode has no click,
+      // so advance on a short timer (clicking still works as a fallback).
+      if (config.inputMode === 'mic') {
+        clearTimeout(micAdvanceTimer);
+        micAdvanceTimer = setTimeout(() => {
+          if (awaitingAdvance && !paused) nextPrompt();
+        }, 1600);
+      }
     }
   }
 

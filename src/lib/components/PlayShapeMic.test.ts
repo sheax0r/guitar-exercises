@@ -55,4 +55,33 @@ describe('PlayShapeBody mic input', () => {
     }
     expect(progress().startsWith('1 /')).toBe(true);
   });
+
+  it('ignores stray detected notes while awaiting advance (does not eat the next note)', async () => {
+    captured = null;
+    const { container } = render(SessionScreen, {
+      props: { config: micConfig(), onComplete: () => {}, onAbort: () => {} }
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(captured).not.toBeNull();
+
+    const progress = () => container.querySelector('.progress')!.textContent!;
+    const total = parseInt(progress().split('/')[1].trim(), 10);
+    // Drive the whole octave run to completion by sweeping candidate pitches.
+    for (let round = 0; round < total + 3 && !progress().startsWith(`${total} /`); round++) {
+      for (let midi = 40; midi <= 90 && !progress().startsWith(`${total} /`); midi++) {
+        captured!(midi);
+        await Promise.resolve();
+      }
+    }
+    expect(progress().startsWith(`${total} /`)).toBe(true);
+    // Completed: the advance hint is shown.
+    expect(container.querySelector('.continue-hint')).toBeTruthy();
+
+    // A stray detected note must NOT start scoring a new prompt (no eaten note,
+    // no noise-driven advance). Progress stays at the completed count.
+    captured!(60);
+    await Promise.resolve();
+    expect(progress().startsWith(`${total} /`)).toBe(true);
+  });
 });

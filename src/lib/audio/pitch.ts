@@ -25,10 +25,18 @@ export async function startPitchListener(
   }
 
   const stream = await nav.mediaDevices.getUserMedia({ audio: true });
-  const source = ctx.createMediaStreamSource(stream);
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
-  source.connect(analyser);
+  let source: MediaStreamAudioSourceNode;
+  let analyser: AnalyserNode;
+  try {
+    source = ctx.createMediaStreamSource(stream);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+  } catch (e) {
+    // Release the mic if wiring the graph fails after getUserMedia resolved.
+    stream.getTracks().forEach(t => t.stop());
+    throw e;
+  }
 
   const detector = PitchDetector.forFloat32Array(analyser.fftSize);
   const input = new Float32Array(analyser.fftSize);
