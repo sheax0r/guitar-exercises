@@ -190,6 +190,23 @@ describe('StartScreen — modes sound/ear controls', () => {
     }
   });
 
+  it('shows mic sensitivity + input-source controls when mic is selected', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
+    await fireEvent.click(chipByText(container, 'Any position (by pitch)'));
+    await fireEvent.click(chipByText(container, 'Play (mic)'));
+    // The shared MicSettings controls are present.
+    expect(container.querySelector('input[aria-label="Mic sensitivity"]')).toBeTruthy();
+    expect(container.querySelector('select[aria-label="Input source"]')).toBeTruthy();
+    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    const cfg = onStart.mock.calls[0][0];
+    if (cfg.exercise === 'play-shape') {
+      expect(typeof cfg.micSensitivity).toBe('number');
+      expect(cfg.micDeviceId).toBe(null);
+    }
+  });
+
   it('fixed root emits the chosen note', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });

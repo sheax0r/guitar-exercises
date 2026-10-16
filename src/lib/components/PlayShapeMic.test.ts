@@ -7,8 +7,9 @@ let captured: ((midi: number) => void) | null = null;
 vi.mock('../audio/pitch', () => ({
   startPitchListener: (onNote: (midi: number) => void) => {
     captured = onNote;
-    return Promise.resolve({ stop() {} });
-  }
+    return Promise.resolve({ stop() {}, setSensitivity() {} });
+  },
+  listAudioInputs: () => Promise.resolve([])
 }));
 
 import SessionScreen from './SessionScreen.svelte';
@@ -29,7 +30,9 @@ function micConfig(): PlayShapeConfig {
     drone: false,
     highlightCharacteristic: false,
     fixedRootNote: null,
-    inputMode: 'mic'
+    inputMode: 'mic',
+    micSensitivity: 0.5,
+    micDeviceId: null
   };
 }
 

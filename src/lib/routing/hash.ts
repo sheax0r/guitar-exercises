@@ -1,5 +1,6 @@
 import { CHROMATIC, type Note, type ClosestAlgorithm } from '../music/notes';
 import { MODE_ORDER, type Mode } from '../music/modes';
+import { DEFAULT_MIC_SENSITIVITY } from '../audio/pitchMath';
 import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 import type { AnyConfig } from '../exercise/config';
@@ -61,6 +62,14 @@ function parseModes(raw: string | null): Mode[] | null {
 // 'random' or absent/invalid → null (random root); a valid note → fixed root.
 function parseFixedRoot(raw: string | null): Note | null {
   return raw && raw !== 'random' && VALID_NOTES.has(raw) ? (raw as Note) : null;
+}
+
+// A 0..1 float; absent/blank/invalid falls back to the default. (Blank guarded
+// because Number('') === 0 would otherwise read as full-chill sensitivity.)
+function parseUnit(raw: string | null, fallback: number): number {
+  if (raw === null || raw.trim() === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? n : fallback;
 }
 
 function parseFretboard(params: URLSearchParams, exercise: ExerciseKind): Route {
@@ -147,7 +156,9 @@ function parsePlayShape(params: URLSearchParams): Route {
     drone: parseBool(params.get('drone'), false),
     highlightCharacteristic: parseBool(params.get('char'), false),
     fixedRootNote: parseFixedRoot(params.get('root')),
-    inputMode
+    inputMode,
+    micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
+    micDeviceId: null // device ids are browser-specific; not carried in the URL
   };
   return { screen: 'session', config };
 }
@@ -212,6 +223,7 @@ export function sessionHash(config: AnyConfig): string {
     params.set('char', config.highlightCharacteristic ? '1' : '0');
     params.set('root', config.fixedRootNote ?? 'random');
     params.set('input', config.inputMode);
+    params.set('sens', String(config.micSensitivity));
   } else if (config.exercise === 'identify-mode') {
     params.set('modes', config.enabledModes.join(','));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));

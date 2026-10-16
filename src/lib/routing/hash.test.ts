@@ -218,7 +218,9 @@ describe('parseHash / sessionHash — play-shape', () => {
       drone: true,
       highlightCharacteristic: true,
       fixedRootNote: 'G',
-      inputMode: 'mic'
+      inputMode: 'mic',
+      micSensitivity: 0.3,
+      micDeviceId: null
     };
     const r = parseHash(sessionHash(config));
     expect(r.screen).toBe('session');
@@ -242,7 +244,9 @@ describe('parseHash / sessionHash — play-shape', () => {
       drone: false,
       highlightCharacteristic: false,
       fixedRootNote: null,
-      inputMode: 'click'
+      inputMode: 'mic',
+      micSensitivity: 0.8,
+      micDeviceId: null
     };
     const r = parseHash(sessionHash(config));
     expect(r.screen).toBe('session');
@@ -264,6 +268,17 @@ describe('parseHash / sessionHash — play-shape', () => {
     expect(r.screen).toBe('session');
     if (r.screen === 'session' && r.config.exercise === 'play-shape') {
       expect(r.config.inputMode).toBe('click');
+    }
+  });
+
+  it('blank or missing sens falls back to the default sensitivity, not 0', () => {
+    const blank = parseHash('#/session?ex=play-shape&modes=ionian&duration=300&frets=12&variant=octave&judge=pitch&sens=');
+    const missing = parseHash('#/session?ex=play-shape&modes=ionian&duration=300&frets=12&variant=octave&judge=pitch');
+    for (const r of [blank, missing]) {
+      expect(r.screen).toBe('session');
+      if (r.screen === 'session' && r.config.exercise === 'play-shape') {
+        expect(r.config.micSensitivity).toBeGreaterThan(0);
+      }
     }
   });
 
