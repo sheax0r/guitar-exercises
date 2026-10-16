@@ -1,21 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { CHROMATIC, NOTE_DISPLAY, noteAt, allPositionsOf, closestPositionOf, pitchOf, positionForPitch } from './notes';
+import { CHROMATIC, NOTE_DISPLAY, noteAt, allPositionsOf, closestPositionOf, pitchOf } from './notes';
 import { STANDARD_TUNING } from './tuning';
-
-describe('positionForPitch', () => {
-  it('is the inverse of pitchOf for reachable pitches', () => {
-    expect(positionForPitch(64, 22)).toEqual({ string: 1, fret: 0 }); // high E open
-    expect(positionForPitch(40, 22)).toEqual({ string: 6, fret: 0 }); // low E open
-    expect(positionForPitch(69, 22)).toEqual({ string: 1, fret: 5 }); // A4 on high E
-    const p = positionForPitch(50, 22)!;
-    expect(pitchOf(p.string, p.fret)).toBe(50);
-  });
-  it('returns null when the pitch is out of range', () => {
-    expect(positionForPitch(20, 22)).toBeNull();   // below the lowest string
-    expect(positionForPitch(64, 0)?.fret).toBe(0);  // open high E still reachable
-    expect(positionForPitch(90, 12)).toBeNull();   // above maxFret on every string
-  });
-});
 
 describe('pitchOf', () => {
   it('low E open = 40, high e open = 64', () => {

@@ -54,9 +54,11 @@
   let identifyPromptMode = $state<'visual' | 'audio'>(stored.identifyPromptMode ?? 'visual');
 
   const isModes = $derived(exercise === 'play-shape' || exercise === 'identify-mode');
-  // Mic input only makes sense for a pure pitch sequence: octave + pitch judge.
+  // Mic input works for the box (notes matched by pitch) and for the octave run
+  // judged by pitch. Not for fixed-fingering octave: mic can't verify position.
   const micEligible = $derived(
-    exercise === 'play-shape' && shapeVariant === 'octave' && octaveJudge === 'pitch'
+    exercise === 'play-shape' &&
+      (shapeVariant === 'box' || (shapeVariant === 'octave' && octaveJudge === 'pitch'))
   );
   // Keep the input mode valid when the variant/judge change out from under it.
   $effect(() => {
@@ -301,12 +303,12 @@
             class:chip={true}
             class:chip-active={inputMode === 'mic' && micEligible}
             disabled={!micEligible}
-            title={micEligible ? '' : 'Play (mic) needs the One octave shape judged by Any position (by pitch)'}
+            title={micEligible ? '' : 'Play (mic) needs Position box, or One octave judged by Any position (by pitch)'}
             onclick={() => micEligible && (inputMode = 'mic')}
           >Play (mic)</button>
         </div>
         {#if !micEligible}
-          <span class="hint">Mic input needs One octave + Any position (by pitch).</span>
+          <span class="hint">Mic input works with Position box, or One octave + Any position (by pitch).</span>
         {/if}
       </div>
     {/if}

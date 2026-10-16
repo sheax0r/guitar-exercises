@@ -4,7 +4,7 @@
   import SessionShell from './SessionShell.svelte';
   import { PlayShapeExercise } from '../exercise/modes/PlayShapeExercise';
   import type { PlayShapeConfig, PlayShapePrompt, ModesReport, Pos } from '../exercise/modes/types';
-  import { noteAt, positionForPitch, CHROMATIC } from '../music/notes';
+  import { noteAt, CHROMATIC } from '../music/notes';
   import { MODE_DISPLAY, characteristicNote } from '../music/modes';
   import { playPluck } from '../audio/pluck';
   import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
@@ -63,8 +63,7 @@
       // first note of the next run (or stray noise) would be eaten as the
       // "advance" trigger. In mic mode advance is driven by the timer below.
       if (paused || awaitingAdvance) return;
-      const pos = positionForPitch(midi, config.maxFret);
-      if (pos) handleSelect(pos);
+      handleMic(midi);
     })
       .then((l) => { if (cancelled) l.stop(); else listener = l; })
       .catch(() => { micError = 'Microphone unavailable — use clicks instead.'; });
@@ -130,20 +129,43 @@
       hintPositions = currentPrompt.variant === 'octave' ? result.correctAnswers : [];
     }
 
-    if (result.promptComplete) {
-      if (promptHadWrong) incorrectCount += 1;
-      else correctCount += 1;
-      awaitingAdvance = true;
+    finishIfComplete(result.promptComplete);
+  }
+
+  // Mic input: a detected pitch drives the same judging as a click. The engine
+  // resolves which position the pitch claims (octave: the expected step; box:
+  // the lowest un-taken occurrence of that note), returned as correctAnswers[0].
+  function handleMic(midi: number) {
+    if (!currentPrompt) return;
+    const result = exercise.submitMicNote(midi);
+    if (result.correct) {
+      litCorrect = [...litCorrect, result.correctAnswers[0]];
       wrongFlash = null;
       hintPositions = [];
-      // Click mode advances on the next click-anywhere; mic mode has no click,
-      // so advance on a short timer (clicking still works as a fallback).
-      if (config.inputMode === 'mic') {
-        clearTimeout(micAdvanceTimer);
-        micAdvanceTimer = setTimeout(() => {
-          if (awaitingAdvance && !paused) nextPrompt();
-        }, 1600);
-      }
+    } else {
+      promptHadWrong = true;
+      // Octave: point to the expected next position. Box: no position to flash
+      // (the heard note isn't in the window or is already taken).
+      hintPositions = currentPrompt.variant === 'octave' ? result.correctAnswers : [];
+      wrongFlash = null;
+    }
+    finishIfComplete(result.promptComplete);
+  }
+
+  function finishIfComplete(promptComplete: boolean) {
+    if (!promptComplete) return;
+    if (promptHadWrong) incorrectCount += 1;
+    else correctCount += 1;
+    awaitingAdvance = true;
+    wrongFlash = null;
+    hintPositions = [];
+    // Click mode advances on the next click-anywhere; mic mode has no click,
+    // so advance on a short timer (clicking still works as a fallback).
+    if (config.inputMode === 'mic') {
+      clearTimeout(micAdvanceTimer);
+      micAdvanceTimer = setTimeout(() => {
+        if (awaitingAdvance && !paused) nextPrompt();
+      }, 1600);
     }
   }
 

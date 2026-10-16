@@ -33,7 +33,28 @@ function micConfig(): PlayShapeConfig {
   };
 }
 
+function boxMicConfig(): PlayShapeConfig {
+  return { ...micConfig(), shapeVariant: 'box', octaveJudge: 'fixed', boxSpan: 4 };
+}
+
 describe('PlayShapeBody mic input', () => {
+  it('box + mic advances the prompt on a detected in-window note', async () => {
+    captured = null;
+    const { container } = render(SessionScreen, {
+      props: { config: boxMicConfig(), onComplete: () => {}, onAbort: () => {} }
+    });
+    expect(container.querySelector('.mic')).toBeTruthy();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(captured).not.toBeNull();
+    const progress = () => container.querySelector('.progress')!.textContent!;
+    for (let midi = 40; midi <= 90 && progress().startsWith('0 /'); midi++) {
+      captured!(midi);
+      await Promise.resolve();
+    }
+    expect(progress().startsWith('0 /')).toBe(false); // claimed at least one box note
+  });
+
   it('shows the mic indicator and advances the prompt on a detected pitch', async () => {
     captured = null;
     const { container } = render(SessionScreen, {

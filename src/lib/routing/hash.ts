@@ -125,9 +125,11 @@ function parsePlayShape(params: URLSearchParams): Route {
 
   const span = parsePositiveInt(params.get('span')) ?? 4;
 
-  // Mic input is only meaningful for the octave/pitch variant; coerce otherwise.
+  // Mic input works for box, or the octave run judged by pitch; coerce otherwise
+  // (octave + fixed fingering can't be verified by pitch alone).
+  const micOk = variantRaw === 'box' || (variantRaw === 'octave' && judgeRaw === 'pitch');
   let inputMode: 'click' | 'mic' = params.get('input') === 'mic' ? 'mic' : 'click';
-  if (inputMode === 'mic' && !(variantRaw === 'octave' && judgeRaw === 'pitch')) {
+  if (inputMode === 'mic' && !micOk) {
     inputMode = 'click';
   }
 

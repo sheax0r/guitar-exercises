@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { PlayShapeExercise } from './PlayShapeExercise';
 import type { PlayShapeConfig } from './types';
 import { octaveFixedPositions, boxPositions } from './shape';
+import { pitchOf } from '../../music/notes';
 
 const base: PlayShapeConfig = {
   exercise: 'play-shape',
@@ -153,5 +154,68 @@ describe('PlayShapeExercise fixed root (parallel framing)', () => {
     const roots = new Set<string>();
     for (let i = 0; i < 40; i++) roots.add(ex.getNextPrompt().rootNote);
     expect(roots.size).toBeGreaterThan(1);
+  });
+});
+
+describe('PlayShapeExercise octave/pitch mic', () => {
+  it('submitMicNote advances on the expected pitch and completes on the last', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({ ...base, octaveJudge: 'pitch', inputMode: 'mic' });
+    const p = ex.getNextPrompt();
+    const seq = octaveFixedPositions(p.root, p.mode, 24)!;
+    for (let i = 0; i < seq.length; i++) {
+      const r = ex.submitMicNote(pitchOf(seq[i].string, seq[i].fret));
+      expect(r.correct).toBe(true);
+      expect(r.promptComplete).toBe(i === seq.length - 1);
+    }
+  });
+
+  it('submitMicNote rejects a wrong pitch without advancing', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({ ...base, octaveJudge: 'pitch', inputMode: 'mic' });
+    const p = ex.getNextPrompt();
+    const seq = octaveFixedPositions(p.root, p.mode, 24)!;
+    const expected = pitchOf(seq[0].string, seq[0].fret);
+    const r = ex.submitMicNote(expected + 1); // a semitone off
+    expect(r.correct).toBe(false);
+    expect(r.promptComplete).toBe(false);
+  });
+});
+
+describe('PlayShapeExercise box + mic', () => {
+  const boxMic = {
+    ...base,
+    shapeVariant: 'box' as const,
+    boxSpan: 4,
+    enabledModes: ['ionian' as const],
+    inputMode: 'mic' as const
+  };
+
+  it('completes when every box note is played, claiming low-to-high on duplicates', () => {
+    const ex = new PlayShapeExercise();
+    ex.start(boxMic);
+    const p = ex.getNextPrompt();
+    const set = boxPositions(p.root, p.mode, 24, 4);
+    // Feed each box note's pitch in ascending order; each claims the lowest
+    // un-taken occurrence of its pitch class, so duplicates fill bottom-up.
+    const sorted = [...set].sort((a, b) => pitchOf(a.string, a.fret) - pitchOf(b.string, b.fret));
+    for (let i = 0; i < sorted.length; i++) {
+      const r = ex.submitMicNote(pitchOf(sorted[i].string, sorted[i].fret));
+      expect(r.correct).toBe(true);
+      expect(r.promptComplete).toBe(i === sorted.length - 1);
+    }
+  });
+
+  it('a note outside the box window is wrong and does not complete', () => {
+    const ex = new PlayShapeExercise();
+    ex.start(boxMic);
+    const p = ex.getNextPrompt();
+    const set = boxPositions(p.root, p.mode, 24, 4);
+    const inBox = new Set(set.map(x => pitchOf(x.string, x.fret) % 12));
+    let badPc = 0;
+    while (inBox.has(badPc) && badPc < 12) badPc++;
+    const r = ex.submitMicNote(60 - (60 % 12) + badPc); // a midi with that absent pitch class
+    expect(r.correct).toBe(false);
+    expect(r.promptComplete).toBe(false);
   });
 });

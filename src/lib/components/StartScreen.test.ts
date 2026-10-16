@@ -146,17 +146,17 @@ describe('StartScreen — modes sound/ear controls', () => {
     }
   });
 
-  it('mic chip is disabled unless octave + pitch, and enables once both are set', async () => {
+  it('mic chip: disabled for octave+fixed, enabled for octave+pitch and for box', async () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
-    // Default octave + fixed judge: mic disabled.
+    // Default octave + fixed judge: mic disabled (can't verify position by pitch).
     expect(chipByText(container, 'Play (mic)').disabled).toBe(true);
-    // Switch judge to "Any position (by pitch)".
+    // octave + "Any position (by pitch)": enabled.
     await fireEvent.click(chipByText(container, 'Any position (by pitch)'));
     expect(chipByText(container, 'Play (mic)').disabled).toBe(false);
-    // Switch shape to box: mic disabled again.
+    // Position box: also enabled (notes matched by pitch).
     await fireEvent.click(chipByText(container, 'Position box'));
-    expect(chipByText(container, 'Play (mic)').disabled).toBe(true);
+    expect(chipByText(container, 'Play (mic)').disabled).toBe(false);
   });
 
   it('emits inputMode=mic only when octave+pitch is active', async () => {
