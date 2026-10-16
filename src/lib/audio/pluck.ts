@@ -1,28 +1,5 @@
 import { STANDARD_TUNING_MIDI, type StringNum } from '../music/tuning';
-
-let ctx: AudioContext | null = null;
-let ctxFailed = false;
-
-function getCtx(): AudioContext | null {
-  if (ctx) return ctx;
-  if (ctxFailed) return null;
-  if (typeof window === 'undefined') {
-    ctxFailed = true;
-    return null;
-  }
-  const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) {
-    ctxFailed = true;
-    return null;
-  }
-  try {
-    ctx = new Ctor();
-    return ctx;
-  } catch {
-    ctxFailed = true;
-    return null;
-  }
-}
+import { getAudioContext } from './context';
 
 function frequencyFor(string: StringNum, fret: number): number {
   const midi = STANDARD_TUNING_MIDI[string] + fret;
@@ -30,7 +7,7 @@ function frequencyFor(string: StringNum, fret: number): number {
 }
 
 export function playPluck(string: StringNum, fret: number, durationSec = 1.5): void {
-  const audioCtx = getCtx();
+  const audioCtx = getAudioContext();
   if (!audioCtx) return;
 
   // Browsers create AudioContexts in 'suspended' state on production origins

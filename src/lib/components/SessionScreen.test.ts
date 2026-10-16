@@ -149,7 +149,11 @@ describe('SessionScreen — play-shape', () => {
       durationSec: 300,
       continuous: true,
       showFretNumbers: true,
-      playSound: false
+      playSound: false,
+      drone: false,
+      highlightCharacteristic: false,
+      fixedRootNote: null,
+      inputMode: 'click'
     };
   }
 
@@ -193,7 +197,11 @@ describe('SessionScreen — identify-mode', () => {
       durationSec: 300,
       continuous: true,
       showFretNumbers: true,
-      playSound: false
+      playSound: false,
+      drone: false,
+      highlightCharacteristic: false,
+      fixedRootNote: null,
+      promptMode: 'visual'
     };
   }
 
@@ -218,6 +226,37 @@ describe('SessionScreen — identify-mode', () => {
     expect(okN + badN).toBe(1);
     // After answering, the buttons are disabled.
     expect(firstChoice.disabled).toBe(true);
+  });
+
+  it('audio prompt hides the scale notes until an answer is given', async () => {
+    const { container } = render(SessionScreen, {
+      props: {
+        config: { ...identifyConfig(), promptMode: 'audio' },
+        onComplete: () => {},
+        onAbort: () => {}
+      }
+    });
+    // Before answering: root markers only, no scale-note reveal, and a Replay.
+    expect(container.querySelector('[data-role="highlight"][data-kind="scale-root"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-role="highlight"][data-kind="scale-note"]').length).toBe(0);
+    expect(Array.from(container.querySelectorAll('button')).some(b => b.textContent?.includes('Replay'))).toBe(true);
+    // After answering: the scale is revealed.
+    await fireEvent.click(container.querySelector('.choice') as HTMLButtonElement);
+    expect(container.querySelectorAll('[data-role="highlight"][data-kind="scale-note"]').length).toBeGreaterThan(0);
+  });
+
+  it('characteristic reveal marks a characteristic highlight after answering', async () => {
+    const { container } = render(SessionScreen, {
+      props: {
+        config: { ...identifyConfig(), highlightCharacteristic: true },
+        onComplete: () => {},
+        onAbort: () => {}
+      }
+    });
+    // Not revealed before answering.
+    expect(container.querySelectorAll('[data-role="highlight"][data-kind="characteristic"]').length).toBe(0);
+    await fireEvent.click(container.querySelector('.choice') as HTMLButtonElement);
+    expect(container.querySelectorAll('[data-role="highlight"][data-kind="characteristic"]').length).toBeGreaterThan(0);
   });
 });
 

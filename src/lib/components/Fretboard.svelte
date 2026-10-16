@@ -10,6 +10,7 @@
     | 'closest-from-click'
     | 'scale-note'
     | 'scale-root'
+    | 'characteristic'
     | 'heatmap';
 
   export interface Highlight {
@@ -109,6 +110,7 @@
       case 'closest-from-click': return '#14b8a6';
       case 'scale-note':         return '#c9a24b';
       case 'scale-root':         return '#ff8c42';
+      case 'characteristic':     return '#8b5cf6';
       case 'heatmap':            return heatmapColor(h.accuracy ?? 0);
     }
   }

@@ -7,6 +7,7 @@ import type {
   Pos
 } from './types';
 import { allPositionsOf, noteAt } from '../../music/notes';
+import { octaveFixedPositions } from './shape';
 import { scaleNotes, type Mode } from '../../music/modes';
 import type { StringNum } from '../../music/tuning';
 import type { Fret } from '../../music/notes';
@@ -40,14 +41,33 @@ export class IdentifyModeExercise
 
   getNextPrompt(): IdentifyModePrompt {
     const { maxFret } = this.config;
-    let root: Pos;
-    let mode: Mode;
-    do {
-      const string = ((Math.floor(Math.random() * 6) + 1)) as StringNum;
-      const fret = Math.floor(Math.random() * (maxFret + 1));
-      root = { string, fret };
+    // Parallel framing: a fixed root note holds the tonal centre constant across
+    // prompts (random position of that pitch-class). null = random root. A fixed
+    // root with no position within maxFret degrades to random roots.
+    const rawPool = this.config.fixedRootNote
+      ? allPositionsOf(this.config.fixedRootNote, maxFret)
+      : null;
+    const rootPool = rawPool && rawPool.length > 0 ? rawPool : null;
+    // Audio prompt plays the one-octave run, so the drawn root+mode must have a
+    // reachable octave shape — otherwise the prompt would be silent AND hidden.
+    const needsPlayableOctave = this.config.promptMode === 'audio';
+    let root: Pos = { string: 1, fret: 0 };
+    let mode: Mode = this.config.enabledModes[0];
+    const MAX_ATTEMPTS = 500;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      if (rootPool) {
+        const p = rootPool[Math.floor(Math.random() * rootPool.length)];
+        root = { string: p.string, fret: p.fret as Fret };
+      } else {
+        const string = ((Math.floor(Math.random() * 6) + 1)) as StringNum;
+        const fret = Math.floor(Math.random() * (maxFret + 1));
+        root = { string, fret };
+      }
       mode = this.pickMode();
-    } while (this.prev && samePos(this.prev.root, root) && this.prev.mode === mode);
+      if (this.prev && samePos(this.prev.root, root) && this.prev.mode === mode) continue;
+      if (needsPlayableOctave && octaveFixedPositions(root, mode, maxFret) === null) continue;
+      break;
+    }
 
     const rootNote = noteAt(root.string, root.fret);
     const classes = scaleNotes(rootNote, mode);

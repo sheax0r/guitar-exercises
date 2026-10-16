@@ -119,3 +119,88 @@ describe('StartScreen — exercise selector', () => {
     expect((container.querySelector('.start-button') as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+describe('StartScreen — modes sound/ear controls', () => {
+  beforeEach(() => localStorage.clear());
+
+  function exerciseSelect(container: HTMLElement): HTMLSelectElement {
+    return container.querySelector('#exercise') as HTMLSelectElement;
+  }
+  function chipByText(container: HTMLElement, text: string): HTMLButtonElement {
+    return Array.from(container.querySelectorAll('.chip'))
+      .find(c => c.textContent?.trim() === text) as HTMLButtonElement;
+  }
+
+  it('play-shape emits the new sound/ear defaults', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
+    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    const cfg = onStart.mock.calls[0][0];
+    expect(cfg.exercise).toBe('play-shape');
+    if (cfg.exercise === 'play-shape') {
+      expect(cfg.drone).toBe(false);
+      expect(cfg.highlightCharacteristic).toBe(false);
+      expect(cfg.fixedRootNote).toBe(null);
+      expect(cfg.inputMode).toBe('click');
+    }
+  });
+
+  it('mic chip is disabled unless octave + pitch, and enables once both are set', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
+    // Default octave + fixed judge: mic disabled.
+    expect(chipByText(container, 'Play (mic)').disabled).toBe(true);
+    // Switch judge to "Any position (by pitch)".
+    await fireEvent.click(chipByText(container, 'Any position (by pitch)'));
+    expect(chipByText(container, 'Play (mic)').disabled).toBe(false);
+    // Switch shape to box: mic disabled again.
+    await fireEvent.click(chipByText(container, 'Position box'));
+    expect(chipByText(container, 'Play (mic)').disabled).toBe(true);
+  });
+
+  it('emits inputMode=mic only when octave+pitch is active', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
+    await fireEvent.click(chipByText(container, 'Any position (by pitch)'));
+    await fireEvent.click(chipByText(container, 'Play (mic)'));
+    // Drone is a checkbox, not a chip; toggle it directly.
+    const droneBox = Array.from(container.querySelectorAll('label'))
+      .find(l => l.textContent?.includes('Drone the root'))!
+      .querySelector('input') as HTMLInputElement;
+    if (!droneBox.checked) await fireEvent.click(droneBox);
+    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    const cfg = onStart.mock.calls[0][0];
+    if (cfg.exercise === 'play-shape') {
+      expect(cfg.inputMode).toBe('mic');
+      expect(cfg.drone).toBe(true);
+    }
+  });
+
+  it('identify-mode emits promptMode=audio when "Hear the scale" is chosen', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'identify-mode' } });
+    await fireEvent.click(chipByText(container, 'Hear the scale'));
+    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    const cfg = onStart.mock.calls[0][0];
+    if (cfg.exercise === 'identify-mode') {
+      expect(cfg.promptMode).toBe('audio');
+    }
+  });
+
+  it('fixed root emits the chosen note', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.change(exerciseSelect(container), { target: { value: 'identify-mode' } });
+    await fireEvent.click(chipByText(container, 'Fixed'));
+    const sel = container.querySelector('select[aria-label="Fixed root note"]') as HTMLSelectElement;
+    await fireEvent.change(sel, { target: { value: 'G' } });
+    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    const cfg = onStart.mock.calls[0][0];
+    if (cfg.exercise === 'identify-mode') {
+      expect(cfg.fixedRootNote).toBe('G');
+    }
+  });
+});

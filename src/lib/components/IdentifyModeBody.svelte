@@ -5,7 +5,10 @@
   import { IdentifyModeExercise } from '../exercise/modes/IdentifyModeExercise';
   import type { IdentifyModeConfig, IdentifyModePrompt, ModesReport } from '../exercise/modes/types';
   import { noteAt } from '../music/notes';
-  import { MODE_DISPLAY, MODE_ORDER, type Mode } from '../music/modes';
+  import { MODE_DISPLAY, MODE_ORDER, characteristicNote, type Mode } from '../music/modes';
+  import { playSequence } from '../audio/sequence';
+  import { octaveFixedPositions } from '../exercise/modes/shape';
+  import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
 
   type Props = {
     config: IdentifyModeConfig;
@@ -32,6 +35,35 @@
   let showFretNumbers = $state(untrack(() => config.showFretNumbers));
   let paused = $state(false);
 
+  // In audio-prompt mode the scale is heard, not seen: hide the scale notes
+  // (root marker only) until the player answers.
+  const showScale = $derived(config.promptMode !== 'audio' || answered !== null);
+
+  // Drone the root under the active prompt (opt-in), same lifecycle as Play the
+  // Shape: restart per root, silence while paused, clean up on teardown.
+  let droneHandle: DroneHandle | null = null;
+  $effect(() => {
+    if (config.drone && currentPrompt && !paused) {
+      droneHandle?.stop();
+      droneHandle = startDrone(midiForDrone(currentPrompt.rootNote));
+    } else {
+      droneHandle?.stop();
+      droneHandle = null;
+    }
+    return () => { droneHandle?.stop(); droneHandle = null; };
+  });
+
+  // Cancels any in-flight scale so a new prompt / repeated Replay never overlaps.
+  let cancelScale: (() => void) | null = null;
+  function playScale() {
+    if (!currentPrompt) return;
+    const seq = octaveFixedPositions(currentPrompt.root, currentPrompt.mode, config.maxFret);
+    if (!seq) return;
+    cancelScale?.();
+    cancelScale = playSequence(seq);
+  }
+  $effect(() => () => cancelScale?.()); // stop a playing scale on teardown
+
   function endSession(soft: boolean) {
     const report = exercise.getReport();
     if (soft) onComplete(report);
@@ -57,6 +89,7 @@
     revealedMode = null;
     awaitingAdvance = false;
     currentPrompt = exercise.getNextPrompt();
+    if (config.promptMode === 'audio') playScale();
   }
 
   nextPrompt();
@@ -77,12 +110,28 @@
       ? []
       : (() => {
           const rootKeys = new Set(currentPrompt.rootPositions.map(p => `${p.string}-${p.fret}`));
-          return currentPrompt.positions.map(p => ({
-            string: p.string,
-            fret: p.fret,
-            note: noteAt(p.string, p.fret),
-            kind: rootKeys.has(`${p.string}-${p.fret}`) ? ('scale-root' as const) : ('scale-note' as const)
-          }));
+          // Audio prompt, not yet answered: show root markers only (ear task).
+          if (!showScale) {
+            return currentPrompt.rootPositions.map(p => ({
+              string: p.string,
+              fret: p.fret,
+              note: noteAt(p.string, p.fret),
+              kind: 'scale-root' as const
+            }));
+          }
+          // Reveal the characteristic degree only after answering (a learning
+          // aid, not a giveaway). Root is offset 0, so it never collides.
+          const charNote = config.highlightCharacteristic && answered
+            ? characteristicNote(currentPrompt.rootNote, currentPrompt.mode)
+            : null;
+          return currentPrompt.positions.map(p => {
+            const note = noteAt(p.string, p.fret);
+            const key = `${p.string}-${p.fret}`;
+            const kind = charNote !== null && note === charNote
+              ? ('characteristic' as const)
+              : rootKeys.has(key) ? ('scale-root' as const) : ('scale-note' as const);
+            return { string: p.string, fret: p.fret, note, kind };
+          });
         })()
   );
 
@@ -125,6 +174,12 @@
     {/if}
   </div>
 
+  {#if config.promptMode === 'audio' && !paused}
+    <div class="replay">
+      <button type="button" class="replay-btn" onclick={playScale}>▶ Replay scale</button>
+    </div>
+  {/if}
+
   {#if !paused}
     <div class="choices">
       {#each choices as m}
@@ -164,6 +219,11 @@
     color: rgba(232, 227, 211, 0.7); text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   }
   .paused-hint { font-size: 14px; opacity: 0.8; color: #cfc6b3; }
+  .replay { display: flex; justify-content: center; }
+  .replay-btn {
+    padding: 10px 18px; font-size: 15px; border-radius: 8px;
+    border: 1px solid #888; background: transparent; color: inherit; cursor: pointer;
+  }
   .choices { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
   .choice {
     padding: 12px 20px; font-size: 16px; border-radius: 8px;

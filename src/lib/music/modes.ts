@@ -47,3 +47,25 @@ export function scaleNotes(root: Note, mode: Mode): Note[] {
   const rootIdx = CHROMATIC.indexOf(root);
   return MODE_OFFSETS[mode].map(o => CHROMATIC[(rootIdx + o) % CHROMATIC.length]);
 }
+
+// The characteristic ("colour") note of each mode, as a semitone offset from the
+// root. It is the degree that distinguishes the mode from its parallel reference
+// scale (major for the bright modes, natural minor for the dark ones). Ionian
+// and Aeolian ARE the reference scales, so their entry is a teaching choice:
+// Ionian -> maj7 (its brightest identifier vs Mixolydian), Aeolian -> b6 (vs
+// Dorian). The other five are unambiguous.
+export const MODE_CHARACTERISTIC: Record<Mode, number> = {
+  ionian:     11, // maj7
+  dorian:      9, // natural 6
+  phrygian:    1, // b2
+  lydian:      6, // #4
+  mixolydian: 10, // b7
+  aeolian:     8, // b6
+  locrian:     6  // b5
+};
+
+// Pitch-class of `mode`'s characteristic degree rooted at `root`.
+export function characteristicNote(root: Note, mode: Mode): Note {
+  const rootIdx = CHROMATIC.indexOf(root);
+  return CHROMATIC[(rootIdx + MODE_CHARACTERISTIC[mode]) % CHROMATIC.length];
+}

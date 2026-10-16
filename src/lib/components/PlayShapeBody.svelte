@@ -4,9 +4,11 @@
   import SessionShell from './SessionShell.svelte';
   import { PlayShapeExercise } from '../exercise/modes/PlayShapeExercise';
   import type { PlayShapeConfig, PlayShapePrompt, ModesReport, Pos } from '../exercise/modes/types';
-  import { noteAt } from '../music/notes';
-  import { MODE_DISPLAY } from '../music/modes';
+  import { noteAt, positionForPitch, CHROMATIC } from '../music/notes';
+  import { MODE_DISPLAY, characteristicNote } from '../music/modes';
   import { playPluck } from '../audio/pluck';
+  import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
+  import { startPitchListener, type PitchListener } from '../audio/pitch';
 
   type Props = {
     config: PlayShapeConfig;
@@ -31,6 +33,44 @@
   let showFretNumbers = $state(untrack(() => config.showFretNumbers));
   let paused = $state(false);
 
+  // Drone the root under the active prompt (opt-in). Restart on each new root,
+  // silence while paused, and clean up on teardown so no oscillator is left on.
+  let droneHandle: DroneHandle | null = null;
+  $effect(() => {
+    if (config.drone && currentPrompt && !paused) {
+      droneHandle?.stop();
+      droneHandle = startDrone(midiForDrone(currentPrompt.rootNote));
+    } else {
+      droneHandle?.stop();
+      droneHandle = null;
+    }
+    return () => { droneHandle?.stop(); droneHandle = null; };
+  });
+
+  // Mic input: detected pitches drive the same answer path as clicks. Only
+  // reached for the octave/pitch variant (enforced by the start screen).
+  let micError = $state<string | null>(null);
+  let lastHeard = $state<string | null>(null);
+  let micAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    if (config.inputMode !== 'mic') return;
+    let listener: PitchListener | null = null;
+    let cancelled = false;
+    startPitchListener((midi) => {
+      if (cancelled) return;
+      lastHeard = CHROMATIC[((midi % 12) + 12) % 12];
+      // Ignore onsets while paused or waiting to advance: otherwise the player's
+      // first note of the next run (or stray noise) would be eaten as the
+      // "advance" trigger. In mic mode advance is driven by the timer below.
+      if (paused || awaitingAdvance) return;
+      const pos = positionForPitch(midi, config.maxFret);
+      if (pos) handleSelect(pos);
+    })
+      .then((l) => { if (cancelled) l.stop(); else listener = l; })
+      .catch(() => { micError = 'Microphone unavailable — use clicks instead.'; });
+    return () => { cancelled = true; listener?.stop(); clearTimeout(micAdvanceTimer); };
+  });
+
   function endSession(soft: boolean) {
     const report = exercise.getReport();
     if (soft) onComplete(report);
@@ -52,6 +92,7 @@
   });
 
   function nextPrompt() {
+    clearTimeout(micAdvanceTimer);
     litCorrect = [];
     wrongFlash = null;
     hintPositions = [];
@@ -70,7 +111,9 @@
     }
     if (!currentPrompt) return;
 
-    if (config.playSound) {
+    // In mic mode the player already produced the sound; re-plucking would echo
+    // their note back (and feed the detector), so only pluck for click input.
+    if (config.playSound && config.inputMode !== 'mic') {
       try { playPluck(pos.string, pos.fret); } catch { /* ignore */ }
     }
 
@@ -93,6 +136,14 @@
       awaitingAdvance = true;
       wrongFlash = null;
       hintPositions = [];
+      // Click mode advances on the next click-anywhere; mic mode has no click,
+      // so advance on a short timer (clicking still works as a fallback).
+      if (config.inputMode === 'mic') {
+        clearTimeout(micAdvanceTimer);
+        micAdvanceTimer = setTimeout(() => {
+          if (awaitingAdvance && !paused) nextPrompt();
+        }, 1600);
+      }
     }
   }
 
@@ -112,8 +163,16 @@
               kind: 'scale-root'
             });
           }
+          const charNote = config.highlightCharacteristic && currentPrompt
+            ? characteristicNote(currentPrompt.rootNote, currentPrompt.mode)
+            : null;
           for (const p of litCorrect) {
-            out.push({ string: p.string, fret: p.fret, note: noteAt(p.string, p.fret), kind: 'user-correct' });
+            const note = noteAt(p.string, p.fret);
+            // A correctly-played note that IS the mode's characteristic degree
+            // lights in the characteristic colour, drawing the ear to it without
+            // revealing the shape ahead of time.
+            const kind = charNote !== null && note === charNote ? 'characteristic' : 'user-correct';
+            out.push({ string: p.string, fret: p.fret, note, kind });
           }
           for (const p of hintPositions) {
             out.push({ string: p.string, fret: p.fret, note: noteAt(p.string, p.fret), kind: 'closest-from-click' });
@@ -142,6 +201,11 @@
       <strong>{modeLabel}</strong> from {currentPrompt?.rootNote}
     </div>
     <div class="progress">{litCorrect.length} / {currentPrompt?.expectedCount ?? 0}</div>
+    {#if config.inputMode === 'mic'}
+      <div class="mic" class:mic-error={micError !== null}>
+        {#if micError}{micError}{:else}🎤 listening{lastHeard ? ` — heard ${lastHeard}` : '…'}{/if}
+      </div>
+    {/if}
     <label class="toggle">
       <input type="checkbox" bind:checked={showFretNumbers} />
       Fret numbers
@@ -171,6 +235,8 @@
 <style>
   .target { font-size: 22px; }
   .progress { font-size: 18px; font-variant-numeric: tabular-nums; opacity: 0.85; }
+  .mic { font-size: 14px; opacity: 0.85; }
+  .mic-error { color: #e07a5f; opacity: 1; }
   .toggle {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 14px; cursor: pointer; user-select: none;

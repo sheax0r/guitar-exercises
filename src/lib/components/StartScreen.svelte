@@ -46,7 +46,22 @@
   let octaveJudge = $state<'pitch' | 'fixed'>(stored.octaveJudge ?? 'fixed');
   let boxSpan = $state<number>(stored.boxSpan ?? 4);
 
+  // Modes sound/ear settings.
+  let drone = $state<boolean>(stored.drone ?? false);
+  let highlightCharacteristic = $state<boolean>(stored.highlightCharacteristic ?? false);
+  let fixedRootNote = $state<Note | 'random'>(stored.fixedRootNote ?? 'random');
+  let inputMode = $state<'click' | 'mic'>(stored.inputMode ?? 'click');
+  let identifyPromptMode = $state<'visual' | 'audio'>(stored.identifyPromptMode ?? 'visual');
+
   const isModes = $derived(exercise === 'play-shape' || exercise === 'identify-mode');
+  // Mic input only makes sense for a pure pitch sequence: octave + pitch judge.
+  const micEligible = $derived(
+    exercise === 'play-shape' && shapeVariant === 'octave' && octaveJudge === 'pitch'
+  );
+  // Keep the input mode valid when the variant/judge change out from under it.
+  $effect(() => {
+    if (inputMode === 'mic' && !micEligible) inputMode = 'click';
+  });
 
   const DURATIONS = [
     { label: '1m', sec: 60 },
@@ -114,7 +129,11 @@
         durationSec,
         continuous,
         showFretNumbers,
-        playSound
+        playSound,
+        drone,
+        highlightCharacteristic,
+        fixedRootNote: fixedRootNote === 'random' ? null : fixedRootNote,
+        inputMode: micEligible ? inputMode : 'click'
       } satisfies PlayShapeConfig;
     } else if (exercise === 'identify-mode') {
       const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
@@ -125,7 +144,11 @@
         durationSec,
         continuous,
         showFretNumbers,
-        playSound
+        playSound,
+        drone,
+        highlightCharacteristic,
+        fixedRootNote: fixedRootNote === 'random' ? null : fixedRootNote,
+        promptMode: identifyPromptMode
       } satisfies IdentifyModeConfig;
     } else {
       config = {
@@ -163,7 +186,12 @@
       enabledModes,
       shapeVariant,
       octaveJudge,
-      boxSpan
+      boxSpan,
+      drone,
+      highlightCharacteristic,
+      fixedRootNote,
+      inputMode,
+      identifyPromptMode
     };
     savePrefs(prefs);
     onStart(config);
@@ -263,7 +291,64 @@
           <input id="span" type="number" min="3" step="1" bind:value={boxSpan} />
         </div>
       {/if}
+
+      <div class="row">
+        <span class="label">Input</span>
+        <div class="chips">
+          <button type="button" class:chip={true} class:chip-active={inputMode === 'click'} onclick={() => (inputMode = 'click')}>Click the notes</button>
+          <button
+            type="button"
+            class:chip={true}
+            class:chip-active={inputMode === 'mic' && micEligible}
+            disabled={!micEligible}
+            title={micEligible ? '' : 'Play (mic) needs the One octave shape judged by Any position (by pitch)'}
+            onclick={() => micEligible && (inputMode = 'mic')}
+          >Play (mic)</button>
+        </div>
+        {#if !micEligible}
+          <span class="hint">Mic input needs One octave + Any position (by pitch).</span>
+        {/if}
+      </div>
     {/if}
+
+    {#if exercise === 'identify-mode'}
+      <div class="row">
+        <span class="label">Prompt</span>
+        <div class="chips">
+          <button type="button" class:chip={true} class:chip-active={identifyPromptMode === 'visual'} onclick={() => (identifyPromptMode = 'visual')}>See the notes</button>
+          <button type="button" class:chip={true} class:chip-active={identifyPromptMode === 'audio'} onclick={() => (identifyPromptMode = 'audio')}>Hear the scale</button>
+        </div>
+      </div>
+    {/if}
+
+    <div class="row">
+      <span class="label">Root</span>
+      <div class="chips">
+        <button type="button" class:chip={true} class:chip-active={fixedRootNote === 'random'} onclick={() => (fixedRootNote = 'random')}>Random each prompt</button>
+        <button type="button" class:chip={true} class:chip-active={fixedRootNote !== 'random'} onclick={() => (fixedRootNote = fixedRootNote === 'random' ? 'C' : fixedRootNote)}>Fixed</button>
+        {#if fixedRootNote !== 'random'}
+          <select aria-label="Fixed root note" bind:value={fixedRootNote}>
+            {#each CHROMATIC as n}
+              <option value={n}>{NOTE_DISPLAY[n]}</option>
+            {/each}
+          </select>
+        {/if}
+      </div>
+    </div>
+
+    <div class="row">
+      <label>
+        <input type="checkbox" bind:checked={drone} />
+        Drone the root
+      </label>
+    </div>
+
+    <div class="row">
+      <label>
+        <input type="checkbox" bind:checked={highlightCharacteristic} />
+        Highlight the characteristic note
+      </label>
+    </div>
   {:else}
     <div class="row">
       <label for="note">Root note</label>
@@ -397,6 +482,7 @@
     border-color: #ff8c42;
     font-weight: 700;
   }
+  .chip:disabled { opacity: 0.4; cursor: not-allowed; }
   .start-button {
     padding: 14px 24px;
     font-size: 16px;
