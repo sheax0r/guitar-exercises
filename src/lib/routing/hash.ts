@@ -64,9 +64,10 @@ function parseFixedRoot(raw: string | null): Note | null {
   return raw && raw !== 'random' && VALID_NOTES.has(raw) ? (raw as Note) : null;
 }
 
-// A 0..1 float; absent/invalid falls back to the default.
+// A 0..1 float; absent/blank/invalid falls back to the default. (Blank guarded
+// because Number('') === 0 would otherwise read as full-chill sensitivity.)
 function parseUnit(raw: string | null, fallback: number): number {
-  if (raw === null) return fallback;
+  if (raw === null || raw.trim() === '') return fallback;
   const n = Number(raw);
   return Number.isFinite(n) && n >= 0 && n <= 1 ? n : fallback;
 }

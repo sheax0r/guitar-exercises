@@ -271,6 +271,17 @@ describe('parseHash / sessionHash — play-shape', () => {
     }
   });
 
+  it('blank or missing sens falls back to the default sensitivity, not 0', () => {
+    const blank = parseHash('#/session?ex=play-shape&modes=ionian&duration=300&frets=12&variant=octave&judge=pitch&sens=');
+    const missing = parseHash('#/session?ex=play-shape&modes=ionian&duration=300&frets=12&variant=octave&judge=pitch');
+    for (const r of [blank, missing]) {
+      expect(r.screen).toBe('session');
+      if (r.screen === 'session' && r.config.exercise === 'play-shape') {
+        expect(r.config.micSensitivity).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it('legacy play-shape URL (no new params) parses to defaults', () => {
     const r = parseHash('#/session?ex=play-shape&modes=ionian&variant=octave&judge=fixed&span=4&duration=300&frets=12');
     expect(r.screen).toBe('session');

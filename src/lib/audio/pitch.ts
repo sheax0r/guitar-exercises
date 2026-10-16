@@ -46,10 +46,20 @@ export async function startPitchListener(
     try { await ctx.resume(); } catch { /* ignore */ }
   }
 
-  const constraints: MediaStreamConstraints = {
-    audio: opts.deviceId ? { deviceId: { exact: opts.deviceId } } : true
-  };
-  const stream = await nav.mediaDevices.getUserMedia(constraints);
+  let stream: MediaStream;
+  try {
+    stream = await nav.mediaDevices.getUserMedia({
+      audio: opts.deviceId ? { deviceId: { exact: opts.deviceId } } : true
+    });
+  } catch (e) {
+    // A stale/unplugged device id must not kill the mic: fall back to the
+    // default input. If that also fails (no mic / denied), surface the error.
+    if (opts.deviceId) {
+      stream = await nav.mediaDevices.getUserMedia({ audio: true });
+    } else {
+      throw e;
+    }
+  }
   let source: MediaStreamAudioSourceNode;
   let analyser: AnalyserNode;
   try {
