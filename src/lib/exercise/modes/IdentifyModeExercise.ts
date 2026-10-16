@@ -40,14 +40,27 @@ export class IdentifyModeExercise
 
   getNextPrompt(): IdentifyModePrompt {
     const { maxFret } = this.config;
-    let root: Pos;
-    let mode: Mode;
-    do {
-      const string = ((Math.floor(Math.random() * 6) + 1)) as StringNum;
-      const fret = Math.floor(Math.random() * (maxFret + 1));
-      root = { string, fret };
+    // Parallel framing: a fixed root note holds the tonal centre constant across
+    // prompts (random position of that pitch-class). null = random root.
+    const rootPool = this.config.fixedRootNote
+      ? allPositionsOf(this.config.fixedRootNote, maxFret)
+      : null;
+    let root: Pos = { string: 1, fret: 0 };
+    let mode: Mode = this.config.enabledModes[0];
+    const MAX_ATTEMPTS = 500;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      if (rootPool) {
+        if (rootPool.length === 0) continue;
+        const p = rootPool[Math.floor(Math.random() * rootPool.length)];
+        root = { string: p.string, fret: p.fret as Fret };
+      } else {
+        const string = ((Math.floor(Math.random() * 6) + 1)) as StringNum;
+        const fret = Math.floor(Math.random() * (maxFret + 1));
+        root = { string, fret };
+      }
       mode = this.pickMode();
-    } while (this.prev && samePos(this.prev.root, root) && this.prev.mode === mode);
+      if (!(this.prev && samePos(this.prev.root, root) && this.prev.mode === mode)) break;
+    }
 
     const rootNote = noteAt(root.string, root.fret);
     const classes = scaleNotes(rootNote, mode);

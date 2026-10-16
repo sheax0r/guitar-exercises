@@ -58,6 +58,11 @@ function parseModes(raw: string | null): Mode[] | null {
   return parts as Mode[];
 }
 
+// 'random' or absent/invalid → null (random root); a valid note → fixed root.
+function parseFixedRoot(raw: string | null): Note | null {
+  return raw && raw !== 'random' && VALID_NOTES.has(raw) ? (raw as Note) : null;
+}
+
 function parseFretboard(params: URLSearchParams, exercise: ExerciseKind): Route {
   const note = params.get('note');
   let targetNote: Note;
@@ -120,6 +125,12 @@ function parsePlayShape(params: URLSearchParams): Route {
 
   const span = parsePositiveInt(params.get('span')) ?? 4;
 
+  // Mic input is only meaningful for the octave/pitch variant; coerce otherwise.
+  let inputMode: 'click' | 'mic' = params.get('input') === 'mic' ? 'mic' : 'click';
+  if (inputMode === 'mic' && !(variantRaw === 'octave' && judgeRaw === 'pitch')) {
+    inputMode = 'click';
+  }
+
   const config: PlayShapeConfig = {
     exercise: 'play-shape',
     enabledModes,
@@ -130,7 +141,11 @@ function parsePlayShape(params: URLSearchParams): Route {
     durationSec: duration.durationSec,
     continuous: duration.continuous,
     showFretNumbers: parseBool(params.get('fretnums'), true),
-    playSound: parseBool(params.get('sound'), true)
+    playSound: parseBool(params.get('sound'), true),
+    drone: parseBool(params.get('drone'), false),
+    highlightCharacteristic: parseBool(params.get('char'), false),
+    fixedRootNote: parseFixedRoot(params.get('root')),
+    inputMode
   };
   return { screen: 'session', config };
 }
@@ -145,6 +160,9 @@ function parseIdentifyMode(params: URLSearchParams): Route {
   const frets = parsePositiveInt(params.get('frets'));
   if (frets === null) return { screen: 'start' };
 
+  const pmodeRaw = params.get('pmode');
+  const promptMode: 'visual' | 'audio' = pmodeRaw === 'audio' ? 'audio' : 'visual';
+
   const config: IdentifyModeConfig = {
     exercise: 'identify-mode',
     enabledModes,
@@ -152,7 +170,11 @@ function parseIdentifyMode(params: URLSearchParams): Route {
     durationSec: duration.durationSec,
     continuous: duration.continuous,
     showFretNumbers: parseBool(params.get('fretnums'), true),
-    playSound: parseBool(params.get('sound'), true)
+    playSound: parseBool(params.get('sound'), true),
+    drone: parseBool(params.get('drone'), false),
+    highlightCharacteristic: parseBool(params.get('char'), false),
+    fixedRootNote: parseFixedRoot(params.get('root')),
+    promptMode
   };
   return { screen: 'session', config };
 }
@@ -184,12 +206,20 @@ export function sessionHash(config: AnyConfig): string {
     params.set('frets', String(config.maxFret));
     params.set('fretnums', config.showFretNumbers ? '1' : '0');
     params.set('sound', config.playSound ? '1' : '0');
+    params.set('drone', config.drone ? '1' : '0');
+    params.set('char', config.highlightCharacteristic ? '1' : '0');
+    params.set('root', config.fixedRootNote ?? 'random');
+    params.set('input', config.inputMode);
   } else if (config.exercise === 'identify-mode') {
     params.set('modes', config.enabledModes.join(','));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
     params.set('frets', String(config.maxFret));
     params.set('fretnums', config.showFretNumbers ? '1' : '0');
     params.set('sound', config.playSound ? '1' : '0');
+    params.set('drone', config.drone ? '1' : '0');
+    params.set('char', config.highlightCharacteristic ? '1' : '0');
+    params.set('root', config.fixedRootNote ?? 'random');
+    params.set('pmode', config.promptMode);
   } else {
     params.set('note', config.targetNote);
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));

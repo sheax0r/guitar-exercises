@@ -1,6 +1,6 @@
 import type { Exercise, AnswerResult } from '../Exercise';
 import type { PlayShapeConfig, PlayShapePrompt, PlayShapeAnswer, ModesReport, Pos } from './types';
-import { noteAt, pitchOf } from '../../music/notes';
+import { noteAt, pitchOf, allPositionsOf } from '../../music/notes';
 import type { Mode } from '../../music/modes';
 import { octaveFixedPositions, octaveSequencePitches, boxPositions } from './shape';
 import { aggregateModesReport, type ModeAttempt } from './report';
@@ -65,9 +65,24 @@ export class PlayShapeExercise
     let found = false;
     root = { string: 1, fret: 0 };
     mode = this.config.enabledModes[0];
+    // Parallel framing: when a fixed root note is configured, every prompt uses
+    // that pitch-class (still a random fretboard position of it), so the player
+    // compares modes over one root. null = the original random-root behaviour.
+    const rootPool = this.config.fixedRootNote
+      ? allPositionsOf(this.config.fixedRootNote, maxFret)
+      : null;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const string = ((Math.floor(Math.random() * 6) + 1)) as Pos['string'];
-      const fret = Math.floor(Math.random() * (maxFret + 1));
+      let string: Pos['string'];
+      let fret: number;
+      if (rootPool) {
+        if (rootPool.length === 0) continue; // no position for this note within maxFret
+        const p = rootPool[Math.floor(Math.random() * rootPool.length)];
+        string = p.string;
+        fret = p.fret;
+      } else {
+        string = ((Math.floor(Math.random() * 6) + 1)) as Pos['string'];
+        fret = Math.floor(Math.random() * (maxFret + 1));
+      }
       root = { string, fret };
       mode = this.pickMode();
 

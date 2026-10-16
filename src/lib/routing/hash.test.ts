@@ -208,13 +208,17 @@ describe('parseHash / sessionHash — play-shape', () => {
       exercise: 'play-shape',
       enabledModes: ['ionian', 'dorian'],
       shapeVariant: 'octave',
-      octaveJudge: 'fixed',
+      octaveJudge: 'pitch',
       boxSpan: 4,
       maxFret: 12,
       durationSec: 300,
       continuous: false,
       showFretNumbers: true,
-      playSound: true
+      playSound: true,
+      drone: true,
+      highlightCharacteristic: true,
+      fixedRootNote: 'G',
+      inputMode: 'mic'
     };
     const r = parseHash(sessionHash(config));
     expect(r.screen).toBe('session');
@@ -234,12 +238,35 @@ describe('parseHash / sessionHash — play-shape', () => {
       durationSec: 180,
       continuous: false,
       showFretNumbers: false,
-      playSound: false
+      playSound: false,
+      drone: false,
+      highlightCharacteristic: false,
+      fixedRootNote: null,
+      inputMode: 'click'
     };
     const r = parseHash(sessionHash(config));
     expect(r.screen).toBe('session');
     if (r.screen === 'session') {
       expect(r.config).toEqual(config);
+    }
+  });
+
+  it('coerces input=mic to click for the box variant', () => {
+    const r = parseHash('#/session?ex=play-shape&modes=ionian&duration=300&frets=12&variant=box&input=mic');
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session' && r.config.exercise === 'play-shape') {
+      expect(r.config.inputMode).toBe('click');
+    }
+  });
+
+  it('legacy play-shape URL (no new params) parses to defaults', () => {
+    const r = parseHash('#/session?ex=play-shape&modes=ionian&variant=octave&judge=fixed&span=4&duration=300&frets=12');
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session' && r.config.exercise === 'play-shape') {
+      expect(r.config.drone).toBe(false);
+      expect(r.config.highlightCharacteristic).toBe(false);
+      expect(r.config.fixedRootNote).toBe(null);
+      expect(r.config.inputMode).toBe('click');
     }
   });
 
@@ -263,12 +290,27 @@ describe('parseHash / sessionHash — identify-mode', () => {
       durationSec: 300,
       continuous: false,
       showFretNumbers: true,
-      playSound: false
+      playSound: false,
+      drone: true,
+      highlightCharacteristic: true,
+      fixedRootNote: 'D',
+      promptMode: 'audio'
     };
     const r = parseHash(sessionHash(config));
     expect(r.screen).toBe('session');
     if (r.screen === 'session') {
       expect(r.config).toEqual(config);
+    }
+  });
+
+  it('legacy identify-mode URL (no new params) parses to defaults', () => {
+    const r = parseHash('#/session?ex=identify-mode&modes=ionian,dorian&duration=300&frets=12');
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session' && r.config.exercise === 'identify-mode') {
+      expect(r.config.drone).toBe(false);
+      expect(r.config.highlightCharacteristic).toBe(false);
+      expect(r.config.fixedRootNote).toBe(null);
+      expect(r.config.promptMode).toBe('visual');
     }
   });
 

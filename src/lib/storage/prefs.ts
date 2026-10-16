@@ -27,6 +27,12 @@ export interface Prefs {
   shapeVariant?: 'octave' | 'box';
   octaveJudge?: 'pitch' | 'fixed';
   boxSpan?: number;
+  // Modes sound/ear settings (optional; absent in legacy prefs).
+  drone?: boolean;
+  highlightCharacteristic?: boolean;
+  fixedRootNote?: Note | 'random'; // 'random' sentinel ↔ config null
+  inputMode?: 'click' | 'mic';
+  identifyPromptMode?: 'visual' | 'audio';
 }
 
 export function loadPrefs(): Partial<Prefs> {

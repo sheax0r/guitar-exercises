@@ -18,6 +18,11 @@ export interface PlayShapeConfig {
   continuous: boolean;
   showFretNumbers: boolean;
   playSound: boolean;
+  // Sound/ear options (all opt-in; defaults reproduce the original behaviour).
+  drone: boolean;                    // sustain the root under each prompt
+  highlightCharacteristic: boolean;  // mark the mode's characteristic degree
+  fixedRootNote: Note | null;        // null = random root per prompt
+  inputMode: 'click' | 'mic';        // 'mic' valid only for octave + pitch judge
 }
 
 export interface PlayShapePrompt {
@@ -39,6 +44,11 @@ export interface IdentifyModeConfig {
   continuous: boolean;
   showFretNumbers: boolean;
   playSound: boolean;
+  // Sound/ear options (all opt-in; defaults reproduce the original behaviour).
+  drone: boolean;                    // sustain the root under each prompt
+  highlightCharacteristic: boolean;  // reveal the characteristic degree after answering
+  fixedRootNote: Note | null;        // null = random root per prompt
+  promptMode: 'visual' | 'audio';    // 'audio' = hear the scale, name it by ear
 }
 
 export interface IdentifyModePrompt {

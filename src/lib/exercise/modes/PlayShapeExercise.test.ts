@@ -13,7 +13,11 @@ const base: PlayShapeConfig = {
   durationSec: 300,
   continuous: true,
   showFretNumbers: true,
-  playSound: false
+  playSound: false,
+  drone: false,
+  highlightCharacteristic: false,
+  fixedRootNote: null,
+  inputMode: 'click'
 };
 
 describe('PlayShapeExercise octave/fixed', () => {
@@ -121,5 +125,33 @@ describe('PlayShapeExercise box', () => {
     const r = ex.submitAnswer(set[0]);
     expect(r.correct).toBe(false);
     expect(r.promptComplete).toBe(false);
+  });
+});
+
+describe('PlayShapeExercise fixed root (parallel framing)', () => {
+  it('every prompt uses the configured root note; mode still varies', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({
+      ...base,
+      enabledModes: ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'aeolian', 'locrian'],
+      shapeVariant: 'octave',
+      octaveJudge: 'pitch',
+      fixedRootNote: 'G'
+    });
+    const modesSeen = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      const p = ex.getNextPrompt();
+      expect(p.rootNote).toBe('G');
+      modesSeen.add(p.mode);
+    }
+    expect(modesSeen.size).toBeGreaterThan(1);
+  });
+
+  it('null fixedRootNote keeps random roots (not all identical)', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({ ...base, octaveJudge: 'pitch', fixedRootNote: null });
+    const roots = new Set<string>();
+    for (let i = 0; i < 40; i++) roots.add(ex.getNextPrompt().rootNote);
+    expect(roots.size).toBeGreaterThan(1);
   });
 });

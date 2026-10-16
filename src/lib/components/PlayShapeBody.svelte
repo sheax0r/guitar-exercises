@@ -5,8 +5,9 @@
   import { PlayShapeExercise } from '../exercise/modes/PlayShapeExercise';
   import type { PlayShapeConfig, PlayShapePrompt, ModesReport, Pos } from '../exercise/modes/types';
   import { noteAt } from '../music/notes';
-  import { MODE_DISPLAY } from '../music/modes';
+  import { MODE_DISPLAY, characteristicNote } from '../music/modes';
   import { playPluck } from '../audio/pluck';
+  import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
 
   type Props = {
     config: PlayShapeConfig;
@@ -30,6 +31,20 @@
 
   let showFretNumbers = $state(untrack(() => config.showFretNumbers));
   let paused = $state(false);
+
+  // Drone the root under the active prompt (opt-in). Restart on each new root,
+  // silence while paused, and clean up on teardown so no oscillator is left on.
+  let droneHandle: DroneHandle | null = null;
+  $effect(() => {
+    if (config.drone && currentPrompt && !paused) {
+      droneHandle?.stop();
+      droneHandle = startDrone(midiForDrone(currentPrompt.rootNote));
+    } else {
+      droneHandle?.stop();
+      droneHandle = null;
+    }
+    return () => { droneHandle?.stop(); droneHandle = null; };
+  });
 
   function endSession(soft: boolean) {
     const report = exercise.getReport();
@@ -112,8 +127,16 @@
               kind: 'scale-root'
             });
           }
+          const charNote = config.highlightCharacteristic && currentPrompt
+            ? characteristicNote(currentPrompt.rootNote, currentPrompt.mode)
+            : null;
           for (const p of litCorrect) {
-            out.push({ string: p.string, fret: p.fret, note: noteAt(p.string, p.fret), kind: 'user-correct' });
+            const note = noteAt(p.string, p.fret);
+            // A correctly-played note that IS the mode's characteristic degree
+            // lights in the characteristic colour, drawing the ear to it without
+            // revealing the shape ahead of time.
+            const kind = charNote !== null && note === charNote ? 'characteristic' : 'user-correct';
+            out.push({ string: p.string, fret: p.fret, note, kind });
           }
           for (const p of hintPositions) {
             out.push({ string: p.string, fret: p.fret, note: noteAt(p.string, p.fret), kind: 'closest-from-click' });

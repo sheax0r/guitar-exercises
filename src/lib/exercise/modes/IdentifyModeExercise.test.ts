@@ -11,7 +11,11 @@ const cfg: IdentifyModeConfig = {
   durationSec: 300,
   continuous: true,
   showFretNumbers: true,
-  playSound: false
+  playSound: false,
+  drone: false,
+  highlightCharacteristic: false,
+  fixedRootNote: null,
+  promptMode: 'visual'
 };
 
 describe('IdentifyModeExercise', () => {
@@ -50,6 +54,14 @@ describe('IdentifyModeExercise', () => {
     expect(p.rootPositions.length).toBeGreaterThan(0);
     for (const pos of p.rootPositions) {
       expect(noteAt(pos.string, pos.fret)).toBe(p.rootNote);
+    }
+  });
+
+  it('fixed root: every prompt uses the configured root note', () => {
+    const ex = new IdentifyModeExercise();
+    ex.start({ ...cfg, enabledModes: ['ionian', 'dorian', 'phrygian'], fixedRootNote: 'D' });
+    for (let i = 0; i < 30; i++) {
+      expect(ex.getNextPrompt().rootNote).toBe('D');
     }
   });
 });
