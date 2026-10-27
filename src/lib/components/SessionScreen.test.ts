@@ -155,7 +155,8 @@ describe('SessionScreen — play-shape', () => {
       fixedRootNote: null,
       inputMode: 'click',
       micSensitivity: 0.5,
-      micDeviceId: null
+      micDeviceId: null,
+      displayNotePercentage: 100
     };
   }
 
@@ -203,7 +204,8 @@ describe('SessionScreen — identify-mode', () => {
       drone: false,
       highlightCharacteristic: false,
       fixedRootNote: null,
-      promptMode: 'visual'
+      promptMode: 'visual',
+      displayNotePercentage: 100
     };
   }
 

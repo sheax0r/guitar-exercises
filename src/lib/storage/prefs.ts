@@ -35,6 +35,7 @@ export interface Prefs {
   identifyPromptMode?: 'visual' | 'audio';
   micSensitivity?: number;          // 0..1
   micDeviceId?: string | null;      // chosen audio input (device-specific)
+  displayNotePercentage?: number;   // 0..100 of scale notes shown (modes exercises)
 }
 
 export function loadPrefs(): Partial<Prefs> {

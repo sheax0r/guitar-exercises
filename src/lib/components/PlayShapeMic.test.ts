@@ -32,7 +32,8 @@ function micConfig(): PlayShapeConfig {
     fixedRootNote: null,
     inputMode: 'mic',
     micSensitivity: 0.5,
-    micDeviceId: null
+    micDeviceId: null,
+    displayNotePercentage: 100
   };
 }
 

@@ -2,7 +2,7 @@ import type { Exercise, AnswerResult } from '../Exercise';
 import type { PlayShapeConfig, PlayShapePrompt, PlayShapeAnswer, ModesReport, Pos } from './types';
 import { noteAt, pitchOf, allPositionsOf } from '../../music/notes';
 import type { Mode } from '../../music/modes';
-import { octaveFixedPositions, octaveSequencePitches, boxPositions } from './shape';
+import { octaveFixedPositions, octaveSequencePitches, boxPositions, scaleFretboardPositions, sampleByPercentage } from './shape';
 import { aggregateModesReport, type ModeAttempt } from './report';
 
 function samePos(a: Pos, b: Pos): boolean {
@@ -122,12 +122,14 @@ export class PlayShapeExercise
       this.clicked = positions!.map(() => false);
     }
 
+    const scaleAll = scaleFretboardPositions(root, mode, maxFret);
     const prompt: PlayShapePrompt = {
       root,
       rootNote: noteAt(root.string, root.fret),
       mode,
       variant: shapeVariant,
-      expectedCount: positions!.length
+      expectedCount: positions!.length,
+      visiblePositions: sampleByPercentage(scaleAll, this.config.displayNotePercentage)
     };
     this.currentPrompt = prompt;
     this.promptStartedAt = Date.now();

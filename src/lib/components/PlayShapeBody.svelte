@@ -196,6 +196,12 @@
           if (!currentPrompt) return [];
           const litKeys = new Set(litCorrect.map(p => `${p.string}-${p.fret}`));
           const out: Highlight[] = [];
+          // Study overlay: a random share of the whole-neck scale notes (roots
+          // marked distinctly). Painted first so play feedback draws on top.
+          for (const p of currentPrompt.visiblePositions) {
+            const note = noteAt(p.string, p.fret);
+            out.push({ string: p.string, fret: p.fret, note, kind: note === currentPrompt.rootNote ? 'scale-root' : 'scale-note' });
+          }
           // Root marker (unless already clicked correct).
           if (!litKeys.has(`${currentPrompt.root.string}-${currentPrompt.root.fret}`)) {
             out.push({
