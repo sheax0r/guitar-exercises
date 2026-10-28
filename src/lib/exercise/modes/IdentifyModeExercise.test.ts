@@ -16,7 +16,8 @@ const cfg: IdentifyModeConfig = {
   drone: false,
   highlightCharacteristic: false,
   fixedRootNote: null,
-  promptMode: 'visual'
+  promptMode: 'visual',
+  displayNotePercentage: 100
 };
 
 describe('IdentifyModeExercise', () => {
@@ -56,6 +57,24 @@ describe('IdentifyModeExercise', () => {
     for (const pos of p.rootPositions) {
       expect(noteAt(pos.string, pos.fret)).toBe(p.rootNote);
     }
+  });
+
+  it('visiblePositions is a subset of positions sized by displayNotePercentage', () => {
+    const ex = new IdentifyModeExercise();
+    ex.start({ ...cfg, displayNotePercentage: 50 });
+    const p = ex.getNextPrompt();
+    const keys = new Set(p.positions.map(x => `${x.string}-${x.fret}`));
+    expect(p.visiblePositions.length).toBe(Math.round(p.positions.length * 0.5));
+    for (const v of p.visiblePositions) expect(keys.has(`${v.string}-${v.fret}`)).toBe(true);
+  });
+
+  it('shows the full scale at 100% and nothing at 0%', () => {
+    const ex = new IdentifyModeExercise();
+    ex.start({ ...cfg, displayNotePercentage: 100 });
+    const full = ex.getNextPrompt();
+    expect(full.visiblePositions.length).toBe(full.positions.length);
+    ex.start({ ...cfg, displayNotePercentage: 0 });
+    expect(ex.getNextPrompt().visiblePositions).toHaveLength(0);
   });
 
   it('fixed root: every prompt uses the configured root note', () => {

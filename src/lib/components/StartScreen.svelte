@@ -55,6 +55,7 @@
   let fixedRootNote = $state<Note | 'random'>(stored.fixedRootNote ?? 'random');
   let inputMode = $state<'click' | 'mic'>(stored.inputMode ?? 'click');
   let identifyPromptMode = $state<'visual' | 'audio'>(stored.identifyPromptMode ?? 'visual');
+  let displayNotePercentage = $state<number>(stored.displayNotePercentage ?? 100);
   let micSensitivity = $state<number>(stored.micSensitivity ?? DEFAULT_MIC_SENSITIVITY);
   let micDeviceId = $state<string | null>(stored.micDeviceId ?? null);
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
@@ -145,7 +146,8 @@
         fixedRootNote: fixedRootNote === 'random' ? null : fixedRootNote,
         inputMode: micEligible ? inputMode : 'click',
         micSensitivity,
-        micDeviceId
+        micDeviceId,
+        displayNotePercentage
       } satisfies PlayShapeConfig;
     } else if (exercise === 'identify-mode') {
       const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
@@ -160,7 +162,8 @@
         drone,
         highlightCharacteristic,
         fixedRootNote: fixedRootNote === 'random' ? null : fixedRootNote,
-        promptMode: identifyPromptMode
+        promptMode: identifyPromptMode,
+        displayNotePercentage
       } satisfies IdentifyModeConfig;
     } else {
       config = {
@@ -205,7 +208,8 @@
       inputMode,
       identifyPromptMode,
       micSensitivity,
-      micDeviceId
+      micDeviceId,
+      displayNotePercentage
     };
     savePrefs(prefs);
     onStart(config);
@@ -370,6 +374,19 @@
         <input type="checkbox" bind:checked={highlightCharacteristic} />
         Highlight the characteristic note
       </label>
+    </div>
+
+    <div class="row">
+      <label for="shownotes">Show scale notes: {displayNotePercentage}%</label>
+      <input
+        id="shownotes"
+        type="range"
+        min="0"
+        max="100"
+        step="5"
+        bind:value={displayNotePercentage}
+      />
+      <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
     </div>
   {:else}
     <div class="row">

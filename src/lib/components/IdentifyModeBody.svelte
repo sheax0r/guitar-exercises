@@ -124,7 +124,7 @@
           const charNote = config.highlightCharacteristic && answered
             ? characteristicNote(currentPrompt.rootNote, currentPrompt.mode)
             : null;
-          return currentPrompt.positions.map(p => {
+          return currentPrompt.visiblePositions.map(p => {
             const note = noteAt(p.string, p.fret);
             const key = `${p.string}-${p.fret}`;
             const kind = charNote !== null && note === charNote

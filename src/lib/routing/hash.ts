@@ -64,6 +64,13 @@ function parseFixedRoot(raw: string | null): Note | null {
   return raw && raw !== 'random' && VALID_NOTES.has(raw) ? (raw as Note) : null;
 }
 
+// An integer percentage 0..100; absent/invalid falls back to `fallback`.
+function parsePercentage(raw: string | null, fallback: number): number {
+  if (raw === null) return fallback;
+  const n = parseInt(raw, 10);
+  return Number.isInteger(n) && n >= 0 && n <= 100 ? n : fallback;
+}
+
 // A 0..1 float; absent/blank/invalid falls back to the default. (Blank guarded
 // because Number('') === 0 would otherwise read as full-chill sensitivity.)
 function parseUnit(raw: string | null, fallback: number): number {
@@ -158,7 +165,8 @@ function parsePlayShape(params: URLSearchParams): Route {
     fixedRootNote: parseFixedRoot(params.get('root')),
     inputMode,
     micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
-    micDeviceId: null // device ids are browser-specific; not carried in the URL
+    micDeviceId: null, // device ids are browser-specific; not carried in the URL
+    displayNotePercentage: parsePercentage(params.get('show'), 100)
   };
   return { screen: 'session', config };
 }
@@ -187,7 +195,8 @@ function parseIdentifyMode(params: URLSearchParams): Route {
     drone: parseBool(params.get('drone'), false),
     highlightCharacteristic: parseBool(params.get('char'), false),
     fixedRootNote: parseFixedRoot(params.get('root')),
-    promptMode
+    promptMode,
+    displayNotePercentage: parsePercentage(params.get('show'), 100)
   };
   return { screen: 'session', config };
 }
@@ -224,6 +233,7 @@ export function sessionHash(config: AnyConfig): string {
     params.set('root', config.fixedRootNote ?? 'random');
     params.set('input', config.inputMode);
     params.set('sens', String(config.micSensitivity));
+    params.set('show', String(config.displayNotePercentage));
   } else if (config.exercise === 'identify-mode') {
     params.set('modes', config.enabledModes.join(','));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
@@ -234,6 +244,7 @@ export function sessionHash(config: AnyConfig): string {
     params.set('char', config.highlightCharacteristic ? '1' : '0');
     params.set('root', config.fixedRootNote ?? 'random');
     params.set('pmode', config.promptMode);
+    params.set('show', String(config.displayNotePercentage));
   } else {
     params.set('note', config.targetNote);
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));

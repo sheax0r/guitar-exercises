@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { PlayShapeExercise } from './PlayShapeExercise';
 import type { PlayShapeConfig } from './types';
 import { octaveFixedPositions, boxPositions } from './shape';
-import { pitchOf } from '../../music/notes';
+import { pitchOf, noteAt } from '../../music/notes';
+import { scaleNotes } from '../../music/modes';
 
 const base: PlayShapeConfig = {
   exercise: 'play-shape',
@@ -20,8 +21,24 @@ const base: PlayShapeConfig = {
   fixedRootNote: null,
   inputMode: 'click',
   micSensitivity: 0.5,
-  micDeviceId: null
+  micDeviceId: null,
+  displayNotePercentage: 100
 };
+
+describe('PlayShapeExercise scale overlay', () => {
+  it('visiblePositions holds the full scale at 100% and none at 0%', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({ ...base, displayNotePercentage: 100 });
+    const full = ex.getNextPrompt();
+    const classes = new Set(scaleNotes(full.rootNote, full.mode));
+    expect(full.visiblePositions.length).toBeGreaterThan(0);
+    for (const p of full.visiblePositions) {
+      expect(classes.has(noteAt(p.string, p.fret))).toBe(true);
+    }
+    ex.start({ ...base, displayNotePercentage: 0 });
+    expect(ex.getNextPrompt().visiblePositions).toHaveLength(0);
+  });
+});
 
 describe('PlayShapeExercise octave/fixed', () => {
   it('accepts the canonical sequence and completes on the last click', () => {

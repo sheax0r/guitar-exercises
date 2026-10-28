@@ -3,9 +3,12 @@ import {
   octaveSequencePitches,
   octaveFixedPositions,
   boxWindow,
-  boxPositions
+  boxPositions,
+  scaleFretboardPositions,
+  sampleByPercentage
 } from './shape';
-import { pitchOf } from '../../music/notes';
+import { pitchOf, noteAt } from '../../music/notes';
+import { scaleNotes } from '../../music/modes';
 import type { StringNum } from '../../music/tuning';
 import type { Pos } from './shape';
 
@@ -65,5 +68,38 @@ describe('boxPositions', () => {
       expect(p.fret).toBeLessThanOrEqual(8);
     }
     expect(set).toContainEqual(root);
+  });
+});
+
+describe('scaleFretboardPositions', () => {
+  it('returns every neck position whose note is in the scale', () => {
+    const root = P(6, 5); // A ionian
+    const classes = new Set(scaleNotes('A', 'ionian'));
+    const set = scaleFretboardPositions(root, 'ionian', 12);
+    expect(set.length).toBeGreaterThan(0);
+    for (const p of set) expect(classes.has(noteAt(p.string, p.fret))).toBe(true);
+    // Covers the whole neck, not just a window.
+    expect(set.some(p => p.fret <= 2)).toBe(true);
+    expect(set.some(p => p.fret >= 10)).toBe(true);
+  });
+});
+
+describe('sampleByPercentage', () => {
+  const items = Array.from({ length: 20 }, (_, i) => i);
+  it('keeps all at 100 and none at 0', () => {
+    expect(sampleByPercentage(items, 100)).toHaveLength(20);
+    expect(sampleByPercentage(items, 0)).toHaveLength(0);
+  });
+  it('keeps a rounded share and only members of the input', () => {
+    const got = sampleByPercentage(items, 25);
+    expect(got).toHaveLength(5);
+    for (const g of got) expect(items).toContain(g);
+    expect(new Set(got).size).toBe(got.length); // no duplicates
+  });
+  it('clamps out-of-range percentages and leaves the input untouched', () => {
+    const copy = items.slice();
+    expect(sampleByPercentage(items, 150)).toHaveLength(20);
+    expect(sampleByPercentage(items, -10)).toHaveLength(0);
+    expect(items).toEqual(copy);
   });
 });

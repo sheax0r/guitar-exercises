@@ -61,6 +61,35 @@ export function boxWindow(rootFret: Fret, maxFret: Fret, span: number): [number,
   return [start, end];
 }
 
+// Every position on the whole neck (within [0, maxFret]) whose pitch-class is in
+// the mode rooted at `root` — the scale as it falls across the fretboard. Used
+// as the optional study overlay; roots are included (they are degree 0).
+export function scaleFretboardPositions(root: Pos, mode: Mode, maxFret: Fret): Pos[] {
+  const rootNote = noteAt(root.string, root.fret);
+  const classes = new Set<Note>(scaleNotes(rootNote, mode));
+  const out: Pos[] = [];
+  for (let s = 1 as StringNum; s <= 6; s = (s + 1) as StringNum) {
+    for (let f = 0; f <= maxFret; f++) {
+      if (classes.has(noteAt(s, f))) out.push({ string: s, fret: f });
+    }
+  }
+  return out;
+}
+
+// Keep a random `percentage`% of `items` (0..100, clamped; kept count rounded).
+// Fisher–Yates over a copy, so the input is untouched and the kept subset is a
+// uniform random snapshot — call once per prompt to keep it stable while shown.
+export function sampleByPercentage<T>(items: T[], percentage: number): T[] {
+  const pct = Math.max(0, Math.min(100, percentage));
+  const keep = Math.round((items.length * pct) / 100);
+  const a = items.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, keep);
+}
+
 // Every position inside the box window whose pitch-class is in the mode.
 export function boxPositions(root: Pos, mode: Mode, maxFret: Fret, span: number): Pos[] {
   const [start, end] = boxWindow(root.fret, maxFret, span);

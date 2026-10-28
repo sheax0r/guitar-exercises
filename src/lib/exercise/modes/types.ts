@@ -25,6 +25,7 @@ export interface PlayShapeConfig {
   inputMode: 'click' | 'mic';        // 'mic' valid only for octave + pitch judge
   micSensitivity: number;            // 0 (chill) .. 1 (sensitive); mic only
   micDeviceId: string | null;        // chosen audio input; null = default
+  displayNotePercentage: number;     // 0..100 of the scale's notes shown on the board
 }
 
 export interface PlayShapePrompt {
@@ -34,6 +35,9 @@ export interface PlayShapePrompt {
   variant: 'octave' | 'box';
   // How many positions the player must click to complete this prompt.
   expectedCount: number;
+  // A random subset (displayNotePercentage) of the whole-neck scale notes, shown
+  // as a study overlay. Empty at 0%; the full scale at 100%.
+  visiblePositions: Pos[];
 }
 
 export type PlayShapeAnswer = Pos;
@@ -51,6 +55,7 @@ export interface IdentifyModeConfig {
   highlightCharacteristic: boolean;  // reveal the characteristic degree after answering
   fixedRootNote: Note | null;        // null = random root per prompt
   promptMode: 'visual' | 'audio';    // 'audio' = hear the scale, name it by ear
+  displayNotePercentage: number;     // 0..100 of the scale's notes shown on the board
 }
 
 export interface IdentifyModePrompt {
@@ -59,6 +64,9 @@ export interface IdentifyModePrompt {
   mode: Mode;               // the answer — NOT revealed in the prompt UI
   positions: Pos[];         // all scale-note positions up to maxFret
   rootPositions: Pos[];     // the subset that are root notes (marked distinctly)
+  // A random subset (displayNotePercentage) of `positions`, re-rolled per prompt
+  // — the notes actually painted in the visual prompt. Full set at 100%.
+  visiblePositions: Pos[];
 }
 
 export type IdentifyModeAnswer = { mode: Mode };

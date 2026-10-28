@@ -7,7 +7,7 @@ import type {
   Pos
 } from './types';
 import { allPositionsOf, noteAt } from '../../music/notes';
-import { octaveFixedPositions } from './shape';
+import { octaveFixedPositions, sampleByPercentage } from './shape';
 import { scaleNotes, type Mode } from '../../music/modes';
 import type { StringNum } from '../../music/tuning';
 import type { Fret } from '../../music/notes';
@@ -82,8 +82,10 @@ export class IdentifyModeExercise
       fret: p.fret as Fret
     }));
 
+    const visiblePositions = sampleByPercentage(positions, this.config.displayNotePercentage);
+
     this.prev = { root, mode };
-    const prompt: IdentifyModePrompt = { root, rootNote, mode, positions, rootPositions };
+    const prompt: IdentifyModePrompt = { root, rootNote, mode, positions, rootPositions, visiblePositions };
     this.currentPrompt = prompt;
     this.promptStartedAt = Date.now();
     return prompt;
