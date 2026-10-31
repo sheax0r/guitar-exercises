@@ -272,6 +272,7 @@
       chordQualities,
       include7th,
       cagedMicJudge,
+      showTuner: stored.showTuner,
       recentSessions: rememberRecent(config, sessionHash(config))
     };
     savePrefs(prefs);

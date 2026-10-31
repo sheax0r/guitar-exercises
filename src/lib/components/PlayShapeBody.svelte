@@ -8,6 +8,9 @@
   import { MODE_DISPLAY, characteristicNote } from '../music/modes';
   import { playPluck } from '../audio/pluck';
   import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
+  import Tuner from './Tuner.svelte';
+  import type { TunerReading } from '../audio/tuner';
+  import { loadPrefs, updatePrefs } from '../storage/prefs';
   import { startPitchListener, listAudioInputs, type PitchListener } from '../audio/pitch';
   import MicSettings from './MicSettings.svelte';
 
@@ -58,6 +61,9 @@
   let micDeviceId = $state(untrack(() => config.micDeviceId));
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
   let micListener: PitchListener | null = null;
+  // Opt-in intonation check (off by default; remembered across sessions).
+  let showTuner = $state(loadPrefs().showTuner ?? false);
+  let tuner = $state<TunerReading | null>(null);
 
   // (Re)start the mic listener. Re-runs when the chosen device changes (the
   // only tracked dependency); sensitivity is applied live below without a
@@ -75,7 +81,7 @@
       // "advance" trigger. In mic mode advance is driven by the timer below.
       if (paused || awaitingAdvance) return;
       handleMic(midi);
-    }, { sensitivity: untrack(() => micSensitivity), deviceId })
+    }, { sensitivity: untrack(() => micSensitivity), deviceId, onTuner: (r) => { if (showTuner) tuner = r; } })
       .then((l) => {
         if (cancelled) { l.stop(); return; }
         micListener = l;
@@ -253,6 +259,13 @@
       <div class="mic" class:mic-error={micError !== null}>
         {#if micError}{micError}{:else}🎤 listening{lastHeard ? ` — heard ${lastHeard}` : '…'}{/if}
       </div>
+    {/if}
+    {#if config.inputMode === 'mic'}
+      {#if showTuner}<Tuner reading={tuner} compact />{/if}
+      <label class="toggle">
+        <input type="checkbox" bind:checked={showTuner} onchange={() => updatePrefs({ showTuner })} />
+        Tuner
+      </label>
     {/if}
     <label class="toggle">
       <input type="checkbox" bind:checked={showFretNumbers} />
