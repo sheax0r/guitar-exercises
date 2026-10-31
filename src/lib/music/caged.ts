@@ -14,6 +14,15 @@ export const CAGED_SHAPES: Record<CagedShape, { rootString: StringNum; lo: numbe
   D: { rootString: 4, lo: 0, hi: 3 }
 };
 
+// Scale positions hang off the same shapes but span a little wider than the
+// chord: these windows reproduce the five textbook pentatonic boxes (major
+// pentatonic off the major shapes, minor pentatonic off the minor shapes), and
+// any other scale of that family fills the same frets.
+export const CAGED_SCALE_WINDOWS: Record<'major' | 'minor', Record<CagedShape, { lo: number; hi: number }>> = {
+  major: { C: { lo: -3, hi: 0 }, A: { lo: -1, hi: 2 }, G: { lo: -3, hi: 0 }, E: { lo: -1, hi: 2 }, D: { lo: -1, hi: 3 } },
+  minor: { C: { lo: -3, hi: 1 }, A: { lo: 0, hi: 3 }, G: { lo: -3, hi: 0 }, E: { lo: 0, hi: 3 }, D: { lo: 0, hi: 3 } }
+};
+
 export type ChordQuality = 'major' | 'minor';
 export type ChordType = 'maj' | 'min' | 'maj7' | '7' | 'm7';
 
@@ -57,8 +66,15 @@ export interface CagedInstance {
 
 // Every placement of `shape` for `root` that fits within [0, maxFret], lowest
 // first. A window that would start below fret 0 only appears an octave up.
-export function cagedInstances(shape: CagedShape, root: Note, maxFret: number): CagedInstance[] {
-  const { rootString, lo, hi } = CAGED_SHAPES[shape];
+// `win` overrides the chord window (e.g. with a CAGED_SCALE_WINDOWS entry).
+export function cagedInstances(
+  shape: CagedShape,
+  root: Note,
+  maxFret: number,
+  win: { lo: number; hi: number } = CAGED_SHAPES[shape]
+): CagedInstance[] {
+  const { rootString } = CAGED_SHAPES[shape];
+  const { lo, hi } = win;
   let base = 0;
   while (noteAt(rootString, base) !== root) base++;
   const out: CagedInstance[] = [];

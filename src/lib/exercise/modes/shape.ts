@@ -1,12 +1,13 @@
 import { noteAt, pitchOf, type Fret, type Note } from '../../music/notes';
 import type { StringNum } from '../../music/tuning';
-import { scaleNotes, MODE_OFFSETS, type Mode } from '../../music/modes';
+import { scaleNotes, scaleFamily, MODE_OFFSETS, type ScaleType } from '../../music/modes';
+import { cagedInstances, CAGED_SCALE_WINDOWS, type CagedShape, type CagedInstance } from '../../music/caged';
 
 export type Pos = { string: StringNum; fret: Fret };
 
 // The eight ascending absolute pitches of a one-octave run: the root pitch,
 // then each of the six scale degrees above it, then the octave root (+12).
-export function octaveSequencePitches(root: Pos, mode: Mode): number[] {
+export function octaveSequencePitches(root: Pos, mode: ScaleType): number[] {
   const p0 = pitchOf(root.string, root.fret);
   const offsets = MODE_OFFSETS[mode];
   const pitches = offsets.map(o => p0 + o);
@@ -30,7 +31,7 @@ function positionsAtPitch(pitch: number, maxFret: Fret): Pos[] {
 // minimises (|string - prevString|, fret) — stay near the current string, then
 // prefer the lower fret. Returns null if any pitch is unreachable within
 // maxFret (the prompt generator rejects such roots).
-export function octaveFixedPositions(root: Pos, mode: Mode, maxFret: Fret): Pos[] | null {
+export function octaveFixedPositions(root: Pos, mode: ScaleType, maxFret: Fret): Pos[] | null {
   const seq = octaveSequencePitches(root, mode);
   const result: Pos[] = [root];
   let prev = root;
@@ -64,7 +65,7 @@ export function boxWindow(rootFret: Fret, maxFret: Fret, span: number): [number,
 // Every position on the whole neck (within [0, maxFret]) whose pitch-class is in
 // the mode rooted at `root` — the scale as it falls across the fretboard. Used
 // as the optional study overlay; roots are included (they are degree 0).
-export function scaleFretboardPositions(root: Pos, mode: Mode, maxFret: Fret): Pos[] {
+export function scaleFretboardPositions(root: Pos, mode: ScaleType, maxFret: Fret): Pos[] {
   const rootNote = noteAt(root.string, root.fret);
   const classes = new Set<Note>(scaleNotes(rootNote, mode));
   const out: Pos[] = [];
@@ -91,9 +92,12 @@ export function sampleByPercentage<T>(items: T[], percentage: number): T[] {
 }
 
 // Every position inside the box window whose pitch-class is in the mode.
-export function boxPositions(root: Pos, mode: Mode, maxFret: Fret, span: number): Pos[] {
-  const [start, end] = boxWindow(root.fret, maxFret, span);
-  const rootNote = noteAt(root.string, root.fret);
+export function boxPositions(root: Pos, mode: ScaleType, maxFret: Fret, span: number): Pos[] {
+  return windowPositions(noteAt(root.string, root.fret), mode, boxWindow(root.fret, maxFret, span));
+}
+
+// Every position inside [start, end] whose pitch-class is in the scale.
+export function windowPositions(rootNote: Note, mode: ScaleType, [start, end]: [number, number]): Pos[] {
   const classes = new Set<Note>(scaleNotes(rootNote, mode));
   const out: Pos[] = [];
   for (let s = 1 as StringNum; s <= 6; s = (s + 1) as StringNum) {
@@ -102,4 +106,10 @@ export function boxPositions(root: Pos, mode: Mode, maxFret: Fret, span: number)
     }
   }
   return out;
+}
+
+// Every placement of the scale's `shape` position for `rootNote` within
+// maxFret, using the major or minor CAGED scale window for the scale's family.
+export function cagedScaleInstances(shape: CagedShape, rootNote: Note, mode: ScaleType, maxFret: Fret): CagedInstance[] {
+  return cagedInstances(shape, rootNote, maxFret, CAGED_SCALE_WINDOWS[scaleFamily(mode)][shape]);
 }

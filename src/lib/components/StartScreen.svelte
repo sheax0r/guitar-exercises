@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Note, ClosestAlgorithm, Direction } from '../music/notes';
   import type { Interval, ScaleQuality } from '../music/scales';
-  import { MODE_ORDER, type Mode } from '../music/modes';
+  import { MODE_ORDER, SCALE_ORDER, type ScaleType } from '../music/modes';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
   import { pushRecent } from '../storage/recent';
   import { summarize } from '../exercise/summary';
@@ -36,8 +36,8 @@
     {
       title: 'Modes',
       cards: [
-        { id: 'play-shape', name: 'Play the Shape', desc: 'Play a mode as an octave run or position box.' },
-        { id: 'identify-mode', name: 'Identify the Mode', desc: 'Name the mode from its notes or its sound.' }
+        { id: 'play-shape', name: 'Play the Shape', desc: 'Play a mode or scale as an octave run, box or CAGED position.' },
+        { id: 'identify-mode', name: 'Identify the Mode', desc: 'Name the mode or scale from its notes or its sound.' }
       ]
     },
     {
@@ -75,8 +75,8 @@
   let direction = $state<Direction>(stored.direction ?? 'nearest');
 
   // Modes-exercise settings.
-  let enabledModes = $state<Mode[]>(stored.enabledModes ?? [...MODE_ORDER]);
-  let shapeVariant = $state<'octave' | 'box'>(stored.shapeVariant ?? 'octave');
+  let enabledModes = $state<ScaleType[]>(stored.enabledModes ?? [...MODE_ORDER]);
+  let shapeVariant = $state<'octave' | 'box' | 'caged'>(stored.shapeVariant ?? 'octave');
   let octaveJudge = $state<'pitch' | 'fixed'>(stored.octaveJudge ?? 'fixed');
   let boxSpan = $state<number>(stored.boxSpan ?? 4);
 
@@ -127,7 +127,7 @@
   );
 
   function buildConfig(): AnyConfig {
-    const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
+    const modes = SCALE_ORDER.filter(m => enabledModes.includes(m));
     const root = fixedRootNote === 'random' ? null : fixedRootNote;
     if (card === 'play-shape') {
       return {
@@ -145,7 +145,7 @@
         highlightCharacteristic,
         fixedRootNote: root,
         // Mic can't verify a fixed-fingering octave (ModesSettings also reverts the chip).
-        inputMode: shapeVariant === 'box' || octaveJudge === 'pitch' ? inputMode : 'click',
+        inputMode: shapeVariant !== 'octave' || octaveJudge === 'pitch' ? inputMode : 'click',
         micSensitivity,
         micDeviceId,
         displayNotePercentage

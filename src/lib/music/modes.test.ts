@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scaleNotes, MODE_OFFSETS, MODE_ORDER, MODE_DISPLAY, MODE_CHARACTERISTIC, characteristicNote } from './modes';
+import { scaleNotes, MODE_OFFSETS, MODE_ORDER, MODE_DISPLAY, MODE_CHARACTERISTIC, characteristicNote, SCALE_ORDER, scaleFamily } from './modes';
 
 describe('modes', () => {
   it('C ionian is the C major scale', () => {
@@ -44,5 +44,33 @@ describe('modes', () => {
     expect(characteristicNote('C', 'dorian')).toBe('A');
     expect(characteristicNote('C', 'mixolydian')).toBe('A#'); // Bb
     expect(characteristicNote('G', 'mixolydian')).toBe('F');  // G mixo b7 = F
+  });
+});
+
+describe('scale types beyond the modes', () => {
+  it('spells the new scales', () => {
+    expect(scaleNotes('C', 'major-pentatonic')).toEqual(['C', 'D', 'E', 'G', 'A']);
+    expect(scaleNotes('A', 'minor-pentatonic')).toEqual(['A', 'C', 'D', 'E', 'G']);
+    expect(scaleNotes('A', 'blues')).toEqual(['A', 'C', 'D', 'D#', 'E', 'G']);
+    expect(scaleNotes('A', 'harmonic-minor')).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G#']);
+    expect(scaleNotes('A', 'melodic-minor')).toEqual(['A', 'B', 'C', 'D', 'E', 'F#', 'G#']);
+  });
+  it('SCALE_ORDER is the seven modes then the five new scales, all displayable', () => {
+    expect(SCALE_ORDER.slice(0, 7)).toEqual(MODE_ORDER);
+    expect(SCALE_ORDER).toHaveLength(12);
+    for (const s of SCALE_ORDER) {
+      expect(MODE_DISPLAY[s]).toBeTruthy();
+      expect(MODE_OFFSETS[s][0]).toBe(0);
+      // the characteristic degree is in the scale
+      expect(MODE_OFFSETS[s]).toContain(MODE_CHARACTERISTIC[s]);
+    }
+  });
+  it('scaleFamily: major if it has a major 3rd, else minor', () => {
+    expect(scaleFamily('ionian')).toBe('major');
+    expect(scaleFamily('mixolydian')).toBe('major');
+    expect(scaleFamily('major-pentatonic')).toBe('major');
+    expect(scaleFamily('dorian')).toBe('minor');
+    expect(scaleFamily('blues')).toBe('minor');
+    expect(scaleFamily('melodic-minor')).toBe('minor');
   });
 });

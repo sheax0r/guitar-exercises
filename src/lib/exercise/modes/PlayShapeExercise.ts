@@ -1,8 +1,9 @@
 import type { Exercise, AnswerResult } from '../Exercise';
 import type { PlayShapeConfig, PlayShapePrompt, PlayShapeAnswer, ModesReport, Pos } from './types';
-import { noteAt, pitchOf, allPositionsOf } from '../../music/notes';
-import type { Mode } from '../../music/modes';
-import { octaveFixedPositions, octaveSequencePitches, boxPositions, scaleFretboardPositions, sampleByPercentage } from './shape';
+import { noteAt, pitchOf, allPositionsOf, CHROMATIC } from '../../music/notes';
+import { CAGED_ORDER, type CagedShape } from '../../music/caged';
+import type { ScaleType } from '../../music/modes';
+import { octaveFixedPositions, octaveSequencePitches, boxPositions, windowPositions, cagedScaleInstances, scaleFretboardPositions, sampleByPercentage } from './shape';
 import { aggregateModesReport, type ModeAttempt } from './report';
 
 function samePos(a: Pos, b: Pos): boolean {
@@ -15,7 +16,7 @@ export class PlayShapeExercise
   private config!: PlayShapeConfig;
   private currentPrompt: PlayShapePrompt | null = null;
   private promptStartedAt = 0;
-  private prev: { root: Pos; mode: Mode } | null = null;
+  private prev: { root: Pos; mode: ScaleType } | null = null;
   private attempts: ModeAttempt[] = [];
 
   // Per-prompt progress.
@@ -44,7 +45,7 @@ export class PlayShapeExercise
     this.hadWrong = false;
   }
 
-  private pickMode(): Mode {
+  private pickMode(): ScaleType {
     const pool = this.config.enabledModes;
     return pool[Math.floor(Math.random() * pool.length)];
   }
@@ -52,9 +53,10 @@ export class PlayShapeExercise
   getNextPrompt(): PlayShapePrompt {
     const { maxFret, shapeVariant, boxSpan } = this.config;
     let root: Pos;
-    let mode: Mode;
+    let mode: ScaleType;
     let positions: Pos[];
     let pitches: number[] = [];
+    let cagedShape: CagedShape | undefined;
 
     // Keep drawing until the shape is reachable within maxFret and the
     // (root, mode) pair differs from the previous prompt. Bounded so an
@@ -74,7 +76,22 @@ export class PlayShapeExercise
       ? allPositionsOf(this.config.fixedRootNote, maxFret)
       : null;
     const rootPool = rawPool && rawPool.length > 0 ? rawPool : null;
+    const pick = <T>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)];
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      if (shapeVariant === 'caged') {
+        // A random CAGED position of a random (or the fixed) root note.
+        mode = this.pickMode();
+        const rootNote = this.config.fixedRootNote ?? pick(CHROMATIC);
+        cagedShape = pick(CAGED_ORDER);
+        const insts = cagedScaleInstances(cagedShape, rootNote, mode, maxFret);
+        if (insts.length === 0) continue;
+        const inst = pick(insts);
+        root = inst.root;
+        if (this.prev && samePos(this.prev.root, root) && this.prev.mode === mode) continue;
+        positions = windowPositions(rootNote, mode, inst.window);
+        found = true;
+        break;
+      }
       let string: Pos['string'];
       let fret: number;
       if (rootPool) {
@@ -114,13 +131,9 @@ export class PlayShapeExercise
 
     this.prev = { root, mode };
     this.resetProgress();
-    if (shapeVariant === 'octave') {
-      this.expectedPositions = positions!;
-      this.expectedPitches = pitches;
-    } else {
-      this.expectedPositions = positions!;
-      this.clicked = positions!.map(() => false);
-    }
+    this.expectedPositions = positions!;
+    if (shapeVariant === 'octave') this.expectedPitches = pitches;
+    else this.clicked = positions!.map(() => false);
 
     const scaleAll = scaleFretboardPositions(root, mode, maxFret);
     const prompt: PlayShapePrompt = {
@@ -128,6 +141,7 @@ export class PlayShapeExercise
       rootNote: noteAt(root.string, root.fret),
       mode,
       variant: shapeVariant,
+      cagedShape,
       expectedCount: positions!.length,
       visiblePositions: sampleByPercentage(scaleAll, this.config.displayNotePercentage)
     };
@@ -168,9 +182,9 @@ export class PlayShapeExercise
   }
 
   // Mic input: a detected absolute pitch (MIDI) instead of a clicked position.
-  // Only reached for octave+pitch and box variants (the start screen gates it).
+  // Reached for octave+pitch, box and caged variants (the start screen gates it).
   //  - octave: correct iff the pitch matches the expected next step.
-  //  - box: a note is matched by pitch CLASS and claims the lowest-pitch
+  //  - box/caged: a note is matched by pitch CLASS and claims the lowest-pitch
   //    un-taken box position of that note (its first low->high occurrence), so
   //    a note with several spots in the window fills them bottom-up as replayed.
   submitMicNote(midi: number): AnswerResult<Pos> {

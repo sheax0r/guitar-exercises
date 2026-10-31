@@ -5,3 +5,4 @@ dist
 # Ideate test fixtures: fetched by test/fetch_fixtures.py, not committed
 test/fixtures/*
 !test/fixtures/ATTRIBUTION.md
+.playwright-mcp/

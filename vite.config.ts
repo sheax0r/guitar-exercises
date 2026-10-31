@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
+import { configDefaults } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { svelteTesting } from '@testing-library/svelte/vite';
 
@@ -8,6 +9,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/test-setup.ts']
+    setupFiles: ['./src/test-setup.ts'],
+    // Agent worktrees live under .claude/; don't collect their tests.
+    exclude: [...configDefaults.exclude, '.claude/**']
   }
 });

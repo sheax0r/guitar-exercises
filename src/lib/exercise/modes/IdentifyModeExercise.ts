@@ -8,7 +8,7 @@ import type {
 } from './types';
 import { allPositionsOf, noteAt } from '../../music/notes';
 import { octaveFixedPositions, sampleByPercentage } from './shape';
-import { scaleNotes, type Mode } from '../../music/modes';
+import { scaleNotes, type ScaleType } from '../../music/modes';
 import type { StringNum } from '../../music/tuning';
 import type { Fret } from '../../music/notes';
 import { aggregateModesReport, type ModeAttempt } from './report';
@@ -23,7 +23,7 @@ export class IdentifyModeExercise
   private config!: IdentifyModeConfig;
   private currentPrompt: IdentifyModePrompt | null = null;
   private promptStartedAt = 0;
-  private prev: { root: Pos; mode: Mode } | null = null;
+  private prev: { root: Pos; mode: ScaleType } | null = null;
   private attempts: ModeAttempt[] = [];
 
   start(config: IdentifyModeConfig): void {
@@ -34,7 +34,7 @@ export class IdentifyModeExercise
     this.attempts = [];
   }
 
-  private pickMode(): Mode {
+  private pickMode(): ScaleType {
     const pool = this.config.enabledModes;
     return pool[Math.floor(Math.random() * pool.length)];
   }
@@ -52,7 +52,7 @@ export class IdentifyModeExercise
     // reachable octave shape — otherwise the prompt would be silent AND hidden.
     const needsPlayableOctave = this.config.promptMode === 'audio';
     let root: Pos = { string: 1, fret: 0 };
-    let mode: Mode = this.config.enabledModes[0];
+    let mode: ScaleType = this.config.enabledModes[0];
     const MAX_ATTEMPTS = 500;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       if (rootPool) {

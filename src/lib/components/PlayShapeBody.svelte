@@ -48,8 +48,8 @@
     return () => { droneHandle?.stop(); droneHandle = null; };
   });
 
-  // Mic input: detected pitches drive the same answer path as clicks. Only
-  // reached for the octave/pitch variant (enforced by the start screen).
+  // Mic input: detected pitches drive the same answer path as clicks. Not
+  // reached for the fixed-fingering octave (enforced by the start screen).
   let micError = $state<string | null>(null);
   let lastHeard = $state<string | null>(null);
   let micAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -246,7 +246,7 @@
 >
   {#snippet headerExtra()}
     <div class="target">
-      <strong>{modeLabel}</strong> from {currentPrompt?.rootNote}
+      <strong>{modeLabel}</strong> from {currentPrompt?.rootNote}{#if currentPrompt?.cagedShape}, <strong>{currentPrompt.cagedShape} shape</strong>{/if}
     </div>
     <div class="progress">{litCorrect.length} / {currentPrompt?.expectedCount ?? 0}</div>
     {#if config.inputMode === 'mic'}

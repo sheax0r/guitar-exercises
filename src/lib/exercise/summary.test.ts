@@ -94,6 +94,12 @@ describe('summarize', () => {
     expect(s).not.toContain('Mic');
   });
 
+  it('play-shape caged with pentatonics', () => {
+    const s = summarize({ ...shape, enabledModes: ['minor-pentatonic', 'blues'], shapeVariant: 'caged' });
+    expect(s).toContain('Minor pentatonic, Blues · CAGED · Mic');
+    expect(summarize({ ...shape, enabledModes: ['ionian', 'dorian', 'blues', 'aeolian'] })).toContain('4 scales');
+  });
+
   it('identify-mode by ear', () => {
     expect(summarize(identify)).toContain('5 modes · By ear');
   });
