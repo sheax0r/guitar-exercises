@@ -1,20 +1,43 @@
 <script lang="ts">
-  import { CHROMATIC, NOTE_DISPLAY, type Note, type ClosestAlgorithm, type Direction } from '../music/notes';
+  import type { Note, ClosestAlgorithm, Direction } from '../music/notes';
   import type { Interval, ScaleQuality } from '../music/scales';
-  import { MODE_ORDER, MODE_DISPLAY, type Mode } from '../music/modes';
+  import { MODE_ORDER, type Mode } from '../music/modes';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
-  import type { ExerciseConfig } from '../exercise/types';
-  import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
+  import { pushRecent } from '../storage/recent';
+  import { summarize } from '../exercise/summary';
+  import { parseHash, sessionHash } from '../routing/hash';
   import type { AnyConfig } from '../exercise/config';
   import { DEFAULT_MIC_SENSITIVITY } from '../audio/pitchMath';
   import { listAudioInputs } from '../audio/pitch';
-  import MicSettings from './MicSettings.svelte';
+  import ChipGroup from './start/ChipGroup.svelte';
+  import DurationPicker from './start/DurationPicker.svelte';
+  import RootNotesSettings from './start/RootNotesSettings.svelte';
+  import IntervalsSettings from './start/IntervalsSettings.svelte';
+  import ModesSettings from './start/ModesSettings.svelte';
 
   type Props = {
     onStart: (config: AnyConfig) => void;
   };
 
   let { onStart }: Props = $props();
+
+  type Card = 'root-notes' | 'intervals' | 'play-shape' | 'identify-mode';
+  const CARD_GROUPS: Array<{ title: string; cards: Array<{ id: Card; name: string; desc: string }> }> = [
+    {
+      title: 'Fretboard',
+      cards: [
+        { id: 'root-notes', name: 'Root Notes', desc: 'Find the nearest occurrence of a note.' },
+        { id: 'intervals', name: 'Intervals', desc: 'Find the 3rd or 5th above a note, in key.' }
+      ]
+    },
+    {
+      title: 'Modes',
+      cards: [
+        { id: 'play-shape', name: 'Play the Shape', desc: 'Play a mode as an octave run or position box.' },
+        { id: 'identify-mode', name: 'Identify the Mode', desc: 'Name the mode from its notes or its sound.' }
+      ]
+    }
+  ];
 
   const stored = loadPrefs();
   // Narrow-viewport heuristic for the default fret count: phones (and most
@@ -26,8 +49,9 @@
     && window.matchMedia('(max-width: 768px)').matches;
   const DEFAULT_MAX_FRET = isNarrowViewport ? 12 : 24;
 
-  let exercise = $state<AnyConfig['exercise']>(stored.exercise ?? 'root-notes');
-  let targetNote = $state<Note>(stored.targetNote ?? 'A');
+  // random-roots is Root Notes with the A/E/D target.
+  let card = $state<Card>(stored.exercise === 'random-roots' ? 'root-notes' : stored.exercise ?? 'root-notes');
+  let rootTarget = $state<Note | 'random'>(stored.exercise === 'random-roots' ? 'random' : stored.targetNote ?? 'A');
   let durationSec = $state<number>(stored.durationSec ?? 300);
   let maxFret = $state<number>(stored.maxFret ?? DEFAULT_MAX_FRET);
   let showAllLabels = $state<boolean>(stored.showAllLabels ?? false);
@@ -40,8 +64,6 @@
   let keyRoot = $state<Note | 'random'>(stored.keyRoot ?? 'C');
   let keyQuality = $state<ScaleQuality | 'random'>(stored.keyQuality ?? 'major');
   let direction = $state<Direction>(stored.direction ?? 'nearest');
-  let customMode = $state<boolean>(!continuous && ![60, 180, 300, 600].includes(durationSec));
-  let customValue = $state<number>(customMode ? durationSec : 120);
 
   // Modes-exercise settings.
   let enabledModes = $state<Mode[]>(stored.enabledModes ?? [...MODE_ORDER]);
@@ -62,75 +84,35 @@
   // Best-effort device list (labels appear only after mic permission).
   $effect(() => { listAudioInputs().then(d => { micDevices = d; }); });
 
-  const isModes = $derived(exercise === 'play-shape' || exercise === 'identify-mode');
-  // Mic input works for the box (notes matched by pitch) and for the octave run
-  // judged by pitch. Not for fixed-fingering octave: mic can't verify position.
-  const micEligible = $derived(
-    exercise === 'play-shape' &&
-      (shapeVariant === 'box' || (shapeVariant === 'octave' && octaveJudge === 'pitch'))
+  // Stored hashes that no longer parse (or aren't strings) are skipped.
+  const recents = (Array.isArray(stored.recentSessions) ? stored.recentSessions : [])
+    .filter((h): h is string => typeof h === 'string')
+    .flatMap(hash => {
+      const route = parseHash(hash);
+      return route.screen === 'session' ? [{ hash, config: route.config }] : [];
+    });
+
+  const exercise = $derived<AnyConfig['exercise']>(
+    card === 'root-notes' && rootTarget === 'random' ? 'random-roots' : card
   );
-  // Keep the input mode valid when the variant/judge change out from under it.
-  $effect(() => {
-    if (inputMode === 'mic' && !micEligible) inputMode = 'click';
-  });
-
-  const DURATIONS = [
-    { label: '1m', sec: 60 },
-    { label: '3m', sec: 180 },
-    { label: '5m', sec: 300 },
-    { label: '10m', sec: 600 }
-  ];
-
-  const FRET_OPTIONS = [12, 22, 24];
-
-  function pickPreset(sec: number) {
-    continuous = false;
-    customMode = false;
-    durationSec = sec;
-  }
-
-  function pickCustom() {
-    continuous = false;
-    customMode = true;
-    durationSec = customValue > 0 ? customValue : 120;
-  }
-
-  function pickContinuous() {
-    continuous = true;
-    customMode = false;
-  }
-
-  function onCustomChange(e: Event) {
-    const v = parseInt((e.target as HTMLInputElement).value, 10);
-    if (!Number.isFinite(v) || v <= 0) {
-      customValue = 0;
-      return;
-    }
-    customValue = v;
-    if (customMode) durationSec = v;
-  }
-
-  function toggleMode(m: Mode) {
-    enabledModes = enabledModes.includes(m)
-      ? enabledModes.filter(x => x !== m)
-      : [...enabledModes, m];
-  }
+  // random-roots ignores targetNote; keep the last fixed pick.
+  const targetNote = $derived<Note>(rootTarget === 'random' ? (stored.targetNote ?? 'A') : rootTarget);
+  const isModes = $derived(card === 'play-shape' || card === 'identify-mode');
 
   const durationValid = $derived(continuous || durationSec > 0);
   // A box shape needs a sane span; an empty number input binds to null.
   const boxSpanValid = $derived(
-    exercise !== 'play-shape' || shapeVariant !== 'box' || (Number.isInteger(boxSpan) && boxSpan >= 3)
+    card !== 'play-shape' || shapeVariant !== 'box' || (Number.isInteger(boxSpan) && boxSpan >= 3)
   );
   const valid = $derived(
     durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid
   );
 
-  function handleStart() {
-    if (!valid) return;
-    let config: AnyConfig;
-    if (exercise === 'play-shape') {
-      const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
-      config = {
+  function buildConfig(): AnyConfig {
+    const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
+    const root = fixedRootNote === 'random' ? null : fixedRootNote;
+    if (card === 'play-shape') {
+      return {
         exercise: 'play-shape',
         enabledModes: modes,
         shapeVariant,
@@ -143,15 +125,16 @@
         playSound,
         drone,
         highlightCharacteristic,
-        fixedRootNote: fixedRootNote === 'random' ? null : fixedRootNote,
-        inputMode: micEligible ? inputMode : 'click',
+        fixedRootNote: root,
+        // ModesSettings reverts inputMode to click when mic isn't eligible.
+        inputMode,
         micSensitivity,
         micDeviceId,
         displayNotePercentage
-      } satisfies PlayShapeConfig;
-    } else if (exercise === 'identify-mode') {
-      const modes = MODE_ORDER.filter(m => enabledModes.includes(m));
-      config = {
+      };
+    }
+    if (card === 'identify-mode') {
+      return {
         exercise: 'identify-mode',
         enabledModes: modes,
         maxFret,
@@ -161,28 +144,34 @@
         playSound,
         drone,
         highlightCharacteristic,
-        fixedRootNote: fixedRootNote === 'random' ? null : fixedRootNote,
+        fixedRootNote: root,
         promptMode: identifyPromptMode,
         displayNotePercentage
-      } satisfies IdentifyModeConfig;
-    } else {
-      config = {
-        exercise,
-        targetNote,
-        durationSec,
-        continuous,
-        maxFret,
-        showAllLabels,
-        showRootMarkers,
-        showFretNumbers,
-        playSound,
-        algorithm,
-        intervalKind,
-        keyRoot,
-        keyQuality,
-        direction
-      } satisfies ExerciseConfig;
+      };
     }
+    return {
+      exercise: exercise as 'root-notes' | 'random-roots' | 'intervals',
+      targetNote,
+      durationSec,
+      continuous,
+      maxFret,
+      showAllLabels,
+      showRootMarkers,
+      showFretNumbers,
+      playSound,
+      algorithm,
+      intervalKind,
+      keyRoot,
+      keyQuality,
+      direction
+    };
+  }
+
+  const summary = $derived(summarize(buildConfig()));
+
+  function handleStart() {
+    if (!valid) return;
+    const config = buildConfig();
     const prefs: Prefs = {
       exercise,
       targetNote,
@@ -209,9 +198,18 @@
       identifyPromptMode,
       micSensitivity,
       micDeviceId,
-      displayNotePercentage
+      displayNotePercentage,
+      recentSessions: pushRecent(stored.recentSessions, sessionHash(config))
     };
     savePrefs(prefs);
+    onStart(config);
+  }
+
+  function startRecent(r: { hash: string; config: AnyConfig }) {
+    // The mic device isn't in the hash; use the one currently chosen.
+    const config = r.config.exercise === 'play-shape' ? { ...r.config, micDeviceId } : r.config;
+    const current = loadPrefs();
+    savePrefs({ ...current, recentSessions: pushRecent(current.recentSessions, r.hash) } as Prefs);
     onStart(config);
   }
 </script>
@@ -219,309 +217,151 @@
 <div class="start">
   <h1>Guitar Exercises</h1>
 
-  <div class="row">
-    <label for="exercise">Exercise</label>
-    <select id="exercise" bind:value={exercise}>
-      <option value="root-notes">Root Notes</option>
-      <option value="random-roots">Random Roots</option>
-      <option value="intervals">Intervals</option>
-      <option value="play-shape">Play the Shape (modes)</option>
-      <option value="identify-mode">Identify the Mode</option>
-    </select>
-  </div>
-
-  {#if exercise === 'random-roots'}
+  {#if recents.length > 0}
     <div class="row">
-      <span class="label">Target notes</span>
-      <span class="hint">A, E, D — randomized each prompt</span>
-    </div>
-  {:else if exercise === 'intervals'}
-    <div class="row">
-      <label for="interval">Interval</label>
-      <select id="interval" bind:value={intervalKind}>
-        <option value="3rd">3rd</option>
-        <option value="5th">5th</option>
-        <option value="random">Random each prompt</option>
-      </select>
-    </div>
-    <div class="row">
-      <label for="keyroot">Key</label>
-      <select id="keyroot" bind:value={keyRoot}>
-        <option value="random">Random each prompt</option>
-        {#each CHROMATIC as n}
-          <option value={n}>{NOTE_DISPLAY[n]}</option>
-        {/each}
-      </select>
-    </div>
-    <div class="row">
-      <label for="keyqual">Key quality</label>
-      <select id="keyqual" bind:value={keyQuality}>
-        <option value="major">Major</option>
-        <option value="minor">Minor</option>
-        <option value="random">Random each prompt</option>
-      </select>
-    </div>
-    <div class="row">
-      <label for="direction">Direction</label>
-      <select id="direction" bind:value={direction}>
-        <option value="nearest">Nearest (either way)</option>
-        <option value="ascending">Ascending (higher pitch)</option>
-      </select>
-    </div>
-  {:else if isModes}
-    <div class="row">
-      <span class="label">Modes</span>
+      <span class="label">Recent</span>
       <div class="chips">
-        {#each MODE_ORDER as m}
-          <button
-            type="button"
-            class:chip={true}
-            class:chip-active={enabledModes.includes(m)}
-            onclick={() => toggleMode(m)}
-          >{MODE_DISPLAY[m]}</button>
+        {#each recents as r}
+          <button type="button" class="chip recent" onclick={() => startRecent(r)}>{summarize(r.config)}</button>
         {/each}
       </div>
-      {#if enabledModes.length === 0}
-        <span class="hint warn">Enable at least one mode.</span>
-      {/if}
     </div>
+  {/if}
 
-    {#if exercise === 'play-shape'}
-      <div class="row">
-        <span class="label">Shape</span>
-        <div class="chips">
-          <button type="button" class:chip={true} class:chip-active={shapeVariant === 'octave'} onclick={() => (shapeVariant = 'octave')}>One octave</button>
-          <button type="button" class:chip={true} class:chip-active={shapeVariant === 'box'} onclick={() => (shapeVariant = 'box')}>Position box</button>
-        </div>
-      </div>
-
-      {#if shapeVariant === 'octave'}
-        <div class="row">
-          <span class="label">Judging</span>
-          <div class="chips">
-            <button type="button" class:chip={true} class:chip-active={octaveJudge === 'fixed'} onclick={() => (octaveJudge = 'fixed')}>Fixed fingering</button>
-            <button type="button" class:chip={true} class:chip-active={octaveJudge === 'pitch'} onclick={() => (octaveJudge = 'pitch')}>Any position (by pitch)</button>
-          </div>
-        </div>
-      {:else}
-        <div class="row">
-          <label for="span">Box span (frets)</label>
-          <input id="span" type="number" min="3" step="1" bind:value={boxSpan} />
-        </div>
-      {/if}
-
-      <div class="row">
-        <span class="label">Input</span>
-        <div class="chips">
-          <button type="button" class:chip={true} class:chip-active={inputMode === 'click'} onclick={() => (inputMode = 'click')}>Click the notes</button>
+  {#each CARD_GROUPS as g}
+    <section class="row">
+      <h2>{g.title}</h2>
+      <div class="cards">
+        {#each g.cards as c}
           <button
             type="button"
-            class:chip={true}
-            class:chip-active={inputMode === 'mic' && micEligible}
-            disabled={!micEligible}
-            title={micEligible ? '' : 'Play (mic) needs Position box, or One octave judged by Any position (by pitch)'}
-            onclick={() => micEligible && (inputMode = 'mic')}
-          >Play (mic)</button>
-        </div>
-        {#if !micEligible}
-          <span class="hint">Mic input works with Position box, or One octave + Any position (by pitch).</span>
-        {/if}
+            class="card"
+            class:card-active={card === c.id}
+            data-exercise={c.id}
+            aria-pressed={card === c.id}
+            onclick={() => (card = c.id)}
+          >
+            <strong>{c.name}</strong>
+            <span>{c.desc}</span>
+          </button>
+        {/each}
       </div>
+    </section>
+  {/each}
 
-      {#if micEligible && inputMode === 'mic'}
-        <div class="row">
-          <span class="label">Mic settings</span>
-          <MicSettings bind:sensitivity={micSensitivity} bind:deviceId={micDeviceId} devices={micDevices} />
-          <span class="hint">Adjustable mid-session from the pause screen too. Device names appear after you allow mic access.</span>
-        </div>
-      {/if}
-    {/if}
-
-    {#if exercise === 'identify-mode'}
-      <div class="row">
-        <span class="label">Prompt</span>
-        <div class="chips">
-          <button type="button" class:chip={true} class:chip-active={identifyPromptMode === 'visual'} onclick={() => (identifyPromptMode = 'visual')}>See the notes</button>
-          <button type="button" class:chip={true} class:chip-active={identifyPromptMode === 'audio'} onclick={() => (identifyPromptMode = 'audio')}>Hear the scale</button>
-        </div>
-      </div>
-    {/if}
-
-    <div class="row">
-      <span class="label">Root</span>
-      <div class="chips">
-        <button type="button" class:chip={true} class:chip-active={fixedRootNote === 'random'} onclick={() => (fixedRootNote = 'random')}>Random each prompt</button>
-        <button type="button" class:chip={true} class:chip-active={fixedRootNote !== 'random'} onclick={() => (fixedRootNote = fixedRootNote === 'random' ? 'C' : fixedRootNote)}>Fixed</button>
-        {#if fixedRootNote !== 'random'}
-          <select aria-label="Fixed root note" bind:value={fixedRootNote}>
-            {#each CHROMATIC as n}
-              <option value={n}>{NOTE_DISPLAY[n]}</option>
-            {/each}
-          </select>
-        {/if}
-      </div>
-    </div>
-
-    <div class="row">
-      <label>
-        <input type="checkbox" bind:checked={drone} />
-        Drone the root
-      </label>
-    </div>
-
-    <div class="row">
-      <label>
-        <input type="checkbox" bind:checked={highlightCharacteristic} />
-        Highlight the characteristic note
-      </label>
-    </div>
-
-    <div class="row">
-      <label for="shownotes">Show scale notes: {displayNotePercentage}%</label>
-      <input
-        id="shownotes"
-        type="range"
-        min="0"
-        max="100"
-        step="5"
-        bind:value={displayNotePercentage}
-      />
-      <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
-    </div>
+  {#if card === 'root-notes'}
+    <RootNotesSettings bind:target={rootTarget} />
+  {:else if card === 'intervals'}
+    <IntervalsSettings bind:intervalKind bind:keyRoot bind:keyQuality bind:direction />
   {:else}
-    <div class="row">
-      <label for="note">Root note</label>
-      <select id="note" bind:value={targetNote}>
-        {#each CHROMATIC as n}
-          <option value={n}>{NOTE_DISPLAY[n]}</option>
-        {/each}
-      </select>
-    </div>
+    <ModesSettings
+      exercise={card}
+      bind:enabledModes
+      bind:shapeVariant
+      bind:octaveJudge
+      bind:boxSpan
+      bind:inputMode
+      bind:micSensitivity
+      bind:micDeviceId
+      {micDevices}
+      bind:identifyPromptMode
+      bind:fixedRootNote
+    />
   {/if}
 
   <div class="row">
     <span class="label">Duration</span>
-    <div class="chips">
-      {#each DURATIONS as d}
-        <button
-          type="button"
-          class:chip={true}
-          class:chip-active={!continuous && !customMode && durationSec === d.sec}
-          onclick={() => pickPreset(d.sec)}
-        >{d.label}</button>
-      {/each}
-      <button
-        type="button"
-        class:chip={true}
-        class:chip-active={!continuous && customMode}
-        onclick={pickCustom}
-      >Custom</button>
-      {#if !continuous && customMode}
-        <input
-          type="number"
-          min="1"
-          step="1"
-          value={customValue}
-          oninput={onCustomChange}
-          aria-label="Custom duration in seconds"
-        />
-        <span class="hint">seconds</span>
-      {/if}
-      <button
-        type="button"
-        class:chip={true}
-        class:chip-active={continuous}
-        onclick={pickContinuous}
-      >Continuous</button>
-    </div>
+    <DurationPicker bind:durationSec bind:continuous />
   </div>
 
   <div class="row">
     <span class="label">Frets</span>
-    <div class="chips">
-      {#each FRET_OPTIONS as n}
-        <button
-          type="button"
-          class:chip={true}
-          class:chip-active={maxFret === n}
-          onclick={() => (maxFret = n)}
-        >{n}</button>
-      {/each}
-    </div>
+    <ChipGroup
+      bind:value={maxFret}
+      label="Frets"
+      options={[12, 22, 24].map(n => ({ value: n, label: String(n) }))}
+    />
   </div>
 
-  {#if !isModes}
-    <div class="row">
-      <label>
-        <input type="checkbox" bind:checked={showAllLabels} />
-        Show all labels (warm-up mode)
-      </label>
+  <details class="more">
+    <summary>More options</summary>
+    <div class="more-body">
+      <label><input type="checkbox" bind:checked={showFretNumbers} /> Show fret numbers</label>
+      <label><input type="checkbox" bind:checked={playSound} /> Play notes</label>
+      {#if isModes}
+        <label><input type="checkbox" bind:checked={drone} /> Drone the root</label>
+        <label><input type="checkbox" bind:checked={highlightCharacteristic} /> Highlight the characteristic note</label>
+        <div class="row">
+          <label class="label" for="shownotes">Show scale notes: {displayNotePercentage}%</label>
+          <input id="shownotes" type="range" min="0" max="100" step="5" bind:value={displayNotePercentage} />
+          <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
+        </div>
+      {:else}
+        <label><input type="checkbox" bind:checked={showAllLabels} /> Show all labels (warm-up mode)</label>
+        <label><input type="checkbox" bind:checked={showRootMarkers} /> Show root note positions</label>
+        <div class="row">
+          <span class="label">Closest-position algorithm</span>
+          <ChipGroup
+            bind:value={algorithm}
+            label="Closest-position algorithm"
+            options={[
+              { value: 'fret-first', label: 'Same fret first', title: 'Then closest string' },
+              { value: 'manhattan', label: 'Manhattan', title: 'Fret + string distance' }
+            ]}
+          />
+        </div>
+      {/if}
     </div>
+  </details>
 
-    <div class="row">
-      <label>
-        <input type="checkbox" bind:checked={showRootMarkers} />
-        Show root note positions
-      </label>
-    </div>
-  {/if}
-
-  <div class="row">
-    <label>
-      <input type="checkbox" bind:checked={showFretNumbers} />
-      Show fret numbers
-    </label>
+  <div class="start-bar">
+    <span class="summary">{summary}</span>
+    <button class="start-button" disabled={!valid} onclick={handleStart}>Start</button>
   </div>
-
-  <div class="row">
-    <label>
-      <input type="checkbox" bind:checked={playSound} />
-      Play notes
-    </label>
-  </div>
-
-  {#if !isModes}
-    <div class="row">
-      <label for="algorithm">Closest-position algorithm</label>
-      <select id="algorithm" bind:value={algorithm}>
-        <option value="fret-first">Same fret first (then closest string)</option>
-        <option value="manhattan">Manhattan (fret + string distance)</option>
-      </select>
-    </div>
-  {/if}
-
-  <button class="start-button" disabled={!valid} onclick={handleStart}>Start</button>
 </div>
 
 <style>
   .start {
     max-width: 600px;
-    margin: 40px auto;
-    padding: 24px;
+    margin: 40px auto 0;
+    padding: 24px 24px 32px;
     display: flex;
     flex-direction: column;
     gap: 20px;
   }
-  .row { display: flex; flex-direction: column; gap: 8px; }
-  .label { font-weight: 600; }
-  .hint { opacity: 0.7; font-size: 14px; }
-  .hint.warn { color: #e07a5f; opacity: 1; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .chip {
-    padding: 8px 16px;
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin: 0; }
+  .cards { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  @media (min-width: 520px) {
+    .cards { grid-template-columns: 1fr 1fr; }
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+    padding: 12px 14px;
     border: 1px solid #888;
+    border-radius: 8px;
     background: transparent;
-    border-radius: 999px;
-    cursor: pointer;
     color: inherit;
+    font: inherit;
+    cursor: pointer;
   }
-  .chip-active {
-    background: #ff8c42;
-    color: #1a1a1a;
-    border-color: #ff8c42;
-    font-weight: 700;
+  .card span { opacity: 0.7; font-size: 14px; }
+  .card-active { border-color: #ff8c42; box-shadow: inset 0 0 0 1px #ff8c42; }
+  .more summary { cursor: pointer; font-weight: 600; }
+  .more-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+  .start-bar {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    background: Canvas;
+    border-top: 1px solid #888;
   }
-  .chip:disabled { opacity: 0.4; cursor: not-allowed; }
+  .summary { flex: 1; min-width: 0; font-size: 14px; opacity: 0.85; }
   .start-button {
     padding: 14px 24px;
     font-size: 16px;
@@ -533,5 +373,4 @@
     cursor: pointer;
   }
   .start-button:disabled { opacity: 0.5; cursor: not-allowed; }
-  input[type="number"] { width: 80px; padding: 6px; }
 </style>
