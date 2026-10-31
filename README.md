@@ -49,6 +49,10 @@ npm run build
 
 Output goes to `dist/`. Serve those files from any static host.
 
+`npm run build:check` also fails if the entry chunk (Home + Learn menu) passes 150 kB raw
+(`scripts/check-bundle.mjs`). Sessions (`SessionScreen`) and Ideate load as lazy chunks;
+keep heavy imports behind them.
+
 ## Architecture
 
 See [`docs/superpowers/specs/2026-05-18-guitar-exercises-root-notes-design.md`](docs/superpowers/specs/2026-05-18-guitar-exercises-root-notes-design.md) for the full design.
