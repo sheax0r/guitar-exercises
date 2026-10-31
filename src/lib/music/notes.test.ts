@@ -198,3 +198,10 @@ describe('closestPositionOf ascending', () => {
     expect(result.length).toBeGreaterThan(0);
   });
 });
+
+describe('closestPositionOf with several targets', () => {
+  it('returns the nearest occurrence of any of them', () => {
+    // From 6/5 (A): D is 5/5 (same fret) and beats C at 6/8 and E at 5/7.
+    expect(closestPositionOf(['C', 'D', 'E'], { string: 6, fret: 5 }, 12)).toEqual([{ string: 5, fret: 5 }]);
+  });
+});

@@ -187,6 +187,10 @@ The Whistler pipeline lifts constraints recorded in
   exercises: timed chord-tone targeting, "play on beat 1/the and", and
   scoring onset error in ms. Move the metronome and calibration into
   `src/lib/audio/` as shared code.
+  - [x] Timed chord-tone targeting: shipped 2026-10-31 (shared metronome,
+    and the `whistler.calib` offset shifts the mic judging cut-over). See
+    `../specs/2026-10-31-chord-tone-targeting-design.md`.
+  - [ ] "Play on beat 1/the and" and scoring onset error in ms.
 - **Tuner.** The live cents readout becomes a shared widget, usable as an
   intonation check in any mic exercise.
 - **Call and Response** (roadmap item 5). Record the response, transcribe it

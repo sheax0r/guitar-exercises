@@ -17,10 +17,10 @@ lays out these skill layers:
 | 2 | Scale degrees relative to a key/chord | Yes: Intervals (2nd–7th, in key or chromatic from the root), Name the Degree |
 | 3 | Chord tones / arpeggios inside a position (CAGED) | Yes: CAGED Shapes |
 | 4 | Scales attached to those positions | Yes: modes, pentatonics, blues, harmonic/melodic minor, CAGED positions |
-| 5 | Targeting chord tones over changes | **No** |
+| 5 | Targeting chord tones over changes | Yes: Chord-Tone Targeting (untimed and timed) |
 | 6 | Ear to fingers (hear it, play it) | Partly: drone, Identify-by-ear |
 
-Layers 3 and 5 are the real gaps. They come first.
+Layers 3 and 5 were the real gaps, so they came first. Both have now shipped.
 
 ## Constraints that shape every item
 
@@ -108,7 +108,11 @@ the window, in any order. Reuse the mic plumbing from Play the Shape.
 
 Per-shape accuracy and time, the same layout as the per-mode stats.
 
-## 2. Chord-Tone Targeting (new exercise)
+## 2. Chord-Tone Targeting (new exercise) — SHIPPED
+
+Shipped 2026-10-31; see `2026-10-31-chord-tone-targeting-design.md`
+(7th chords throughout, merged blues bars, the timed mode with a
+latency-shifted judging cut-over, and a lenient mic rule).
 
 The most direct improvisation drill.
 
@@ -197,7 +201,7 @@ They are recorded so they are not forgotten; none is scoped yet.
 - **Rhythm, timing and phrasing.** There is no metronome, beat grid or rhythm
   judging. Every drill is untimed note-finding, but improvising is largely
   rhythmic: phrase length, rests, playing on and off the beat. Item 2's timed
-  mode is the first step only.
+  mode (shipped) is the first step only.
 - **Triads on string sets.** Closed and inverted triads on adjacent three-string
   groups (1-2-3, 2-3-4, 3-4-5, 4-5-6) and moving them along one string group.
   CAGED covers whole-position shapes, not small inversions, which are the
