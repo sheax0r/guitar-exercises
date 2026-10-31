@@ -5,11 +5,13 @@ import {
   cagedInstances,
   chordPositions,
   chordTypesFor,
+  CHORD_OFFSETS,
   nextShapeInstance,
   type CagedShape,
   type Pos
 } from '../../music/caged';
 import { aggregateGrouped } from '../modes/report';
+import { judgeStrum, type StrumVerdict } from '../../audio/strum';
 
 const pick = <T>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)];
 const samePos = (a: Pos, b: Pos) => a.string === b.string && a.fret === b.fret;
@@ -102,6 +104,20 @@ export class CagedExercise implements Exercise<CagedConfig, CagedPrompt, CagedAn
       if (best < 0 || pitch < pitchOf(this.expected[best].string, this.expected[best].fret)) best = i;
     });
     return this.claim(best) as AnswerResult<Pos>;
+  }
+
+  // Strum mode (find-tones): judge a whole strummed chord at once. Right lights
+  // every chord tone and completes the prompt; wrong counts against it and the
+  // player strums again.
+  submitStrum(midis: number[], requireBass: boolean): AnswerResult<Pos> & { verdict: StrumVerdict } {
+    const p = this.prompt;
+    if (!p) throw new Error('submitStrum called before getNextPrompt');
+    const root = CHROMATIC.indexOf(p.rootNote);
+    const verdict = judgeStrum(midis, CHORD_OFFSETS[p.chord].map(o => root + o), requireBass ? root : null);
+    if (!verdict.correct) this.hadWrong = true;
+    const lit = this.expected;
+    const res = this.finish(verdict.correct, lit, verdict.correct) as AnswerResult<Pos>;
+    return { ...res, verdict };
   }
 
   private claim(idx: number): AnswerResult<CagedAnswer> {

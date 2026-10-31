@@ -42,7 +42,7 @@ export function summarize(c: AnyConfig): string {
       const quals = c.qualities.length === 2 ? 'major/minor' : c.qualities[0];
       parts.push('CAGED', CAGED_VARIANT_LABEL[c.cagedVariant], shapes, `${quals}${c.include7th ? ' 7ths' : ''}`);
       if (c.fixedRootNote) parts.push(`in ${NOTE_DISPLAY[c.fixedRootNote]}`);
-      if (c.inputMode === 'mic') parts.push('Mic');
+      if (c.inputMode === 'mic') parts.push(c.micJudge === 'notes' ? 'Mic' : c.micJudge === 'strum' ? 'Mic (strum)' : 'Mic (strum, root in bass)');
       break;
     }
   }

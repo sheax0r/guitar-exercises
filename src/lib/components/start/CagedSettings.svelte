@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Note } from '../../music/notes';
   import { CAGED_ORDER, type CagedShape, type ChordQuality } from '../../music/caged';
-  import type { CagedVariant } from '../../exercise/caged/types';
+  import type { CagedMicJudge, CagedVariant } from '../../exercise/caged/types';
   import ChipGroup from './ChipGroup.svelte';
   import NotePicker from './NotePicker.svelte';
   import MicSettings from '../MicSettings.svelte';
@@ -12,6 +12,7 @@
     chordQualities: ChordQuality[];      // $bindable
     include7th: boolean;                 // $bindable
     inputMode: 'click' | 'mic';          // $bindable
+    micJudge: CagedMicJudge;             // $bindable
     micSensitivity: number;              // $bindable
     micDeviceId: string | null;          // $bindable
     micDevices: Array<{ deviceId: string; label: string }>;
@@ -23,6 +24,7 @@
     chordQualities = $bindable(),
     include7th = $bindable(),
     inputMode = $bindable(),
+    micJudge = $bindable(),
     micSensitivity = $bindable(),
     micDeviceId = $bindable(),
     micDevices,
@@ -90,8 +92,21 @@
       ]}
     />
     {#if inputMode === 'mic'}
+      <ChipGroup
+        bind:value={micJudge}
+        label="Mic judging"
+        options={[
+          { value: 'notes', label: 'Note by note' },
+          { value: 'strum', label: 'Strum it' },
+          { value: 'strum-bass', label: 'Strum it, root in bass' }
+        ]}
+      />
       <MicSettings bind:sensitivity={micSensitivity} bind:deviceId={micDeviceId} devices={micDevices} />
-      <span class="hint">Notes are matched by pitch class inside the shape, in any order.</span>
+      {#if micJudge === 'notes'}
+        <span class="hint">Notes are matched by pitch class inside the shape, in any order.</span>
+      {:else}
+        <span class="hint">Strum the whole chord; a 2-second take is checked for exactly the chord's notes. The first check downloads a ~1 MB model.</span>
+      {/if}
     {/if}
   </div>
 {/if}

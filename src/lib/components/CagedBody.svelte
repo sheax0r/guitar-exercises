@@ -9,6 +9,7 @@
   import { noteAt, CHROMATIC, NOTE_DISPLAY, type Note } from '../music/notes';
   import { playPluck } from '../audio/pluck';
   import { startPitchListener, listAudioInputs, type PitchListener } from '../audio/pitch';
+  import { startStrumCapture, strumPitches, type StrumCapture, type StrumVerdict } from '../audio/strum';
 
   type Props = {
     config: CagedConfig;
@@ -48,7 +49,7 @@
   let micListener: PitchListener | null = null;
 
   $effect(() => {
-    if (config.inputMode !== 'mic') return;
+    if (config.inputMode !== 'mic' || strumMode) return;
     const deviceId = micDeviceId;
     let cancelled = false;
     micListener = null;
@@ -71,6 +72,81 @@
     return () => { cancelled = true; micListener?.stop(); micListener = null; clearTimeout(micAdvanceTimer); };
   });
   $effect(() => { micListener?.setSensitivity(micSensitivity); });
+
+  // Strum mode (find-tones): "play, then check". A ~2 s take starts on an onset
+  // (or the Record button), then Basic Pitch, lazy-loaded on first use, judges
+  // the chord's pitch-class set.
+  const strumMode = untrack(() => config.inputMode === 'mic' && config.micJudge !== 'notes');
+  let strumState = $state<'listening' | 'recording' | 'analyzing'>('listening');
+  let strumFeedback = $state<string | null>(null);
+  let modelReady = $state(false);
+  let strumCap: StrumCapture | null = null;
+
+  async function analyzeStrum(data: Float32Array, sampleRate: number): Promise<number[]> {
+    const { detectNotes } = await import('../transcribe/detect');
+    const notes = await detectNotes(
+      { sampleRate, getChannelData: () => data },
+      { engine: 'ai', instrument: 'guitar', clarity: 0, minMs: 0, mergeMs: 0 }
+    );
+    modelReady = true;
+    return strumPitches(notes);
+  }
+
+  const pcName = (pc: number) => NOTE_DISPLAY[CHROMATIC[pc]];
+  function describeStrum(v: StrumVerdict): string {
+    if (v.correct) return 'That\'s the chord.';
+    const out: string[] = [];
+    if (v.bassPc === null) return 'Heard nothing; strum again.';
+    if (v.missing.length) out.push(`missing ${v.missing.map(pcName).join(' ')}`);
+    if (v.extra.length) out.push(`extra ${v.extra.map(pcName).join(' ')}`);
+    if (!v.bassOk && currentPrompt) out.push(`lowest note ${pcName(v.bassPc)}, want ${NOTE_DISPLAY[currentPrompt.rootNote]} in the bass`);
+    return out.join('; ');
+  }
+
+  function armStrum() {
+    strumState = 'listening';
+    strumCap?.arm();
+  }
+
+  $effect(() => {
+    if (!strumMode) return;
+    const deviceId = micDeviceId;
+    let cancelled = false;
+    strumCap = null;
+    startStrumCapture(async (data, sampleRate) => {
+      if (cancelled) return;
+      if (paused || awaitingAdvance || !currentPrompt) { armStrum(); return; }
+      strumState = 'analyzing';
+      let midis: number[];
+      try {
+        midis = await analyzeStrum(data, sampleRate);
+      } catch {
+        if (cancelled) return;
+        strumFeedback = 'Chord model failed to load; check your connection.';
+        armStrum();
+        return;
+      }
+      if (cancelled) return;
+      if (paused || awaitingAdvance || !currentPrompt) { armStrum(); return; }
+      const result = exercise.submitStrum(midis, config.micJudge === 'strum-bass');
+      lastHeard = midis.length ? [...new Set(midis.map(m => pcName(m % 12)))].join(' ') : null;
+      strumFeedback = describeStrum(result.verdict);
+      if (result.correct) litCorrect = result.correctAnswers;
+      else promptHadWrong = true;
+      finishIfComplete(result.promptComplete);
+      if (!result.promptComplete) armStrum();
+    }, { sensitivity: untrack(() => micSensitivity), deviceId, onRecording: () => { strumState = 'recording'; } })
+      .then((c) => {
+        if (cancelled) { c.stop(); return; }
+        strumCap = c;
+        micError = null;
+        if (!awaitingAdvance) armStrum();
+        listAudioInputs().then((d) => { micDevices = d; });
+      })
+      .catch(() => { micError = 'Microphone unavailable — use clicks instead.'; });
+    return () => { cancelled = true; strumCap?.stop(); strumCap = null; clearTimeout(micAdvanceTimer); };
+  });
+  $effect(() => { strumCap?.setSensitivity(micSensitivity); });
 
   function endSession(soft: boolean) {
     const report = exercise.getReport();
@@ -100,7 +176,9 @@
     pickedShape = null;
     pickedRoot = config.fixedRootNote;
     nameCorrect = null;
+    strumFeedback = null;
     currentPrompt = exercise.getNextPrompt();
+    if (strumMode) armStrum();
   }
 
   nextPrompt();
@@ -204,9 +282,17 @@
       <div class="progress">{litCorrect.length} / {currentPrompt?.expectedCount ?? 0}</div>
     {/if}
     {#if config.inputMode === 'mic'}
-      <div class="mic" class:mic-error={micError !== null}>
-        {#if micError}{micError}{:else}🎤 listening{lastHeard ? ` — heard ${lastHeard}` : '…'}{/if}
+      <div class="mic" class:mic-error={micError !== null} role="status">
+        {#if micError}{micError}
+        {:else if strumMode}
+          {#if strumState === 'recording'}● recording…
+          {:else if strumState === 'analyzing'}{modelReady ? 'checking…' : 'loading the chord model (first time, ~1 MB)…'}
+          {:else}🎸 strum the chord{lastHeard ? ` — heard ${lastHeard}` : ''}
+            <button type="button" class="rec-now" disabled={awaitingAdvance || paused} onclick={() => strumCap?.trigger()}>Record now</button>
+          {/if}
+        {:else}🎤 listening{lastHeard ? ` — heard ${lastHeard}` : '…'}{/if}
       </div>
+      {#if strumMode && strumFeedback}<div class="strum-feedback">{strumFeedback}</div>{/if}
     {/if}
     <label class="toggle">
       <input type="checkbox" bind:checked={showFretNumbers} />
@@ -265,6 +351,8 @@
   .quality { opacity: 0.8; }
   .progress { font-size: 18px; font-variant-numeric: tabular-nums; opacity: 0.85; }
   .mic { font-size: 14px; opacity: 0.85; }
+  .rec-now { margin-left: 8px; padding: 2px 10px; font-size: 13px; border-radius: 6px; border: 1px solid #888; background: transparent; color: inherit; cursor: pointer; }
+  .strum-feedback { font-size: 14px; }
   .mic-error { color: #e07a5f; opacity: 1; }
   .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; user-select: none; }
   .board { background: #2a2018; padding: 20px; border-radius: 8px; position: relative; }
