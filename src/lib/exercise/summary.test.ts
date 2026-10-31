@@ -161,3 +161,12 @@ describe('summarize rhythm', () => {
       .toBe('Rhythm · The ands · 90 bpm · 8 bars · ±50 ms · Mic');
   });
 });
+
+describe('summarize lick-drill', () => {
+  it('describes the lick, target key, start string and input', () => {
+    expect(summarize({
+      exercise: 'lick-drill', lick: [57, 60], lickName: 'Riff', target: 'D', startString: 5, inputMode: 'mic',
+      micSensitivity: 0.5, micDeviceId: null, maxFret: 12, durationSec: 300, continuous: false, showFretNumbers: true, playSound: true
+    })).toBe('Lick Drill · Riff · start on D · from 5th string · Mic · 5m · 12 frets');
+  });
+});

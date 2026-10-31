@@ -8,8 +8,28 @@
   import { loadAlphaTab, SOUNDFONT_URL } from '../transcribe/score';
   import { settings, ui, anchorFor, decode, enqueue, renderJob, saveJob, snapshotSettings, type Job } from './state.svelte';
   import WaveformSelect from './WaveformSelect.svelte';
+  import { mapNotes } from '../transcribe/quantize';
+  import { fitGuitar, MAX_LICK_NOTES } from '../exercise/lick/lick';
+  import { saveLick } from '../storage/licks';
+  import { updatePrefs } from '../storage/prefs';
+  import { LEARN_HASH } from '../routing/hash';
 
   let { job }: { job: Job } = $props();
+
+  // Drill in Learn: a run of this take's notes (as the tab shows them) saved as a lick.
+  const allNotes = $derived(job.rawNotes ? mapNotes(job.rawNotes, job.anchor! + 12 * (job.octShift ?? 0)).map(n => n.midi) : []);
+  let lickFrom = $state(1);
+  let lickTo = $state(8);
+  let lickName = $state(untrack(() => job.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 40)));
+  const lickNotes = $derived.by(() => {
+    const a = Math.max(1, Math.floor(lickFrom || 1));
+    return allNotes.slice(a - 1, Math.min(Math.floor(lickTo || 0), a + MAX_LICK_NOTES - 1));
+  });
+  function drillLick() {
+    const lick = saveLick(lickName, fitGuitar(lickNotes));
+    updatePrefs({ exercise: 'lick-drill', lickId: lick.id });
+    location.hash = LEARN_HASH;
+  }
 
   const NOTES = Array.from({ length: 88 - 40 + 1 }, (_, i) => 40 + i); // E2..E6
   let tabEl: HTMLDivElement;
@@ -167,6 +187,18 @@
     <button type="button" class="chip" title="Save this take's raw audio (e.g. as a test fixture)" onclick={saveTake}>⬇ Save take</button>
   </div>
   <label><input type="checkbox" bind:checked={playMetro} /> Metronome during playback</label>
+
+  <h2>Drill in Learn</h2>
+  <p class="hint">Save a short run of these notes as a lick, then play it in other keys and positions in Learn (up to {MAX_LICK_NOTES} notes).</p>
+  <div class="lick">
+    <label>From note <input type="number" min="1" max={allNotes.length} bind:value={lickFrom} aria-label="First note of the lick" /></label>
+    <label>to <input type="number" min="1" max={allNotes.length} bind:value={lickTo} aria-label="Last note of the lick" /></label>
+    <label class="name">Name <input type="text" maxlength="40" bind:value={lickName} aria-label="Lick name" /></label>
+  </div>
+  <p class="hint" aria-live="polite">{lickNotes.length ? `${lickNotes.map(noteName).join(' ')} (${lickNotes.length} of ${allNotes.length} notes)` : 'Pick a note range.'}</p>
+  <div class="actions">
+    <button type="button" class="primary" disabled={!lickNotes.length} onclick={drillLick}>Drill this in Learn</button>
+  </div>
 </section>
 
 <style>
@@ -182,4 +214,8 @@
   .actions { display: flex; gap: 10px; flex-wrap: wrap; }
   .primary { padding: 10px 18px; font-size: 15px; font-weight: 700; border: none; border-radius: 8px; background: #ff8c42; color: #1a1a1a; cursor: pointer; }
   .primary:disabled { opacity: 0.5; cursor: default; }
+  .lick { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .lick input[type='number'] { width: 64px; padding: 4px; }
+  .lick .name { flex: 1; display: flex; gap: 6px; align-items: center; min-width: 0; }
+  .lick .name input { flex: 1; min-width: 0; padding: 4px; }
 </style>

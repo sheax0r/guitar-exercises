@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import Fretboard, { type Highlight } from './Fretboard.svelte';
-  import { noteAt } from '../music/notes';
+  import { noteAt, NOTE_DISPLAY } from '../music/notes';
   import { MODE_DISPLAY } from '../music/modes';
   import { DEGREE_LABELS, type Degree } from '../music/scales';
   import type { ExerciseConfig, ExerciseReport, PerTargetStat } from '../exercise/types';
@@ -10,6 +10,7 @@
   import type { DegreesReport } from '../exercise/degrees/types';
   import type { ChordTonesReport } from '../exercise/chordtones/types';
   import type { CallResponseReport } from '../exercise/callresponse/types';
+  import type { LickDrillReport } from '../exercise/lick/types';
   import type { AnyConfig, AnyReport } from '../exercise/config';
   import type { RhythmReport } from '../exercise/rhythm/types';
 
@@ -38,6 +39,7 @@
   const isDegrees = untrack(() => config.exercise === 'degrees');
   const isChordTones = untrack(() => config.exercise === 'chord-tones');
   const isCallResponse = untrack(() => config.exercise === 'call-response');
+  const isLick = untrack(() => config.exercise === 'lick-drill');
   // Modes and CAGED both report per-group stats (per mode / per shape).
   type GroupStat = { label: string; timesAsked: number; correctCount: number; avgTimeMs: number };
   const groupStats: GroupStat[] = untrack(() =>
@@ -46,15 +48,19 @@
     : isDegrees ? (report as DegreesReport).perDegreeStats.map(s => ({ ...s, label: s.degree }))
     : isChordTones ? (report as ChordTonesReport).perChordStats.map(s => ({ ...s, label: s.numeral }))
     : isCallResponse ? (report as CallResponseReport).perLengthStats.map(s => ({ ...s, label: `${s.length} notes` }))
+    : isLick ? (report as LickDrillReport).perShiftStats.map(s => ({
+      ...s, label: s.shift === 0 ? 'Same key' : `${s.shift > 0 ? '+' : ''}${s.shift} (start on ${NOTE_DISPLAY[s.keyRoot]})`
+    }))
     : (report as ModesReport).perModeStats.map(s => ({ ...s, label: MODE_DISPLAY[s.mode] }))
   );
-  const groupName = isCaged ? 'shape' : isDegrees ? 'degree' : isChordTones ? 'chord' : isCallResponse ? 'phrase length' : 'mode';
+  const groupName = isCaged ? 'shape' : isDegrees ? 'degree' : isChordTones ? 'chord' : isCallResponse ? 'phrase length' : isLick ? 'transposition' : 'mode';
   // A second breakdown: Chord-Tone Targeting per target type (any / 3rd /
   // 7th), Call and Response per degree.
-  const secondName = isChordTones ? 'Target' : 'Degree';
+  const secondName = isChordTones ? 'Target' : isLick ? 'Note' : 'Degree';
   const secondStats: GroupStat[] = untrack(() =>
     isChordTones ? (report as ChordTonesReport).perToneStats.map(s => ({ ...s, label: s.tone === 'any' ? 'Any chord tone' : s.tone }))
     : isCallResponse ? (report as CallResponseReport).perDegreeStats.map(s => ({ ...s, label: s.degree }))
+    : isLick ? (report as LickDrillReport).perIndexStats.map(s => ({ ...s, label: `Note ${s.index}` }))
     : []
   );
 
@@ -65,6 +71,7 @@
     : isDegrees ? 'Name the Degree'
     : isChordTones ? 'Chord-Tone Targeting'
     : isCallResponse ? 'Call and Response'
+    : isLick ? 'Lick Drill'
     : (config.exercise === 'play-shape' ? 'Play the Shape' : 'Identify the Mode');
 
   const accuracyPct = $derived(Math.round(report.accuracy * 100));
@@ -102,7 +109,7 @@
 
   // --- Per-group (mode / shape) stats ------------------------------------
   const perModeSorted = $derived<GroupStat[]>(
-    isChordTones || isCallResponse ? groupStats : [...groupStats].sort((a, b) => isDegrees
+    isChordTones || isCallResponse || isLick ? groupStats : [...groupStats].sort((a, b) => isDegrees
       ? DEGREE_LABELS.indexOf(a.label as Degree) - DEGREE_LABELS.indexOf(b.label as Degree)
       : a.label.localeCompare(b.label))
   );
@@ -210,6 +217,8 @@
         ? { perChordStats: (report as ChordTonesReport).perChordStats, perToneStats: (report as ChordTonesReport).perToneStats }
         : isCallResponse
         ? { perLengthStats: (report as CallResponseReport).perLengthStats, perDegreeStats: (report as CallResponseReport).perDegreeStats }
+        : isLick
+        ? { perShiftStats: (report as LickDrillReport).perShiftStats, perIndexStats: (report as LickDrillReport).perIndexStats }
         : { perModeStats: (report as ModesReport).perModeStats };
     return JSON.stringify({ ...base, ...detail }, null, 2);
   }
@@ -282,7 +291,7 @@
       {:else}
         <table class="per-mode">
           <thead>
-            <tr><th>{isCaged ? 'Shape' : isDegrees ? 'Degree' : isChordTones ? 'Chord' : isCallResponse ? 'Length' : 'Mode'}</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
+            <tr><th>{isCaged ? 'Shape' : isDegrees ? 'Degree' : isChordTones ? 'Chord' : isCallResponse ? 'Length' : isLick ? 'Transposition' : 'Mode'}</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
           </thead>
           <tbody>
             {#each perModeSorted as s}

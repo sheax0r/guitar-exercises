@@ -525,3 +525,28 @@ describe('parseHash — rhythm', () => {
     expect(parseHash('#/learn/session?ex=rhythm&bars=7&tol=999&bpm=5')).toMatchObject({ config: { bars: 8, toleranceMs: 50, bpm: 40 } });
   });
 });
+
+describe('lick-drill hash', () => {
+  const config = {
+    exercise: 'lick-drill' as const, lick: [57, 60, 62, 64], lickName: 'Penta & co', target: 'D' as const, startString: 5 as const,
+    inputMode: 'click' as const, micSensitivity: 0.5, micDeviceId: null, maxFret: 12, durationSec: 300, continuous: false,
+    showFretNumbers: true, playSound: true
+  };
+
+  it('round-trips, carrying the lick itself', () => {
+    const h = sessionHash(config);
+    expect(h).toContain('lick=dgik');
+    expect(parseHash(h)).toEqual({ screen: 'session', config });
+  });
+
+  it('round-trips random / any / same', () => {
+    for (const c of [{ ...config, target: 'random' as const, startString: 'random' as const }, { ...config, target: 'same' as const, startString: 'any' as const }]) {
+      expect(parseHash(sessionHash(c))).toEqual({ screen: 'session', config: c });
+    }
+  });
+
+  it('falls back to Learn without a valid lick', () => {
+    expect(parseHash('#/learn/session?ex=lick-drill&duration=300&frets=12')).toEqual({ screen: 'learn' });
+    expect(parseHash('#/learn/session?ex=lick-drill&lick=a*b&duration=300&frets=12')).toEqual({ screen: 'learn' });
+  });
+});

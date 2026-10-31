@@ -6,6 +6,7 @@ import { PROGRESSION_DISPLAY } from '../music/progressions';
 
 const TONE_LABEL = { any: 'Any chord tone', '3rd': '3rds', '7th': '7ths', guide: 'Guide tones' };
 export const RHYTHM_TARGET_LABEL = { one: 'Beat 1', beats: 'Every beat', ands: 'The ands', pattern: 'Patterns' };
+export const ORDINAL = ['', '1st', '2nd', '3rd', '4th', '5th', '6th'];
 const CAGED_VARIANT_LABEL = { 'find-tones': 'Find tones', 'name-shape': 'Name the shape', 'next-shape': 'Next shape' };
 
 // One-line human description of a config, e.g.
@@ -56,6 +57,12 @@ export function summarize(c: AnyConfig): string {
         c.motion === 'stepwise' ? 'Stepwise' : 'Leaps',
         c.keyRoot === 'random' ? 'any key' : `key of ${NOTE_DISPLAY[c.keyRoot]}`);
       if (c.rhythm) parts.push('Rhythm');
+      if (c.inputMode === 'mic') parts.push('Mic');
+      break;
+    case 'lick-drill':
+      parts.push('Lick Drill', c.lickName,
+        c.target === 'same' ? 'same key' : c.target === 'random' ? 'any key' : `start on ${NOTE_DISPLAY[c.target]}`);
+      if (c.startString !== 'any') parts.push(c.startString === 'random' ? 'any string' : `from ${ORDINAL[c.startString]} string`);
       if (c.inputMode === 'mic') parts.push('Mic');
       break;
     case 'caged': {

@@ -25,7 +25,7 @@
   <PlayShapeBody {config} {onComplete} {onAbort} />
 {:else if (config.exercise === 'root-notes' || config.exercise === 'random-roots') && config.rootVariant === 'find-all'}
   <FindAllBody {config} {onComplete} {onAbort} />
-{:else if config.exercise === 'call-response'}
+{:else if config.exercise === 'call-response' || config.exercise === 'lick-drill'}
   <CallResponseBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'chord-tones'}
   <ChordTonesBody {config} {onComplete} {onAbort} />
