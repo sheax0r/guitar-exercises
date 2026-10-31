@@ -1,8 +1,9 @@
 # Whistler Integration — Plan
 
 Date: 2026-10-31
-Status: proposed. Needs user sign-off on the open decisions at the bottom
-before Phase 1.
+Status: shipped 2026-10-31 (Phases 0–4, PRs #11–#26). Open decisions 1 and 3
+went with the recommendations; 4 (remember last section) was not done, and 2
+(archive ~/git/whistler) is left to the user.
 
 ## Goal
 

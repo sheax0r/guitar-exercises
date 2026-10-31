@@ -1,9 +1,8 @@
 # Improvisation Roadmap — Design
 
 Date: 2026-10-31
-Status: roadmap, not yet approved for implementation. Each numbered item below
-is meant to become its own spec → plan → PR when picked up. Order is the
-recommended build order.
+Status: items 1–6 shipped 2026-10-31. Each has its own design spec in this
+folder. "Remaining gaps" and "Deferred" below are still open.
 
 ## Goal
 
