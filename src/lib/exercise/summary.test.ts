@@ -98,3 +98,14 @@ describe('summarize', () => {
     expect(summarize(identify)).toContain('5 modes · By ear');
   });
 });
+
+describe('summarize caged', () => {
+  it('describes variant, shapes, qualities, root and input', () => {
+    expect(summarize({
+      exercise: 'caged', cagedVariant: 'find-tones', enabledShapes: ['E', 'C', 'A'],
+      qualities: ['major', 'minor'], include7th: true, fixedRootNote: 'A', maxFret: 12,
+      durationSec: 300, continuous: false, showFretNumbers: true, playSound: true,
+      inputMode: 'mic', micSensitivity: 0.5, micDeviceId: null
+    })).toBe('CAGED · Find tones · CAE · major/minor 7ths · in A · Mic · 5m · 12 frets');
+  });
+});

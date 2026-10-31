@@ -3,11 +3,13 @@ import type { Mode } from '../music/modes';
 import type { Interval, ScaleQuality } from '../music/scales';
 import type { ExerciseKind } from '../exercise/types';
 import type { ModeExerciseKind } from '../exercise/modes/types';
+import type { CagedVariant } from '../exercise/caged/types';
+import type { CagedShape, ChordQuality } from '../music/caged';
 
 const KEY = 'guitar-exercises.prefs.v1';
 
 export interface Prefs {
-  exercise: ExerciseKind | ModeExerciseKind;
+  exercise: ExerciseKind | ModeExerciseKind | 'caged';
   targetNote: Note;
   durationSec: number;
   continuous: boolean;
@@ -36,6 +38,11 @@ export interface Prefs {
   micSensitivity?: number;          // 0..1
   micDeviceId?: string | null;      // chosen audio input (device-specific)
   displayNotePercentage?: number;   // 0..100 of scale notes shown (modes exercises)
+  // CAGED settings (optional; root and mic settings are shared with modes).
+  cagedVariant?: CagedVariant;
+  enabledShapes?: CagedShape[];
+  chordQualities?: ChordQuality[];
+  include7th?: boolean;
   recentSessions?: string[];        // session hashes, newest first
 }
 

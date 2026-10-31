@@ -10,6 +10,7 @@ Exercises:
 - **Intervals** — find the 3rd or 5th above a note, in a major or minor key.
 - **Play the Shape** — play a mode as a one-octave run or position box, by clicking or into a mic.
 - **Identify the Mode** — name the mode from its notes on the fretboard or its sound.
+- **CAGED Shapes** — find a chord's tones inside a C/A/G/E/D shape (click or mic), name a shape, or play the next shape up the neck.
 
 ## Run it
 
@@ -60,6 +61,7 @@ src/
     transcribe/   # Ideate: audio -> notes -> tab -> .gp (ported from Whistler)
     exercise/     # Exercise<...> interface, fretboard exercises, config summary
       modes/      # Play the Shape and Identify the Mode
+      caged/      # CAGED Shapes
     components/   # Svelte screens + Fretboard widget
       start/      # Start-screen pickers and per-exercise settings
     routing/      # URL hash <-> session config

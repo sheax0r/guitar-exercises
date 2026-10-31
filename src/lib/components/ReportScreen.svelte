@@ -4,7 +4,8 @@
   import { noteAt } from '../music/notes';
   import { MODE_DISPLAY } from '../music/modes';
   import type { ExerciseConfig, ExerciseReport, PerTargetStat } from '../exercise/types';
-  import type { ModesReport, PerModeStat } from '../exercise/modes/types';
+  import type { ModesReport } from '../exercise/modes/types';
+  import type { CagedReport } from '../exercise/caged/types';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
@@ -28,11 +29,20 @@
   // static snapshot of a finished session, so these are captured once.
   const rootConfig = untrack(() => (isRoot ? (config as ExerciseConfig) : null));
   const rootReport = untrack(() => (isRoot ? (report as ExerciseReport) : null));
-  const modesReport = untrack(() => (!isRoot ? (report as ModesReport) : null));
+  const isCaged = untrack(() => config.exercise === 'caged');
+  // Modes and CAGED both report per-group stats (per mode / per shape).
+  type GroupStat = { label: string; timesAsked: number; correctCount: number; avgTimeMs: number };
+  const groupStats: GroupStat[] = untrack(() =>
+    isRoot ? []
+    : isCaged ? (report as CagedReport).perShapeStats.map(s => ({ ...s, label: `${s.shape} shape` }))
+    : (report as ModesReport).perModeStats.map(s => ({ ...s, label: MODE_DISPLAY[s.mode] }))
+  );
+  const groupName = isCaged ? 'shape' : 'mode';
 
   const isRandomRoots = untrack(() => config.exercise === 'random-roots');
   const titleSuffix = isRoot
     ? (isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${rootConfig!.targetNote}`)
+    : isCaged ? 'CAGED Shapes'
     : (config.exercise === 'play-shape' ? 'Play the Shape' : 'Identify the Mode');
 
   const accuracyPct = $derived(Math.round(report.accuracy * 100));
@@ -68,16 +78,14 @@
     })()
   );
 
-  // --- Modes per-mode stats --------------------------------------------
-  const perModeSorted = $derived<PerModeStat[]>(
-    [...(modesReport?.perModeStats ?? [])].sort((a, b) =>
-      MODE_DISPLAY[a.mode].localeCompare(MODE_DISPLAY[b.mode])
-    )
+  // --- Per-group (mode / shape) stats ------------------------------------
+  const perModeSorted = $derived<GroupStat[]>(
+    [...groupStats].sort((a, b) => a.label.localeCompare(b.label))
   );
 
-  const weakestModes = $derived<PerModeStat[]>(
+  const weakestModes = $derived<GroupStat[]>(
     (() => {
-      const eligible = (modesReport?.perModeStats ?? []).filter(s => s.timesAsked >= 2);
+      const eligible = groupStats.filter(s => s.timesAsked >= 2);
       eligible.sort((a, b) => {
         const aAcc = a.correctCount / a.timesAsked;
         const bAcc = b.correctCount / b.timesAsked;
@@ -136,10 +144,10 @@
     }
     if (!isRoot && perModeSorted.length > 0) {
       lines.push('');
-      lines.push('Per mode:');
+      lines.push(`Per ${groupName}:`);
       for (const s of perModeSorted) {
         const acc = s.timesAsked === 0 ? 0 : Math.round((s.correctCount / s.timesAsked) * 100);
-        lines.push(`- ${MODE_DISPLAY[s.mode]}: ${s.correctCount}/${s.timesAsked} (${acc}%) · avg ${(s.avgTimeMs / 1000).toFixed(1)}s`);
+        lines.push(`- ${s.label}: ${s.correctCount}/${s.timesAsked} (${acc}%) · avg ${(s.avgTimeMs / 1000).toFixed(1)}s`);
       }
     }
     return lines.join('\n');
@@ -168,14 +176,9 @@
             avgTimeMs: s.avgTimeMs
           }))
         }
-      : {
-          perModeStats: (modesReport?.perModeStats ?? []).map(s => ({
-            mode: s.mode,
-            timesAsked: s.timesAsked,
-            correctCount: s.correctCount,
-            avgTimeMs: s.avgTimeMs
-          }))
-        };
+      : isCaged
+        ? { perShapeStats: (report as CagedReport).perShapeStats }
+        : { perModeStats: (report as ModesReport).perModeStats };
     return JSON.stringify({ ...base, ...detail }, null, 2);
   }
 
@@ -207,7 +210,7 @@
     copyDataResetHandle = setTimeout(() => { copyDataState = 'idle'; }, 2000);
   }
 
-  function modeAccPct(s: PerModeStat): number {
+  function modeAccPct(s: GroupStat): number {
     return s.timesAsked === 0 ? 0 : Math.round((s.correctCount / s.timesAsked) * 100);
   }
 </script>
@@ -241,18 +244,18 @@
     </div>
   {:else}
     <div class="section">
-      <div class="caption">Per mode</div>
+      <div class="caption">Per {groupName}</div>
       {#if perModeSorted.length === 0}
         <div class="muted">No prompts this session.</div>
       {:else}
         <table class="per-mode">
           <thead>
-            <tr><th>Mode</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
+            <tr><th>{isCaged ? 'Shape' : 'Mode'}</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
           </thead>
           <tbody>
             {#each perModeSorted as s}
               <tr>
-                <td>{MODE_DISPLAY[s.mode]}</td>
+                <td>{s.label}</td>
                 <td>{s.timesAsked}</td>
                 <td>{modeAccPct(s)}%</td>
                 <td>{(s.avgTimeMs / 1000).toFixed(1)}s</td>
@@ -338,11 +341,11 @@
 
   {#if !isRoot && weakestModes.length > 0}
     <div class="section">
-      <div class="caption">Weakest modes</div>
+      <div class="caption">Weakest {groupName}s</div>
       <ul class="weakest">
         {#each weakestModes as s}
           <li>
-            <span><strong>{MODE_DISPLAY[s.mode]}</strong></span>
+            <span><strong>{s.label}</strong></span>
             <span class="muted">{s.correctCount} / {s.timesAsked} correct · avg {(s.avgTimeMs/1000).toFixed(1)}s</span>
           </li>
         {/each}
