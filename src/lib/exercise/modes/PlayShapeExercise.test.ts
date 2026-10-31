@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PlayShapeExercise } from './PlayShapeExercise';
 import type { PlayShapeConfig } from './types';
-import { octaveFixedPositions, boxPositions } from './shape';
+import { octaveFixedPositions, boxPositions, windowPositions, cagedScaleInstances } from './shape';
 import { pitchOf, noteAt } from '../../music/notes';
 import { scaleNotes } from '../../music/modes';
 
@@ -236,5 +236,49 @@ describe('PlayShapeExercise box + mic', () => {
     const r = ex.submitMicNote(60 - (60 % 12) + badPc); // a midi with that absent pitch class
     expect(r.correct).toBe(false);
     expect(r.promptComplete).toBe(false);
+  });
+});
+
+describe('PlayShapeExercise caged', () => {
+  const caged = { ...base, shapeVariant: 'caged' as const, enabledModes: ['minor-pentatonic' as const, 'blues' as const] };
+
+  it('prompts a CAGED position whose expected notes are the scale inside its window', () => {
+    const ex = new PlayShapeExercise();
+    ex.start(caged);
+    for (let i = 0; i < 20; i++) {
+      const p = ex.getNextPrompt();
+      expect(p.variant).toBe('caged');
+      expect(p.cagedShape).toBeDefined();
+      const inst = cagedScaleInstances(p.cagedShape!, p.rootNote, p.mode, 24).find(x => x.root.fret === p.root.fret && x.root.string === p.root.string);
+      expect(inst).toBeDefined();
+      const set = windowPositions(p.rootNote, p.mode, inst!.window);
+      expect(p.expectedCount).toBe(set.length);
+      for (const pos of set) ex.submitAnswer(pos);
+      expect(ex.getReport().attempts.length).toBe(i + 1);
+      expect(ex.getReport().correctCount).toBe(i + 1);
+    }
+  });
+
+  it('respects the fixed root and maxFret', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({ ...caged, fixedRootNote: 'A', maxFret: 12 });
+    for (let i = 0; i < 30; i++) {
+      const p = ex.getNextPrompt();
+      expect(p.rootNote).toBe('A');
+      expect(p.root.fret).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('accepts mic notes by pitch class, any order', () => {
+    const ex = new PlayShapeExercise();
+    ex.start({ ...caged, inputMode: 'mic' });
+    const p = ex.getNextPrompt();
+    const inst = cagedScaleInstances(p.cagedShape!, p.rootNote, p.mode, 24).find(x => x.root.fret === p.root.fret)!;
+    const set = windowPositions(p.rootNote, p.mode, inst.window);
+    const desc = [...set].sort((a, b) => pitchOf(b.string, b.fret) - pitchOf(a.string, a.fret));
+    let last;
+    for (const pos of desc) last = ex.submitMicNote(pitchOf(pos.string, pos.fret));
+    expect(last!.promptComplete).toBe(true);
+    expect(ex.getReport().correctCount).toBe(1);
   });
 });

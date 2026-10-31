@@ -5,8 +5,11 @@ import {
   boxWindow,
   boxPositions,
   scaleFretboardPositions,
-  sampleByPercentage
+  sampleByPercentage,
+  windowPositions,
+  cagedScaleInstances
 } from './shape';
+import { CAGED_ORDER } from '../../music/caged';
 import { pitchOf, noteAt } from '../../music/notes';
 import { scaleNotes } from '../../music/modes';
 import type { StringNum } from '../../music/tuning';
@@ -102,4 +105,31 @@ describe('sampleByPercentage', () => {
     expect(sampleByPercentage(items, -10)).toHaveLength(0);
     expect(items).toEqual(copy);
   });
+});
+
+describe('CAGED scale positions', () => {
+  const perString = (ps: Array<{ string: number }>) =>
+    [1, 2, 3, 4, 5, 6].map(s => ps.filter(p => p.string === s).length);
+
+  it('C major pentatonic, C shape is the open position (frets 0-3)', () => {
+    const inst = cagedScaleInstances('C', 'C', 'major-pentatonic', 24)[0];
+    expect(inst.root).toEqual({ string: 5, fret: 3 });
+    expect(inst.window).toEqual([0, 3]);
+  });
+
+  it('A minor pentatonic, E shape is box 1 (frets 5-8)', () => {
+    const inst = cagedScaleInstances('E', 'A', 'minor-pentatonic', 24)[0];
+    expect(inst.root).toEqual({ string: 6, fret: 5 });
+    expect(inst.window).toEqual([5, 8]);
+  });
+
+  // Each of the five positions is a textbook pentatonic box: two notes per string.
+  for (const [root, scale] of [['C', 'major-pentatonic'], ['A', 'minor-pentatonic'], ['G', 'major-pentatonic'], ['E', 'minor-pentatonic']] as const) {
+    for (const shape of CAGED_ORDER) {
+      it(`${root} ${scale}, ${shape} shape: two notes per string`, () => {
+        const inst = cagedScaleInstances(shape, root, scale, 24)[0];
+        expect(perString(windowPositions(root, scale, inst.window))).toEqual([2, 2, 2, 2, 2, 2]);
+      });
+    }
+  }
 });

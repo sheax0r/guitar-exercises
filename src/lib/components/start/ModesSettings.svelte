@@ -1,14 +1,14 @@
 <script lang="ts">
   import type { Note } from '../../music/notes';
-  import { MODE_ORDER, MODE_DISPLAY, type Mode } from '../../music/modes';
+  import { MODE_ORDER, SCALE_ORDER, MODE_DISPLAY, type ScaleType } from '../../music/modes';
   import ChipGroup from './ChipGroup.svelte';
   import NotePicker from './NotePicker.svelte';
   import MicSettings from '../MicSettings.svelte';
 
   type Props = {
     exercise: 'play-shape' | 'identify-mode';
-    enabledModes: Mode[];               // $bindable
-    shapeVariant: 'octave' | 'box';     // $bindable
+    enabledModes: ScaleType[];               // $bindable
+    shapeVariant: 'octave' | 'box' | 'caged'; // $bindable
     octaveJudge: 'pitch' | 'fixed';     // $bindable
     boxSpan: number;                    // $bindable
     inputMode: 'click' | 'mic';         // $bindable
@@ -32,12 +32,13 @@
     fixedRootNote = $bindable()
   }: Props = $props();
 
-  // Mic input works for the box (notes matched by pitch) and for the octave run
-  // judged by pitch. Not for fixed-fingering octave: mic can't verify position.
+  // Mic input works for the box and CAGED windows (notes matched by pitch class)
+  // and for the octave run judged by pitch. Not for fixed-fingering octave: mic
+  // can't verify position.
   const micEligible = $derived(
-    exercise === 'play-shape' &&
-      (shapeVariant === 'box' || (shapeVariant === 'octave' && octaveJudge === 'pitch'))
+    exercise === 'play-shape' && (shapeVariant !== 'octave' || octaveJudge === 'pitch')
   );
+  const otherScales = SCALE_ORDER.filter(s => !(MODE_ORDER as ScaleType[]).includes(s));
   // Keep the input mode valid when the variant/judge change out from under it.
   $effect(() => {
     if (inputMode === 'mic' && !micEligible) inputMode = 'click';
@@ -48,17 +49,16 @@
     if (v === 'mic' && shapeVariant === 'octave' && octaveJudge === 'fixed') octaveJudge = 'pitch';
   }
 
-  function toggleMode(m: Mode) {
+  function toggleMode(m: ScaleType) {
     enabledModes = enabledModes.includes(m)
       ? enabledModes.filter(x => x !== m)
       : [...enabledModes, m];
   }
 </script>
 
-<div class="row">
-  <span class="label">Modes</span>
-  <div class="chips" role="group" aria-label="Modes">
-    {#each MODE_ORDER as m}
+{#snippet scaleChips(label: string, list: ScaleType[])}
+  <div class="chips" role="group" aria-label={label}>
+    {#each list as m}
       <button
         type="button"
         class="chip"
@@ -68,8 +68,17 @@
       >{MODE_DISPLAY[m]}</button>
     {/each}
   </div>
+{/snippet}
+
+<div class="row">
+  <span class="label">Modes</span>
+  {@render scaleChips('Modes', MODE_ORDER)}
+</div>
+<div class="row">
+  <span class="label">Other scales</span>
+  {@render scaleChips('Other scales', otherScales)}
   {#if enabledModes.length === 0}
-    <span class="hint warn">Enable at least one mode.</span>
+    <span class="hint warn">Enable at least one mode or scale.</span>
   {/if}
 </div>
 
@@ -81,9 +90,13 @@
       label="Shape"
       options={[
         { value: 'octave', label: 'One octave' },
-        { value: 'box', label: 'Position box' }
+        { value: 'box', label: 'Position box' },
+        { value: 'caged', label: 'CAGED position' }
       ]}
     />
+    {#if shapeVariant === 'caged'}
+      <span class="hint">Each prompt names a C, A, G, E or D shape around the root; play every scale note in that position.</span>
+    {/if}
   </div>
 
   {#if shapeVariant === 'octave'}
@@ -98,7 +111,7 @@
         ]}
       />
     </div>
-  {:else}
+  {:else if shapeVariant === 'box'}
     <div class="row">
       <label class="label" for="span">Box span (frets)</label>
       <input id="span" type="number" min="3" step="1" bind:value={boxSpan} />

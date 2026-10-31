@@ -1,5 +1,5 @@
 import type { Note, ClosestAlgorithm, Direction } from '../music/notes';
-import type { Mode } from '../music/modes';
+import type { ScaleType } from '../music/modes';
 import type { Interval, ScaleQuality } from '../music/scales';
 import type { ExerciseKind } from '../exercise/types';
 import type { ModeExerciseKind } from '../exercise/modes/types';
@@ -25,8 +25,8 @@ export interface Prefs {
   keyQuality: ScaleQuality | 'random';
   direction: Direction;
   // Modes-exercise settings (optional; absent in legacy v1 prefs).
-  enabledModes?: Mode[];
-  shapeVariant?: 'octave' | 'box';
+  enabledModes?: ScaleType[];
+  shapeVariant?: 'octave' | 'box' | 'caged';
   octaveJudge?: 'pitch' | 'fixed';
   boxSpan?: number;
   // Modes sound/ear settings (optional; absent in legacy prefs).

@@ -5,7 +5,7 @@
   import { IdentifyModeExercise } from '../exercise/modes/IdentifyModeExercise';
   import type { IdentifyModeConfig, IdentifyModePrompt, ModesReport } from '../exercise/modes/types';
   import { noteAt } from '../music/notes';
-  import { MODE_DISPLAY, MODE_ORDER, characteristicNote, type Mode } from '../music/modes';
+  import { MODE_DISPLAY, SCALE_ORDER, characteristicNote, type ScaleType } from '../music/modes';
   import { playSequence } from '../audio/sequence';
   import { octaveFixedPositions } from '../exercise/modes/shape';
   import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
@@ -21,13 +21,13 @@
   const exercise = new IdentifyModeExercise();
   untrack(() => exercise.start(config));
 
-  // Mode buttons, shown in canonical display order, limited to enabled modes.
-  const choices = untrack(() => MODE_ORDER.filter(m => config.enabledModes.includes(m)));
+  // Scale buttons, shown in canonical display order, limited to enabled scales.
+  const choices = untrack(() => SCALE_ORDER.filter(m => config.enabledModes.includes(m)));
 
   let currentPrompt = $state<IdentifyModePrompt | null>(null);
-  let answered = $state<Mode | null>(null);
+  let answered = $state<ScaleType | null>(null);
   let answerCorrect = $state<boolean | null>(null);
-  let revealedMode = $state<Mode | null>(null);
+  let revealedMode = $state<ScaleType | null>(null);
   let awaitingAdvance = $state(false);
   let correctCount = $state(0);
   let incorrectCount = $state(0);
@@ -94,7 +94,7 @@
 
   nextPrompt();
 
-  function pick(m: Mode) {
+  function pick(m: ScaleType) {
     if (paused || awaitingAdvance || answered) return;
     const result = exercise.submitAnswer({ mode: m });
     answered = m;
@@ -135,7 +135,7 @@
         })()
   );
 
-  function buttonClass(m: Mode): string {
+  function buttonClass(m: ScaleType): string {
     if (!answered) return '';
     if (m === revealedMode) return 'right';
     if (m === answered && !answerCorrect) return 'wrong';

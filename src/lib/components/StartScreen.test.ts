@@ -128,6 +128,21 @@ describe('StartScreen — exercise selector', () => {
     expect(startButton(container).disabled).toBe(true);
   });
 
+  it('emits a caged play-shape config with other scales and mic', async () => {
+    const onStart = vi.fn();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(card(container, 'play-shape'));
+    await fireEvent.click(chipByText(container, 'Minor pentatonic', 'Other scales'));
+    await fireEvent.click(chipByText(container, 'CAGED position'));
+    await fireEvent.click(chipByText(container, 'Play (mic)'));
+    await fireEvent.click(startButton(container));
+    const cfg = onStart.mock.calls[0][0];
+    expect(cfg.shapeVariant).toBe('caged');
+    expect(cfg.inputMode).toBe('mic');
+    expect(cfg.enabledModes).toContain('minor-pentatonic');
+    expect(cfg.enabledModes).toHaveLength(8);
+  });
+
   it('disables Start when every mode is toggled off', async () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     await fireEvent.click(card(container, 'play-shape'));

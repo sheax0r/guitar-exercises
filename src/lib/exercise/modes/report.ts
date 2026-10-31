@@ -1,9 +1,9 @@
-import type { Mode } from '../../music/modes';
+import type { ScaleType } from '../../music/modes';
 import type { AttemptRecord } from '../types';
 import type { ModesReport } from './types';
 
 export interface ModeAttempt {
-  mode: Mode;
+  mode: ScaleType;
   correct: boolean;
   elapsedMs: number;
 }

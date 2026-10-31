@@ -409,3 +409,19 @@ describe('caged hash', () => {
     expect(r.screen === 'session' && r.config.exercise === 'caged' && r.config.cagedVariant).toBe('find-tones');
   });
 });
+
+describe('parseHash — scale types and the caged shape variant', () => {
+  it('accepts the new scales and keeps mic for the caged variant', () => {
+    const r = parseHash('#/learn/session?ex=play-shape&modes=ionian,minor-pentatonic,blues&duration=300&frets=12&variant=caged&input=mic');
+    expect(r.screen).toBe('session');
+    if (r.screen === 'session' && r.config.exercise === 'play-shape') {
+      expect(r.config.enabledModes).toEqual(['ionian', 'minor-pentatonic', 'blues']);
+      expect(r.config.shapeVariant).toBe('caged');
+      expect(r.config.inputMode).toBe('mic');
+      expect(parseHash(sessionHash(r.config))).toEqual(r);
+    }
+  });
+  it('rejects an unknown scale', () => {
+    expect(parseHash('#/learn/session?ex=identify-mode&modes=ionian,bebop&duration=300&frets=12').screen).toBe('learn');
+  });
+});

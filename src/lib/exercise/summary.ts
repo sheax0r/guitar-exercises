@@ -1,5 +1,5 @@
 import { NOTE_DISPLAY } from '../music/notes';
-import { MODE_DISPLAY, MODE_ORDER, type Mode } from '../music/modes';
+import { MODE_DISPLAY, MODE_ORDER, SCALE_ORDER, type ScaleType } from '../music/modes';
 import type { AnyConfig } from './config';
 import { CAGED_ORDER } from '../music/caged';
 
@@ -24,7 +24,7 @@ export function summarize(c: AnyConfig): string {
     }
     case 'play-shape':
       parts.push('Play the Shape', modes(c.enabledModes));
-      parts.push(c.shapeVariant === 'octave' ? 'Octave' : `Box (${c.boxSpan} frets)`);
+      parts.push(c.shapeVariant === 'octave' ? 'Octave' : c.shapeVariant === 'caged' ? 'CAGED' : `Box (${c.boxSpan} frets)`);
       if (c.inputMode === 'mic') parts.push('Mic');
       break;
     case 'identify-mode':
@@ -46,8 +46,10 @@ export function summarize(c: AnyConfig): string {
   return parts.join(' · ');
 }
 
-function modes(enabled: Mode[]): string {
-  if (enabled.length >= MODE_ORDER.length) return 'All modes';
-  if (enabled.length > 3) return `${enabled.length} modes`;
-  return MODE_ORDER.filter((m) => enabled.includes(m)).map((m) => MODE_DISPLAY[m]).join(', ');
+function modes(enabled: ScaleType[]): string {
+  const onlyModes = enabled.every(m => (MODE_ORDER as ScaleType[]).includes(m));
+  if (enabled.length >= SCALE_ORDER.length) return 'All scales';
+  if (onlyModes && enabled.length >= MODE_ORDER.length) return 'All modes';
+  if (enabled.length > 3) return `${enabled.length} ${onlyModes ? 'modes' : 'scales'}`;
+  return SCALE_ORDER.filter((m) => enabled.includes(m)).map((m) => MODE_DISPLAY[m]).join(', ');
 }

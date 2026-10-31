@@ -1,7 +1,8 @@
 import type { Note } from '../../music/notes';
-import type { Mode } from '../../music/modes';
+import type { ScaleType } from '../../music/modes';
 import type { AttemptRecord } from '../types';
 import type { Pos } from './shape';
+import type { CagedShape } from '../../music/caged';
 
 export type { Pos };
 
@@ -9,8 +10,9 @@ export type ModeExerciseKind = 'play-shape' | 'identify-mode';
 
 export interface PlayShapeConfig {
   exercise: 'play-shape';
-  enabledModes: Mode[];
-  shapeVariant: 'octave' | 'box';
+  enabledModes: ScaleType[];
+  // 'caged': every scale note inside a CAGED position (see CAGED_SCALE_WINDOWS).
+  shapeVariant: 'octave' | 'box' | 'caged';
   octaveJudge: 'pitch' | 'fixed'; // used when shapeVariant === 'octave'
   boxSpan: number;                // used when shapeVariant === 'box'
   maxFret: number;
@@ -22,7 +24,7 @@ export interface PlayShapeConfig {
   drone: boolean;                    // sustain the root under each prompt
   highlightCharacteristic: boolean;  // mark the mode's characteristic degree
   fixedRootNote: Note | null;        // null = random root per prompt
-  inputMode: 'click' | 'mic';        // 'mic' valid only for octave + pitch judge
+  inputMode: 'click' | 'mic';        // 'mic' not valid for octave + fixed judge
   micSensitivity: number;            // 0 (chill) .. 1 (sensitive); mic only
   micDeviceId: string | null;        // chosen audio input; null = default
   displayNotePercentage: number;     // 0..100 of the scale's notes shown on the board
@@ -31,8 +33,9 @@ export interface PlayShapeConfig {
 export interface PlayShapePrompt {
   root: Pos;
   rootNote: Note;
-  mode: Mode;
-  variant: 'octave' | 'box';
+  mode: ScaleType;
+  variant: 'octave' | 'box' | 'caged';
+  cagedShape?: CagedShape;  // the position to play, for the 'caged' variant
   // How many positions the player must click to complete this prompt.
   expectedCount: number;
   // A random subset (displayNotePercentage) of the whole-neck scale notes, shown
@@ -44,7 +47,7 @@ export type PlayShapeAnswer = Pos;
 
 export interface IdentifyModeConfig {
   exercise: 'identify-mode';
-  enabledModes: Mode[];
+  enabledModes: ScaleType[];
   maxFret: number;
   durationSec: number;
   continuous: boolean;
@@ -61,7 +64,7 @@ export interface IdentifyModeConfig {
 export interface IdentifyModePrompt {
   root: Pos;
   rootNote: Note;
-  mode: Mode;               // the answer — NOT revealed in the prompt UI
+  mode: ScaleType;               // the answer — NOT revealed in the prompt UI
   positions: Pos[];         // all scale-note positions up to maxFret
   rootPositions: Pos[];     // the subset that are root notes (marked distinctly)
   // A random subset (displayNotePercentage) of `positions`, re-rolled per prompt
@@ -69,10 +72,10 @@ export interface IdentifyModePrompt {
   visiblePositions: Pos[];
 }
 
-export type IdentifyModeAnswer = { mode: Mode };
+export type IdentifyModeAnswer = { mode: ScaleType };
 
 export interface PerModeStat {
-  mode: Mode;
+  mode: ScaleType;
   timesAsked: number;
   correctCount: number;
   avgTimeMs: number;

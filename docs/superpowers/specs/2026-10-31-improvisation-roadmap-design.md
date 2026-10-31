@@ -16,7 +16,7 @@ lays out these skill layers:
 | 1 | Note names anywhere on the neck | Yes: Root Notes |
 | 2 | Scale degrees relative to a key/chord | Partly: Intervals (diatonic 3rd/5th only) |
 | 3 | Chord tones / arpeggios inside a position (CAGED) | Yes: CAGED Shapes |
-| 4 | Scales attached to those positions | Partly: modes only, no pentatonic/blues/minor variants |
+| 4 | Scales attached to those positions | Yes: modes, pentatonics, blues, harmonic/melodic minor, CAGED positions |
 | 5 | Targeting chord tones over changes | **No** |
 | 6 | Ear to fingers (hear it, play it) | Partly: drone, Identify-by-ear |
 
@@ -144,7 +144,10 @@ The most direct improvisation drill.
   - reverse: "find the b7 of D", using the nearest-position rule from a start
     position
 
-## 4. Scale types beyond the modes
+## 4. Scale types beyond the modes — SHIPPED
+
+Shipped 2026-10-31; see `2026-10-31-scale-types-design.md` (scale-family CAGED
+windows, two-row scale picker).
 
 - Generalize `Mode` into a `ScaleType` that adds:
   - major pentatonic

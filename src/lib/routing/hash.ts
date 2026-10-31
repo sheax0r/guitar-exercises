@@ -1,5 +1,5 @@
 import { CHROMATIC, type Note, type ClosestAlgorithm } from '../music/notes';
-import { MODE_ORDER, type Mode } from '../music/modes';
+import { SCALE_ORDER, type ScaleType } from '../music/modes';
 import { DEFAULT_MIC_SENSITIVITY } from '../audio/pitchMath';
 import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
@@ -24,7 +24,7 @@ const VALID_FRETBOARD_EXERCISES = new Set<string>(['root-notes', 'random-roots',
 const VALID_INTERVALS = new Set<string>(['3rd', '5th', 'random']);
 const VALID_QUALITIES = new Set<string>(['major', 'minor', 'random']);
 const VALID_DIRECTIONS = new Set<string>(['nearest', 'ascending']);
-const VALID_MODES = new Set<string>(MODE_ORDER);
+const VALID_MODES = new Set<string>(SCALE_ORDER);
 
 // Reads a param against an allowed set, falling back to `fallback` when absent
 // or invalid. Intervals-only params use this so legacy URLs (without them) and
@@ -56,14 +56,14 @@ function parseDuration(raw: string | null): { durationSec: number; continuous: b
   return { durationSec: d, continuous: false };
 }
 
-function parseModes(raw: string | null): Mode[] | null {
+function parseModes(raw: string | null): ScaleType[] | null {
   if (raw === null || raw === '') return null;
   const parts = raw.split(',').filter(p => p.length > 0);
   if (parts.length === 0) return null;
   for (const p of parts) {
     if (!VALID_MODES.has(p)) return null;
   }
-  return parts as Mode[];
+  return parts as ScaleType[];
 }
 
 // 'random' or absent/invalid → null (random root); a valid note → fixed root.
@@ -141,16 +141,16 @@ function parsePlayShape(params: URLSearchParams): Route {
   if (frets === null) return { screen: 'learn' };
 
   const variantRaw = params.get('variant') ?? 'octave';
-  if (variantRaw !== 'octave' && variantRaw !== 'box') return { screen: 'learn' };
+  if (variantRaw !== 'octave' && variantRaw !== 'box' && variantRaw !== 'caged') return { screen: 'learn' };
 
   const judgeRaw = params.get('judge') ?? 'fixed';
   if (judgeRaw !== 'pitch' && judgeRaw !== 'fixed') return { screen: 'learn' };
 
   const span = parsePositiveInt(params.get('span')) ?? 4;
 
-  // Mic input works for box, or the octave run judged by pitch; coerce otherwise
-  // (octave + fixed fingering can't be verified by pitch alone).
-  const micOk = variantRaw === 'box' || (variantRaw === 'octave' && judgeRaw === 'pitch');
+  // Mic input works for box/caged, or the octave run judged by pitch; coerce
+  // otherwise (octave + fixed fingering can't be verified by pitch alone).
+  const micOk = variantRaw !== 'octave' || judgeRaw === 'pitch';
   let inputMode: 'click' | 'mic' = params.get('input') === 'mic' ? 'mic' : 'click';
   if (inputMode === 'mic' && !micOk) {
     inputMode = 'click';
