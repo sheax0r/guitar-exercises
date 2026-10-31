@@ -1,44 +1,50 @@
 <script lang="ts">
+  import HomeScreen from './lib/components/HomeScreen.svelte';
+  import IdeateScreen from './lib/components/IdeateScreen.svelte';
+  import SectionNav from './lib/components/SectionNav.svelte';
   import StartScreen from './lib/components/StartScreen.svelte';
   import SessionScreen from './lib/components/SessionScreen.svelte';
   import ReportScreen from './lib/components/ReportScreen.svelte';
   import type { AnyConfig, AnyReport } from './lib/exercise/config';
-  import { parseHash, sessionHash, START_HASH } from './lib/routing/hash';
+  import { parseHash, sessionHash, canonicalHash, LEARN_HASH, type Route } from './lib/routing/hash';
 
-  type Screen = 'start' | 'session' | 'report';
+  type Screen = 'home' | 'learn' | 'ideate' | 'session' | 'report';
+
+  // Rewrite the URL to the route's canonical hash (legacy #/session links,
+  // invalid session params, unknown paths). replaceState, so no junk entry.
+  function normalizeUrl(route: Route) {
+    const target = canonicalHash(route);
+    if (window.location.hash !== target) {
+      window.history.replaceState(null, '', target);
+    }
+  }
 
   // Initialize from URL synchronously so the right screen renders on first
   // paint — no start-screen flash when the URL points at a session.
   const initialRoute = parseHash(window.location.hash);
+  normalizeUrl(initialRoute);
 
-  let screen = $state<Screen>(initialRoute.screen === 'session' ? 'session' : 'start');
+  let screen = $state<Screen>(initialRoute.screen);
   let activeConfig = $state<AnyConfig | null>(
     initialRoute.screen === 'session' ? initialRoute.config : null
   );
   let activeReport = $state<AnyReport | null>(null);
 
-  // Normalize the URL when we landed on start (either empty hash or invalid
-  // session params). Use replaceState so we don't push a junk entry.
-  if (initialRoute.screen === 'start' && window.location.hash !== START_HASH) {
-    window.history.replaceState(null, '', START_HASH);
-  }
-
-  // Browser back / forward: derive screen+config from the new hash. Any
-  // change to the session URL restarts the session (we lose report state),
-  // which is acceptable per the routing contract.
+  // Browser back / forward and nav links: derive screen+config from the new
+  // hash. Any change to the session URL restarts the session (we lose report
+  // state), which is acceptable per the routing contract.
   $effect(() => {
     function onHashChange() {
       const route = parseHash(window.location.hash);
+      normalizeUrl(route);
+      activeReport = null;
       if (route.screen === 'session') {
-        activeReport = null;
         // Fresh object reference triggers the {#key} remount of SessionScreen.
         activeConfig = { ...route.config };
-        screen = 'session';
       } else {
         activeConfig = null;
-        activeReport = null;
-        screen = 'start';
       }
+      screen = route.screen;
     }
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -77,15 +83,24 @@
   function handleBack() {
     activeConfig = null;
     activeReport = null;
-    screen = 'start';
-    if (window.location.hash !== START_HASH) {
-      window.location.hash = START_HASH;
+    screen = 'learn';
+    if (window.location.hash !== LEARN_HASH) {
+      window.location.hash = LEARN_HASH;
     }
   }
 </script>
 
-{#if screen === 'start'}
+<!-- Hidden during a running session: a stray tap would abandon it. -->
+{#if screen !== 'session'}
+  <SectionNav section={screen === 'ideate' ? 'ideate' : screen === 'home' ? null : 'learn'} />
+{/if}
+
+{#if screen === 'home'}
+  <HomeScreen />
+{:else if screen === 'learn'}
   <StartScreen onStart={handleStart} />
+{:else if screen === 'ideate'}
+  <IdeateScreen />
 {:else if screen === 'session' && activeConfig}
   {#key activeConfig}
     <SessionScreen

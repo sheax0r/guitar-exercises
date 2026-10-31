@@ -1,6 +1,10 @@
 # Guitar Exercises
 
-A local web app for guitar practice. Exercises:
+A local web app for guitar practice. The entry page (`#/`) leads to two sections:
+**Learn** (`#/learn`, the exercises below) and **Ideate** (`#/ideate`, a placeholder for the
+Whistler melody-to-tab tool; see `docs/superpowers/plans/2026-10-31-whistler-integration.md`).
+
+Exercises:
 
 - **Root Notes** — from a starting position, find the nearest occurrence of a target note; the A/E/D option re-picks the target from A, E or D each prompt.
 - **Intervals** — find the 3rd or 5th above a note, in a major or minor key.

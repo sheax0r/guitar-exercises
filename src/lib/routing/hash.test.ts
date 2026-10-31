@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { parseHash, sessionHash } from './hash';
+import { parseHash, sessionHash, canonicalHash, HOME_HASH, LEARN_HASH, IDEATE_HASH } from './hash';
 import type { ExerciseConfig } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 
 describe('parseHash', () => {
-  it('returns start for empty / root hashes', () => {
-    expect(parseHash('')).toEqual({ screen: 'start' });
-    expect(parseHash('#')).toEqual({ screen: 'start' });
-    expect(parseHash('#/')).toEqual({ screen: 'start' });
-    expect(parseHash('#/anything-else')).toEqual({ screen: 'start' });
+  it('returns home for empty, root and unknown hashes', () => {
+    expect(parseHash('')).toEqual({ screen: 'home' });
+    expect(parseHash('#')).toEqual({ screen: 'home' });
+    expect(parseHash('#/')).toEqual({ screen: 'home' });
+    expect(parseHash('#/anything-else')).toEqual({ screen: 'home' });
   });
 
   it('parses a valid session hash with all params', () => {
@@ -51,23 +51,23 @@ describe('parseHash', () => {
   });
 
   it('falls back to start on invalid note', () => {
-    expect(parseHash('#/session?note=X&duration=300&frets=12').screen).toBe('start');
+    expect(parseHash('#/session?note=X&duration=300&frets=12').screen).toBe('learn');
   });
 
   it('falls back to start when a required param is missing', () => {
-    expect(parseHash('#/session?duration=300&frets=12').screen).toBe('start');
-    expect(parseHash('#/session?note=A&frets=12').screen).toBe('start');
-    expect(parseHash('#/session?note=A&duration=300').screen).toBe('start');
+    expect(parseHash('#/session?duration=300&frets=12').screen).toBe('learn');
+    expect(parseHash('#/session?note=A&frets=12').screen).toBe('learn');
+    expect(parseHash('#/session?note=A&duration=300').screen).toBe('learn');
   });
 
   it('falls back to start on invalid duration / frets', () => {
-    expect(parseHash('#/session?note=A&duration=-1&frets=12').screen).toBe('start');
-    expect(parseHash('#/session?note=A&duration=abc&frets=12').screen).toBe('start');
-    expect(parseHash('#/session?note=A&duration=300&frets=0').screen).toBe('start');
+    expect(parseHash('#/session?note=A&duration=-1&frets=12').screen).toBe('learn');
+    expect(parseHash('#/session?note=A&duration=abc&frets=12').screen).toBe('learn');
+    expect(parseHash('#/session?note=A&duration=300&frets=0').screen).toBe('learn');
   });
 
   it('falls back to start on unknown algorithm', () => {
-    expect(parseHash('#/session?note=A&duration=300&frets=12&algo=bogus').screen).toBe('start');
+    expect(parseHash('#/session?note=A&duration=300&frets=12&algo=bogus').screen).toBe('learn');
   });
 
   it('defaults exercise to root-notes when ex param is absent', () => {
@@ -92,7 +92,7 @@ describe('parseHash', () => {
   });
 
   it('falls back to start on an unknown ex value', () => {
-    expect(parseHash('#/session?ex=bogus&note=A&duration=300&frets=12').screen).toBe('start');
+    expect(parseHash('#/session?ex=bogus&note=A&duration=300&frets=12').screen).toBe('learn');
   });
 
   it('defaults optional fields when omitted', () => {
@@ -105,6 +105,29 @@ describe('parseHash', () => {
       expect(r.config.playSound).toBe(true);
       expect(r.config.algorithm).toBe('fret-first');
     }
+  });
+  it('parses the section routes', () => {
+    expect(parseHash('#/learn')).toEqual({ screen: 'learn' });
+    expect(parseHash('#/ideate')).toEqual({ screen: 'ideate' });
+  });
+
+  it('parses sessions under #/learn and the legacy #/session path alike', () => {
+    const q = 'note=A&duration=300&frets=12';
+    expect(parseHash('#/learn/session?' + q)).toEqual(parseHash('#/session?' + q));
+    expect(parseHash('#/learn/session?' + q).screen).toBe('session');
+  });
+});
+
+describe('canonicalHash', () => {
+  it('maps each route to its canonical hash', () => {
+    expect(canonicalHash({ screen: 'home' })).toBe(HOME_HASH);
+    expect(canonicalHash({ screen: 'learn' })).toBe(LEARN_HASH);
+    expect(canonicalHash({ screen: 'ideate' })).toBe(IDEATE_HASH);
+  });
+
+  it('rewrites a legacy session hash under #/learn', () => {
+    const route = parseHash('#/session?note=A&duration=300&frets=12');
+    expect(canonicalHash(route).startsWith('#/learn/session?')).toBe(true);
   });
 });
 
@@ -297,12 +320,12 @@ describe('parseHash / sessionHash — play-shape', () => {
 
   it('falls back to start when no modes are enabled', () => {
     expect(parseHash('#/session?ex=play-shape&modes=&duration=300&frets=12'))
-      .toEqual({ screen: 'start' });
+      .toEqual({ screen: 'learn' });
   });
 
   it('falls back to start on an unknown mode name', () => {
     expect(parseHash('#/session?ex=play-shape&modes=bogus&duration=300&frets=12'))
-      .toEqual({ screen: 'start' });
+      .toEqual({ screen: 'learn' });
   });
 });
 
@@ -342,6 +365,6 @@ describe('parseHash / sessionHash — identify-mode', () => {
 
   it('falls back to start when no modes are enabled', () => {
     expect(parseHash('#/session?ex=identify-mode&modes=&duration=300&frets=12'))
-      .toEqual({ screen: 'start' });
+      .toEqual({ screen: 'learn' });
   });
 });
