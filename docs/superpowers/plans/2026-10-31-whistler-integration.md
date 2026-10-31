@@ -116,6 +116,10 @@ Each phase is one PR and ships on its own.
 
 ### Phase 2: port the pipeline to TypeScript (medium)
 
+**Status: done.** `src/lib/transcribe/` (detect, basicPitch, fretting, quantize, score) with
+vitest coverage; harness at `/ideate-test.html` (dev only) with `test/fetch_fixtures.py`.
+`IdeateScreen` is now lazy-loaded. The iframe keeps its own `core.js` until Phase 3.
+
 - `core.js` becomes `src/lib/transcribe/*.ts`, split by concern:
   - `detect.ts`: `detectNotes` and `estimateLag`
   - `basicPitch.ts`

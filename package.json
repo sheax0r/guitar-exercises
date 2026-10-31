@@ -25,6 +25,7 @@
     "vitest": "^2.1.0"
   },
   "dependencies": {
+    "fflate": "^0.8.2",
     "pitchy": "4.1.0"
   }
 }

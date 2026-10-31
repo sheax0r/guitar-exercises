@@ -1,6 +1,5 @@
 <script lang="ts">
   import HomeScreen from './lib/components/HomeScreen.svelte';
-  import IdeateScreen from './lib/components/IdeateScreen.svelte';
   import SectionNav from './lib/components/SectionNav.svelte';
   import StartScreen from './lib/components/StartScreen.svelte';
   import SessionScreen from './lib/components/SessionScreen.svelte';
@@ -100,7 +99,10 @@
 {:else if screen === 'learn'}
   <StartScreen onStart={handleStart} />
 {:else if screen === 'ideate'}
-  <IdeateScreen />
+  <!-- Lazy: Ideate's code (transcription, alphaTab glue) stays out of the Learn bundle. -->
+  {#await import('./lib/components/IdeateScreen.svelte') then { default: IdeateScreen }}
+    <IdeateScreen />
+  {/await}
 {:else if screen === 'session' && activeConfig}
   {#key activeConfig}
     <SessionScreen
