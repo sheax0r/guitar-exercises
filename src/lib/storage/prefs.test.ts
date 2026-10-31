@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadPrefs, savePrefs, type Prefs } from './prefs';
+import { loadPrefs, savePrefs, updatePrefs, type Prefs } from './prefs';
 
 const FULL_PREFS: Prefs = {
   exercise: 'root-notes',
@@ -83,5 +83,14 @@ describe('prefs', () => {
       configurable: true,
       value: original
     });
+  });
+});
+
+describe('updatePrefs', () => {
+  beforeEach(() => localStorage.clear());
+  it('merges a patch into the stored prefs', () => {
+    savePrefs(FULL_PREFS);
+    updatePrefs({ showTuner: true });
+    expect(loadPrefs()).toEqual({ ...FULL_PREFS, showTuner: true });
   });
 });

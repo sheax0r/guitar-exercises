@@ -1,5 +1,6 @@
 import { PitchDetector } from 'pitchy';
 import { getAudioContext } from './context';
+import { tunerReading, type TunerReading } from './tuner';
 import { hzToMidi, rms, inGuitarRange, rmsFloorForSensitivity, DEFAULT_MIC_SENSITIVITY, OnsetDetector, type OnsetOptions } from './pitchMath';
 
 export interface PitchListener {
@@ -11,6 +12,7 @@ export interface PitchListener {
 export interface PitchListenerOptions extends OnsetOptions {
   sensitivity?: number;   // 0..1, maps to the RMS loudness floor
   deviceId?: string | null; // specific audio input, or null/undefined for default
+  onTuner?: (reading: TunerReading | null) => void; // every frame, for a live tuner
 }
 
 // Lists the available audio input devices (best-effort; labels are only
@@ -88,10 +90,12 @@ export async function startPitchListener(
     // detector register the gap so the next real note is a fresh onset).
     if (rms(input) < minRms) {
       onset.push(null, 0);
+      opts.onTuner?.(null);
       raf = requestAnimationFrame(tick);
       return;
     }
     const [hz, clarity] = detector.findPitch(input, ctx.sampleRate);
+    opts.onTuner?.(tunerReading(hz, clarity));
     let midi: number | null = null;
     if (clarity > 0 && hz > 0 && Number.isFinite(hz)) {
       const m = hzToMidi(hz);

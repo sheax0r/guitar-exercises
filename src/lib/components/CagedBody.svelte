@@ -8,6 +8,9 @@
   import { CAGED_ORDER, CHORD_DISPLAY, chordName, type CagedShape, type Pos } from '../music/caged';
   import { noteAt, CHROMATIC, NOTE_DISPLAY, type Note } from '../music/notes';
   import { playPluck } from '../audio/pluck';
+  import Tuner from './Tuner.svelte';
+  import type { TunerReading } from '../audio/tuner';
+  import { loadPrefs, updatePrefs } from '../storage/prefs';
   import { startPitchListener, listAudioInputs, type PitchListener } from '../audio/pitch';
   import { startStrumCapture, strumPitches, type StrumCapture, type StrumVerdict } from '../audio/strum';
 
@@ -47,6 +50,9 @@
   let micDeviceId = $state(untrack(() => config.micDeviceId));
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
   let micListener: PitchListener | null = null;
+  // Opt-in intonation check (off by default; remembered across sessions).
+  let showTuner = $state(loadPrefs().showTuner ?? false);
+  let tuner = $state<TunerReading | null>(null);
 
   $effect(() => {
     if (config.inputMode !== 'mic' || strumMode) return;
@@ -61,7 +67,7 @@
       if (result.correct) litCorrect = [...litCorrect, result.correctAnswers[0]];
       else promptHadWrong = true;
       finishIfComplete(result.promptComplete);
-    }, { sensitivity: untrack(() => micSensitivity), deviceId })
+    }, { sensitivity: untrack(() => micSensitivity), deviceId, onTuner: (r) => { if (showTuner) tuner = r; } })
       .then((l) => {
         if (cancelled) { l.stop(); return; }
         micListener = l;
@@ -293,6 +299,13 @@
         {:else}🎤 listening{lastHeard ? ` — heard ${lastHeard}` : '…'}{/if}
       </div>
       {#if strumMode && strumFeedback}<div class="strum-feedback">{strumFeedback}</div>{/if}
+    {/if}
+    {#if config.inputMode === 'mic' && !strumMode}
+      {#if showTuner}<Tuner reading={tuner} compact />{/if}
+      <label class="toggle">
+        <input type="checkbox" bind:checked={showTuner} onchange={() => updatePrefs({ showTuner })} />
+        Tuner
+      </label>
     {/if}
     <label class="toggle">
       <input type="checkbox" bind:checked={showFretNumbers} />
