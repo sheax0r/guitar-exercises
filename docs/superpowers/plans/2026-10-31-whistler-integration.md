@@ -220,6 +220,20 @@ The Whistler pipeline lifts constraints recorded in
   logic. This is the roadmap's "vocabulary transfer" gap.
 - **Fixture harness.** GuitarSet guitar takes become regression tests for
   every mic-judged exercise. Today those exercises have no real-audio tests.
+  - [x] **Done:** `src/lib/transcribe/harness/learn.ts` replays GuitarSet
+    takes through Learn's live judging path. That path is
+    `createFrameJudge` in `audio/pitch.ts`, now shared with
+    `startPitchListener`, run as `listenOffline` with 2048-sample frames at
+    60 fps. The check is that the annotated notes are heard: a same-pitch
+    onset between 50 ms before the note and 100 ms after it ends. It
+    reports recall and precision. Decisions: notes under 120 ms are left
+    out, because the onset detector needs about 83 ms of stable pitch by
+    design. Takes are peak-normalized to 0.5, since the Jazz1 mic take
+    peaks at 0.07 and would sit under the default loudness floor.
+    Measured: Jazz1 77% / 94%, BN1 69% / 98%. It runs as the `learn` engine
+    on `ideate-test.html` and in `learn.test.ts`, which skips when the
+    fixtures are absent (CI). Strum mode (Basic Pitch) needs chord
+    fixtures and is not covered yet.
 
 ## Risks and mitigations
 
