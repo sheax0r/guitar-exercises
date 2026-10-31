@@ -33,13 +33,14 @@ export async function listAudioInputs(): Promise<Array<{ deviceId: string; label
 // Opens an audio input (a specific device, or the default). A stale/unplugged
 // device id must not kill the mic: it falls back to the default input. If that
 // also fails (no mic / denied), the error surfaces.
-export async function openMic(deviceId?: string | null): Promise<MediaStream> {
+// `extra` adds track constraints (echo cancellation, AGC...).
+export async function openMic(deviceId?: string | null, extra?: MediaTrackConstraints): Promise<MediaStream> {
   const md = typeof navigator !== 'undefined' ? navigator.mediaDevices : undefined;
   if (!md?.getUserMedia) throw new Error('microphone unavailable');
   try {
-    return await md.getUserMedia({ audio: deviceId ? { deviceId: { exact: deviceId } } : true });
+    return await md.getUserMedia({ audio: deviceId ? { ...extra, deviceId: { exact: deviceId } } : extra ?? true });
   } catch (e) {
-    if (deviceId) return md.getUserMedia({ audio: true });
+    if (deviceId) return md.getUserMedia({ audio: extra ?? true });
     throw e;
   }
 }

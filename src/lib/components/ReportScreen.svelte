@@ -12,9 +12,10 @@
   import type { CallResponseReport } from '../exercise/callresponse/types';
   import type { LickDrillReport } from '../exercise/lick/types';
   import type { AnyConfig, AnyReport } from '../exercise/config';
+  import type { RhythmReport } from '../exercise/rhythm/types';
 
   type Props = {
-    report: AnyReport;
+    report: Exclude<AnyReport, RhythmReport>; // Rhythm has its own report screen
     config: AnyConfig;
     onPracticeAgain: () => void;
     onBack: () => void;

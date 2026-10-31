@@ -9,12 +9,13 @@ import type { CagedShape, ChordQuality } from '../music/caged';
 import type { ProgressionId } from '../music/progressions';
 import type { ToneTarget } from '../exercise/chordtones/types';
 import type { Degree } from '../music/scales';
+import type { RhythmTarget } from '../exercise/rhythm/types';
 import type { StringNum } from '../music/tuning';
 
 const KEY = 'guitar-exercises.prefs.v1';
 
 export interface Prefs {
-  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees' | 'chord-tones' | 'call-response' | 'lick-drill';
+  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees' | 'chord-tones' | 'call-response' | 'rhythm' | 'lick-drill';
   targetNote: Note;
   durationSec: number;
   continuous: boolean;
@@ -67,6 +68,11 @@ export interface Prefs {
   phraseMotion?: 'stepwise' | 'leaps';
   showStartNote?: boolean;
   judgeRhythm?: boolean;
+  // Rhythm drill (bpm and mic settings are shared).
+  rhythmTarget?: RhythmTarget;
+  rhythmBars?: number;
+  rhythmTolerance?: number;
+  rhythmInput?: 'click' | 'mic';
   // Lick Drill (mic settings are shared; the licks themselves live in storage/licks.ts).
   lickId?: string;
   lickTarget?: Note | 'random' | 'same';

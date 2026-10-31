@@ -155,6 +155,13 @@ describe('summarize call-response', () => {
   });
 });
 
+describe('summarize rhythm', () => {
+  it('names target, tempo, bars, tolerance and input', () => {
+    expect(summarize({ exercise: 'rhythm', target: 'ands', bpm: 90, bars: 8, toleranceMs: 50, inputMode: 'mic', micSensitivity: 0.5, micDeviceId: null }))
+      .toBe('Rhythm · The ands · 90 bpm · 8 bars · ±50 ms · Mic');
+  });
+});
+
 describe('summarize lick-drill', () => {
   it('describes the lick, target key, start string and input', () => {
     expect(summarize({

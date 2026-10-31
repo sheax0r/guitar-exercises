@@ -4,6 +4,7 @@
   import StartScreen from './lib/components/StartScreen.svelte';
   import ReportScreen from './lib/components/ReportScreen.svelte';
   import type { AnyConfig, AnyReport } from './lib/exercise/config';
+  import type { RhythmReport } from './lib/exercise/rhythm/types';
   import { parseHash, sessionHash, canonicalHash, LEARN_HASH, type Route } from './lib/routing/hash';
 
   type Screen = 'home' | 'learn' | 'ideate' | 'session' | 'report';
@@ -114,10 +115,21 @@
     {/key}
   {/await}
 {:else if screen === 'report' && activeReport && activeConfig}
-  <ReportScreen
-    report={activeReport}
-    config={activeConfig}
-    onPracticeAgain={handlePracticeAgain}
-    onBack={handleBack}
-  />
+  {#if activeConfig.exercise === 'rhythm'}
+    {#await import('./lib/components/RhythmReport.svelte') then { default: RhythmReportScreen }}
+      <RhythmReportScreen
+        report={activeReport as RhythmReport}
+        config={activeConfig}
+        onPracticeAgain={handlePracticeAgain}
+        onBack={handleBack}
+      />
+    {/await}
+  {:else}
+    <ReportScreen
+      report={activeReport as Exclude<AnyReport, RhythmReport>}
+      config={activeConfig}
+      onPracticeAgain={handlePracticeAgain}
+      onBack={handleBack}
+    />
+  {/if}
 {/if}

@@ -30,7 +30,7 @@ describe('StartScreen — exercise selector', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     expect(container.querySelector('#exercise')).toBeNull();
     const ids = Array.from(container.querySelectorAll('button.card')).map(c => c.getAttribute('data-exercise'));
-    expect(ids).toEqual(['root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged', 'chord-tones', 'call-response', 'lick-drill']);
+    expect(ids).toEqual(['root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged', 'chord-tones', 'call-response', 'lick-drill', 'rhythm']);
   });
 
   it('hides the target-note picker for modes exercises', async () => {
@@ -454,6 +454,33 @@ describe('StartScreen — Call and Response', () => {
     await fireEvent.click(card(container, 'call-response'));
     await fireEvent.click(chipByText(container, '1', 'Degrees'));
     await fireEvent.click(chipByText(container, '3', 'Degrees'));
+    expect(startButton(container).disabled).toBe(true);
+  });
+});
+
+describe('StartScreen — Rhythm', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('emits a rhythm config (mic by default), hides duration and frets, and remembers its settings', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(card(container, 'rhythm'));
+    expect(container.querySelector('[aria-label="Frets"]')).toBeNull();
+    await fireEvent.click(chipByText(container, 'The ands', 'Play on'));
+    await fireEvent.click(chipByText(container, '16 bars', 'Bars'));
+    await fireEvent.click(chipByText(container, '±30 ms', 'Tolerance'));
+    await fireEvent.click(startButton(container));
+    expect(onStart.mock.calls[0][0]).toEqual({
+      exercise: 'rhythm', target: 'ands', bpm: 80, bars: 16, toleranceMs: 30, inputMode: 'mic',
+      micSensitivity: 0.5, micDeviceId: null
+    });
+    expect(storedPrefs()).toMatchObject({ exercise: 'rhythm', rhythmTarget: 'ands', rhythmBars: 16, rhythmTolerance: 30, rhythmInput: 'mic' });
+  });
+
+  it('blocks start on an invalid tempo', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(card(container, 'rhythm'));
+    await fireEvent.input(container.querySelector('input[aria-label="BPM"]')!, { target: { value: '300' } });
     expect(startButton(container).disabled).toBe(true);
   });
 });

@@ -14,6 +14,14 @@ export function loadCalibMs(): number {
   }
 }
 
+export function hasCalib(): boolean {
+  try {
+    return localStorage.getItem(CALIB_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function saveCalibMs(ms: number): void {
   try {
     localStorage.setItem(CALIB_KEY, String(ms));

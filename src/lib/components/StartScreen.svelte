@@ -25,6 +25,8 @@
   import { PHRASE_DEGREES } from '../exercise/callresponse/types';
   import CallResponseSettings from './start/CallResponseSettings.svelte';
   import type { Degree } from '../music/scales';
+  import RhythmSettings from './start/RhythmSettings.svelte';
+  import type { RhythmTarget } from '../exercise/rhythm/types';
   import type { StringNum } from '../music/tuning';
   import LickDrillSettings from './start/LickDrillSettings.svelte';
   import { loadLicks } from '../storage/licks';
@@ -35,7 +37,7 @@
 
   let { onStart }: Props = $props();
 
-  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones' | 'call-response' | 'lick-drill';
+  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones' | 'call-response' | 'lick-drill' | 'rhythm';
   const CARD_GROUPS: Array<{ title: string; cards: Array<{ id: Card; name: string; desc: string }> }> = [
     {
       title: 'Fretboard',
@@ -69,6 +71,12 @@
       title: 'Licks',
       cards: [
         { id: 'lick-drill', name: 'Lick Drill', desc: 'Play a lick from Ideate in another key or position.' }
+      ]
+    },
+    {
+      title: 'Rhythm',
+      cards: [
+        { id: 'rhythm', name: 'Time Feel', desc: 'Play on beat 1, every beat or the ands; scored in ms.' }
       ]
     }
   ];
@@ -140,6 +148,11 @@
   let phraseMotion = $state<'stepwise' | 'leaps'>(stored.phraseMotion ?? 'leaps');
   let showStartNote = $state<boolean>(stored.showStartNote ?? false);
   let judgeRhythm = $state<boolean>(stored.judgeRhythm ?? false);
+  // Rhythm (bpm and mic settings are shared). Its input defaults to the mic.
+  let rhythmTarget = $state<RhythmTarget>(stored.rhythmTarget ?? 'beats');
+  let rhythmBars = $state<number>(stored.rhythmBars ?? 8);
+  let rhythmTolerance = $state<number>(stored.rhythmTolerance ?? 50);
+  let rhythmInput = $state<'click' | 'mic'>(stored.rhythmInput ?? 'mic');
   // Lick Drill (mic settings are shared). Licks are saved from Ideate's cleanup panel.
   let licks = $state(loadLicks());
   // svelte-ignore state_referenced_locally
@@ -169,7 +182,7 @@
   const targetNote = $derived<Note>(rootTarget === 'random' ? lastFixedTarget : rootTarget);
   const isModes = $derived(card === 'play-shape' || card === 'identify-mode');
 
-  const durationValid = $derived(continuous || durationSec > 0);
+  const durationValid = $derived(card === 'rhythm' || continuous || durationSec > 0);
   // A box shape needs a sane span; an empty number input binds to null.
   const boxSpanValid = $derived(
     card !== 'play-shape' || shapeVariant !== 'box' || (Number.isInteger(boxSpan) && boxSpan >= 3)
@@ -178,7 +191,9 @@
   const intervalsValid = $derived(card !== 'intervals' || intervals.length > 0);
   // An empty number input binds to null.
   const phraseValid = $derived(card !== 'call-response' || (phraseLengths.length > 0 && phraseDegrees.length >= 2));
-  const bpmValid = $derived(card !== 'chord-tones' || tempo === 'untimed' || (Number.isInteger(bpm) && bpm >= 40 && bpm <= 200));
+  const bpmValid = $derived(
+    (card !== 'chord-tones' || tempo === 'untimed') && card !== 'rhythm' || (Number.isInteger(bpm) && bpm >= 40 && bpm <= 200)
+  );
   const lickValid = $derived(card !== 'lick-drill' || selectedLick !== null);
   const valid = $derived(
     lickValid && durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid && bpmValid && phraseValid
@@ -239,6 +254,18 @@
         continuous,
         showFretNumbers,
         playSound
+      };
+    }
+    if (card === 'rhythm') {
+      return {
+        exercise: 'rhythm',
+        target: rhythmTarget,
+        bpm,
+        bars: rhythmBars,
+        toleranceMs: rhythmTolerance,
+        inputMode: rhythmInput,
+        micSensitivity,
+        micDeviceId
       };
     }
     if (card === 'call-response') {
@@ -387,6 +414,10 @@
       phraseMotion,
       showStartNote,
       judgeRhythm,
+      rhythmTarget,
+      rhythmBars,
+      rhythmTolerance,
+      rhythmInput,
       lickId: lickId ?? undefined,
       lickTarget,
       lickStartString,
@@ -407,7 +438,7 @@
 
   function startRecent(r: { hash: string; config: AnyConfig }) {
     // The mic device isn't in the hash; use the one currently chosen.
-    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' || r.config.exercise === 'call-response' || r.config.exercise === 'lick-drill' ? { ...r.config, micDeviceId } : r.config;
+    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' || r.config.exercise === 'call-response' || r.config.exercise === 'lick-drill' || r.config.exercise === 'rhythm' ? { ...r.config, micDeviceId } : r.config;
     savePrefs({ ...loadPrefs(), recentSessions: rememberRecent(r.config, r.hash) } as Prefs);
     onStart(config);
   }
@@ -481,6 +512,17 @@
       bind:micDeviceId
       {micDevices}
     />
+  {:else if card === 'rhythm'}
+    <RhythmSettings
+      bind:target={rhythmTarget}
+      bind:bpm
+      bind:bars={rhythmBars}
+      bind:tolerance={rhythmTolerance}
+      bind:inputMode={rhythmInput}
+      bind:micSensitivity
+      bind:micDeviceId
+      {micDevices}
+    />
   {:else if card === 'lick-drill'}
     <LickDrillSettings
       bind:licks
@@ -535,6 +577,8 @@
     />
   {/if}
 
+  <!-- Rhythm runs a set number of bars, with no fretboard. -->
+  {#if card !== 'rhythm'}
   <div class="row">
     <span class="label">Duration</span>
     <DurationPicker bind:durationSec bind:continuous />
@@ -583,6 +627,7 @@
       {/if}
     </div>
   </details>
+  {/if}
 
   <div class="start-bar">
     <span class="summary">{summary}</span>

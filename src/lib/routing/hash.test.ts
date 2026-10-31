@@ -41,7 +41,7 @@ describe('parseHash', () => {
     const r = parseHash('#/session?note=A&duration=continuous&frets=12');
     expect(r.screen).toBe('session');
     if (r.screen === 'session') {
-      expect(r.config.continuous).toBe(true);
+      expect(r.config).toMatchObject({ continuous: true });
     }
   });
 
@@ -508,6 +508,21 @@ describe('parseHash — call and response', () => {
   });
   it('needs two degrees', () => {
     expect(parseHash('#/learn/session?ex=call-response&degs=5&duration=300&frets=12')).toMatchObject({ config: { degrees: ['1', '3', '5'] } });
+  });
+});
+
+describe('parseHash — rhythm', () => {
+  it('fills defaults for a bare URL (no duration or frets needed)', () => {
+    expect(parseHash('#/learn/session?ex=rhythm')).toEqual({ screen: 'session', config: {
+      exercise: 'rhythm', target: 'beats', bpm: 80, bars: 8, toleranceMs: 50, inputMode: 'mic',
+      micSensitivity: 0.5, micDeviceId: null
+    } });
+  });
+  it('round-trips a full config, and rejects off-menu bars and tolerance', () => {
+    const r = parseHash('#/learn/session?ex=rhythm&tgt=ands&bpm=100&bars=16&tol=30&input=click&sens=0.7');
+    expect(r).toMatchObject({ config: { target: 'ands', bpm: 100, bars: 16, toleranceMs: 30, inputMode: 'click', micSensitivity: 0.7 } });
+    if (r.screen === 'session') expect(parseHash(sessionHash(r.config))).toEqual(r);
+    expect(parseHash('#/learn/session?ex=rhythm&bars=7&tol=999&bpm=5')).toMatchObject({ config: { bars: 8, toleranceMs: 50, bpm: 40 } });
   });
 });
 

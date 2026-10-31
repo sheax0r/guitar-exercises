@@ -11,6 +11,7 @@ import { PHRASE_DEGREES, type CallResponseConfig } from '../exercise/callrespons
 import type { LickDrillConfig } from '../exercise/lick/types';
 import { decodeLick, encodeLick } from '../exercise/lick/lick';
 import { PROGRESSION_ORDER } from '../music/progressions';
+import { RHYTHM_TARGETS, BAR_COUNTS, TOLERANCES_MS, type RhythmConfig } from '../exercise/rhythm/types';
 import { CAGED_ORDER } from '../music/caged';
 import { INTERVAL_ORDER, type Interval } from '../music/scales';
 
@@ -328,6 +329,23 @@ function parseCallResponse(params: URLSearchParams): Route {
   return { screen: 'session', config };
 }
 
+function parseRhythm(params: URLSearchParams): Route {
+  const bpm = parsePositiveInt(params.get('bpm')) ?? 80;
+  const bars = parsePositiveInt(params.get('bars'));
+  const tol = parsePositiveInt(params.get('tol'));
+  const config: RhythmConfig = {
+    exercise: 'rhythm',
+    target: parseEnum(params.get('tgt'), new Set(RHYTHM_TARGETS), 'beats' as const),
+    bpm: Math.min(200, Math.max(40, bpm)),
+    bars: bars !== null && BAR_COUNTS.includes(bars) ? bars : 8,
+    toleranceMs: tol !== null && TOLERANCES_MS.includes(tol) ? tol : 50,
+    inputMode: params.get('input') === 'click' ? 'click' : 'mic',
+    micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
+    micDeviceId: null
+  };
+  return { screen: 'session', config };
+}
+
 function parseLickDrill(params: URLSearchParams): Route {
   const duration = parseDuration(params.get('duration'));
   const frets = parsePositiveInt(params.get('frets'));
@@ -371,6 +389,7 @@ export function parseHash(hash: string): Route {
   if (ex === 'degrees') return parseDegrees(params);
   if (ex === 'chord-tones') return parseChordTones(params);
   if (ex === 'call-response') return parseCallResponse(params);
+  if (ex === 'rhythm') return parseRhythm(params);
   if (ex === 'lick-drill') return parseLickDrill(params);
   return { screen: 'learn' };
 }
@@ -444,6 +463,13 @@ export function sessionHash(config: AnyConfig): string {
     params.set('frets', String(config.maxFret));
     params.set('fretnums', config.showFretNumbers ? '1' : '0');
     params.set('sound', config.playSound ? '1' : '0');
+  } else if (config.exercise === 'rhythm') {
+    params.set('tgt', config.target);
+    params.set('bpm', String(config.bpm));
+    params.set('bars', String(config.bars));
+    params.set('tol', String(config.toleranceMs));
+    params.set('input', config.inputMode);
+    params.set('sens', String(config.micSensitivity));
   } else if (config.exercise === 'lick-drill') {
     params.set('lick', encodeLick(config.lick));
     params.set('lname', config.lickName.slice(0, 40));
