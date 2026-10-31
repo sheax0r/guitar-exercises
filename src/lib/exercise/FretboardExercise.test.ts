@@ -15,7 +15,7 @@ const DEFAULT_CONFIG: ExerciseConfig = {
   showFretNumbers: true,
   playSound: false,
   algorithm: 'fret-first',
-  intervalKind: 'random',
+  intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
   keyRoot: 'C',
   keyQuality: 'major',
   direction: 'nearest'
@@ -232,7 +232,7 @@ describe('FretboardExercise intervals mode', () => {
     exercise: 'intervals',
     keyRoot: 'C',
     keyQuality: 'major',
-    intervalKind: '3rd',
+    intervals: ['3rd'], intervalRef: 'diatonic-from-note',
     direction: 'nearest'
   };
 
@@ -258,9 +258,9 @@ describe('FretboardExercise intervals mode', () => {
     }
   });
 
-  it('draws a fresh interval each prompt when intervalKind is random', () => {
+  it('draws a fresh interval each prompt when several intervals are enabled', () => {
     const ex = new FretboardExercise();
-    ex.start({ ...INTERVALS_CONFIG, intervalKind: 'random' });
+    ex.start({ ...INTERVALS_CONFIG, intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note' });
     const seen = new Set<string>();
     for (let i = 0; i < 100; i++) {
       const p = ex.getNextPrompt();
@@ -269,6 +269,30 @@ describe('FretboardExercise intervals mode', () => {
       seen.add(p.interval!);
     }
     expect(seen.size).toBe(2);
+  });
+
+  it('supports the 2nd, 4th, 6th and 7th', () => {
+    const ex = new FretboardExercise();
+    ex.start({ ...INTERVALS_CONFIG, intervals: ['2nd', '4th', '6th', '7th'] });
+    for (let i = 0; i < 50; i++) {
+      const p = ex.getNextPrompt();
+      expect(['2nd', '4th', '6th', '7th']).toContain(p.interval);
+      expect(p.targetNote).toBe(diatonicInterval('C', 'major', p.highlightNote, p.interval!));
+    }
+  });
+
+  it('from-root: shows the key root and targets a chromatic interval above it', () => {
+    const ex = new FretboardExercise();
+    ex.start({ ...INTERVALS_CONFIG, keyRoot: 'D', intervals: ['7th'], intervalRef: 'from-root' });
+    const labels = new Set<string>();
+    for (let i = 0; i < 60; i++) {
+      const p = ex.getNextPrompt();
+      expect(p.highlightNote).toBe('D');
+      expect(p.interval).toBe('7th');
+      labels.add(p.intervalLabel!);
+      expect(p.targetNote).toBe(p.intervalLabel === 'b7' ? 'C' : 'C#');
+    }
+    expect(labels).toEqual(new Set(['b7', '7']));
   });
 
   it('draws a fresh key each prompt when keyRoot/keyQuality are random', () => {

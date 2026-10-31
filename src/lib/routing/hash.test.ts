@@ -27,7 +27,7 @@ describe('parseHash', () => {
         showFretNumbers: true,
         playSound: true,
         algorithm: 'fret-first',
-        intervalKind: 'random',
+        intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
         keyRoot: 'C',
         keyQuality: 'major',
         direction: 'nearest'
@@ -145,7 +145,7 @@ describe('sessionHash round-trip', () => {
       showFretNumbers: false,
       playSound: false,
       algorithm: 'manhattan',
-      intervalKind: 'random',
+      intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
       keyRoot: 'C',
       keyQuality: 'major',
       direction: 'nearest'
@@ -169,7 +169,7 @@ describe('sessionHash round-trip', () => {
       showFretNumbers: true,
       playSound: true,
       algorithm: 'fret-first',
-      intervalKind: '5th',
+      intervals: ['5th'], intervalRef: 'diatonic-from-note',
       keyRoot: 'G',
       keyQuality: 'minor',
       direction: 'ascending'
@@ -193,7 +193,7 @@ describe('sessionHash round-trip', () => {
       showFretNumbers: true,
       playSound: true,
       algorithm: 'fret-first',
-      intervalKind: 'random',
+      intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
       keyRoot: 'C',
       keyQuality: 'major',
       direction: 'nearest'
@@ -217,7 +217,7 @@ describe('sessionHash round-trip', () => {
       showFretNumbers: true,
       playSound: true,
       algorithm: 'fret-first',
-      intervalKind: 'random',
+      intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
       keyRoot: 'C',
       keyQuality: 'major',
       direction: 'nearest'
@@ -425,3 +425,29 @@ describe('parseHash — scale types and the caged shape variant', () => {
     expect(parseHash('#/learn/session?ex=identify-mode&modes=ionian,bebop&duration=300&frets=12').screen).toBe('learn');
   });
 });
+
+describe('parseHash — interval upgrades and Name the Degree', () => {
+  const base = '#/learn/session?ex=intervals&duration=300&frets=12';
+  const ints = (h: string) => {
+    const r = parseHash(h);
+    return r.screen === 'session' && r.config.exercise === 'intervals' ? r.config : null;
+  };
+  it('legacy int values map to the interval list', () => {
+    expect(ints(base + '&int=random')!.intervals).toEqual(['3rd', '5th']);
+    expect(ints(base)!.intervals).toEqual(['3rd', '5th']);
+    expect(ints(base + '&int=5th')!.intervals).toEqual(['5th']);
+    expect(ints(base)!.intervalRef).toBe('diatonic-from-note');
+  });
+  it('round-trips new intervals and the from-root reference', () => {
+    const c = ints(base + '&int=2nd,7th&iref=root')!;
+    expect(c.intervals).toEqual(['2nd', '7th']);
+    expect(c.intervalRef).toBe('from-root');
+    expect(parseHash(sessionHash(c))).toEqual({ screen: 'session', config: c });
+  });
+  it('round-trips a degrees config', () => {
+    const r = parseHash('#/learn/session?ex=degrees&dvar=find&keyroot=D&duration=continuous&frets=12');
+    expect(r).toMatchObject({ screen: 'session', config: { exercise: 'degrees', degreeVariant: 'find', keyRoot: 'D', continuous: true } });
+    if (r.screen === 'session') expect(parseHash(sessionHash(r.config))).toEqual(r);
+  });
+});
+

@@ -5,7 +5,9 @@ import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 import type { AnyConfig } from '../exercise/config';
 import type { CagedConfig } from '../exercise/caged/types';
+import type { DegreesConfig } from '../exercise/degrees/types';
 import { CAGED_ORDER } from '../music/caged';
+import { INTERVAL_ORDER, type Interval } from '../music/scales';
 
 export type Route =
   | { screen: 'home' }
@@ -21,7 +23,6 @@ const SESSION_PREFIX = '#/learn/session?';
 const VALID_NOTES = new Set<string>(CHROMATIC);
 const VALID_ALGOS = new Set<string>(['fret-first', 'manhattan']);
 const VALID_FRETBOARD_EXERCISES = new Set<string>(['root-notes', 'random-roots', 'intervals']);
-const VALID_INTERVALS = new Set<string>(['3rd', '5th', 'random']);
 const VALID_QUALITIES = new Set<string>(['major', 'minor', 'random']);
 const VALID_DIRECTIONS = new Set<string>(['nearest', 'ascending']);
 const VALID_MODES = new Set<string>(SCALE_ORDER);
@@ -122,7 +123,9 @@ function parseFretboard(params: URLSearchParams, exercise: ExerciseKind): Route 
     showFretNumbers: parseBool(params.get('fretnums'), true),
     playSound: parseBool(params.get('sound'), true),
     algorithm: algoRaw as ClosestAlgorithm,
-    intervalKind: parseEnum(params.get('int'), VALID_INTERVALS, 'random'),
+    // 'random' and absent are the legacy 3rd/5th mix.
+    intervals: parseList<Interval>(params.get('int'), INTERVAL_ORDER) ?? ['3rd', '5th'],
+    intervalRef: params.get('iref') === 'root' ? 'from-root' : 'diatonic-from-note',
     keyRoot,
     keyQuality: parseEnum(params.get('keyqual'), VALID_QUALITIES, 'major'),
     direction: parseEnum(params.get('dir'), VALID_DIRECTIONS, 'nearest')
@@ -241,6 +244,25 @@ function parseCaged(params: URLSearchParams): Route {
   return { screen: 'session', config };
 }
 
+function parseDegrees(params: URLSearchParams): Route {
+  const duration = parseDuration(params.get('duration'));
+  const frets = parsePositiveInt(params.get('frets'));
+  if (!duration || frets === null) return { screen: 'learn' };
+  const keyRoot = params.get('keyroot');
+  const config: DegreesConfig = {
+    exercise: 'degrees',
+    degreeVariant: params.get('dvar') === 'find' ? 'find' : 'name',
+    keyRoot: keyRoot && VALID_NOTES.has(keyRoot) ? (keyRoot as Note) : 'random',
+    algorithm: parseEnum(params.get('algo'), VALID_ALGOS, 'fret-first'),
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true)
+  };
+  return { screen: 'session', config };
+}
+
 export function parseHash(hash: string): Route {
   const h = hash.startsWith('#') ? hash.slice(1) : hash;
   if (h === '/learn') return { screen: 'learn' };
@@ -256,6 +278,7 @@ export function parseHash(hash: string): Route {
   if (ex === 'play-shape') return parsePlayShape(params);
   if (ex === 'identify-mode') return parseIdentifyMode(params);
   if (ex === 'caged') return parseCaged(params);
+  if (ex === 'degrees') return parseDegrees(params);
   return { screen: 'learn' };
 }
 
@@ -290,6 +313,14 @@ export function sessionHash(config: AnyConfig): string {
     params.set('sound', config.playSound ? '1' : '0');
     params.set('input', config.inputMode);
     params.set('sens', String(config.micSensitivity));
+  } else if (config.exercise === 'degrees') {
+    params.set('dvar', config.degreeVariant);
+    params.set('keyroot', config.keyRoot);
+    params.set('algo', config.algorithm);
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
   } else if (config.exercise === 'identify-mode') {
     params.set('modes', config.enabledModes.join(','));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
@@ -310,7 +341,8 @@ export function sessionHash(config: AnyConfig): string {
     params.set('fretnums', config.showFretNumbers ? '1' : '0');
     params.set('sound', config.playSound ? '1' : '0');
     params.set('algo', config.algorithm);
-    params.set('int', config.intervalKind);
+    params.set('int', config.intervals.join(','));
+    params.set('iref', config.intervalRef === 'from-root' ? 'root' : 'diatonic');
     params.set('keyroot', config.keyRoot);
     params.set('keyqual', config.keyQuality);
     params.set('dir', config.direction);

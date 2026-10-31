@@ -16,7 +16,7 @@ function makeConfig(overrides: Partial<ExerciseConfig> = {}): ExerciseConfig {
     showFretNumbers: true,
     playSound: false,
     algorithm: 'fret-first',
-    intervalKind: 'random',
+    intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
     keyRoot: 'C',
     keyQuality: 'major',
     direction: 'nearest',
