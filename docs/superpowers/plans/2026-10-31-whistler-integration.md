@@ -182,6 +182,16 @@ The Whistler pipeline lifts constraints recorded in
   - Trade-off: the model downloads on first use and analysis is per chunk, not
     instant. Use it as "play, then check", with pitchy kept for live
     single-note judging.
+  - [x] **Done for CAGED find-tones:** a "Strum it" / "Strum it, root in
+    bass" mic judging option. `src/lib/audio/strum.ts` records a 2 s take
+    (onset-triggered after a quiet gap, with 150 ms pre-roll, or the Record
+    now button), Basic Pitch runs via a dynamic import of `detectNotes`
+    (`engine: 'ai'`), notes under 30% of the loudest are dropped, and the
+    pitch-class set must equal the chord's exactly. Decisions: the "expected
+    bass" is the chord root (every CAGED voicing is root-position); a wrong
+    strum keeps the prompt open (marked wrong) so the player strums again;
+    the Basic Pitch model instance is cached across takes. Triad drills and
+    harmonic ear training are not done yet.
 - **Rhythm.** Whistler's metronome, count-in, beat-grid quantization and
   **latency calibration** (`estimateLag`) close the rhythm gap. Possible
   exercises: timed chord-tone targeting, "play on beat 1/the and", and

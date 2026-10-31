@@ -46,6 +46,7 @@ export interface Prefs {
   enabledShapes?: CagedShape[];
   chordQualities?: ChordQuality[];
   include7th?: boolean;
+  cagedMicJudge?: 'notes' | 'strum' | 'strum-bass';
   degreeVariant?: DegreeVariant;
   rootVariant?: 'nearest' | 'find-all';
   findAllWindow?: 'neck' | 'window';    // Name the Degree (key root shared with Intervals)

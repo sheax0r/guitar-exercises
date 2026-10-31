@@ -5,6 +5,7 @@ import type { RawNote } from './types';
 export const BP_BASE = 'https://cdn.jsdelivr.net/npm/@spotify/basic-pitch@1.0.1';
 // CDN module with no local types.
 let bpMod: any = null;
+let bp: any = null; // one model instance, reused across calls
 
 // Linear-interpolation resample. Also used before source separation (44.1 kHz).
 export function resampleTo(data: Float32Array, sr: number, target: number): Float32Array {
@@ -20,7 +21,7 @@ export function resampleTo(data: Float32Array, sr: number, target: number): Floa
 
 export async function basicPitchNotes(data: Float32Array, sr: number, onProg?: (p: number) => void): Promise<RawNote[]> {
   bpMod = bpMod || (await import(/* @vite-ignore */ `${BP_BASE}/+esm`));
-  const bp = new bpMod.BasicPitch(`${BP_BASE}/model/model.json`);
+  bp = bp || new bpMod.BasicPitch(`${BP_BASE}/model/model.json`);
   const audio = resampleTo(data, sr, 22050);
   const frames: number[][] = [], onsets: number[][] = [], contours: number[][] = [];
   await bp.evaluateModel(
