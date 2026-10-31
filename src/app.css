@@ -6,3 +6,23 @@
 body {
   margin: 0;
 }
+
+.row { display: flex; flex-direction: column; gap: 8px; }
+.label { font-weight: 600; }
+.hint { opacity: 0.7; font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip {
+  padding: 8px 16px;
+  border: 1px solid #888;
+  background: transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  color: inherit;
+}
+.chip-active {
+  background: #ff8c42;
+  color: #1a1a1a;
+  border-color: #ff8c42;
+  font-weight: 700;
+}
+.chip:disabled { opacity: 0.4; cursor: not-allowed; }

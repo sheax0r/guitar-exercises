@@ -1,9 +1,11 @@
 # Guitar Exercises
 
-A local web app for guitar practice. Includes two exercises:
+A local web app for guitar practice. Exercises:
 
-- **Root Notes** — given a fixed target note and a starting position on the fretboard, find the closest occurrence of that note on any string.
-- **Random Roots** — same task, but the target note is re-randomized from A, E, or D on every prompt and shown each question.
+- **Root Notes** — from a starting position, find the nearest occurrence of a target note; the A/E/D option re-picks the target from A, E or D each prompt.
+- **Intervals** — find the 3rd or 5th above a note, in a major or minor key.
+- **Play the Shape** — play a mode as a one-octave run or position box, by clicking or into a mic.
+- **Identify the Mode** — name the mode from its notes on the fretboard or its sound.
 
 ## Run it
 
@@ -37,18 +39,20 @@ Quick layout:
 ```
 src/
   lib/
-    music/        # Note math, tuning, fretboard position helpers
-    audio/        # Karplus-Strong pluck synthesis
-    exercise/     # Exercise<...> interface and Root Notes implementation
-    components/   # Svelte components (screens + Fretboard widget)
-    storage/      # localStorage preferences wrapper
+    music/        # Note math, tuning, scales, modes, fretboard position helpers
+    audio/        # Pluck synthesis, drone, mic pitch detection
+    exercise/     # Exercise<...> interface, fretboard exercises, config summary
+      modes/      # Play the Shape and Identify the Mode
+    components/   # Svelte screens + Fretboard widget
+      start/      # Start-screen pickers and per-exercise settings
+    routing/      # URL hash <-> session config
+    storage/      # localStorage preferences and recent sessions
   App.svelte      # Screen router
 ```
 
 ## Adding another exercise type
 
-1. Create a new directory under `src/lib/exercise/` (mirror `rootNotes/`).
-2. Define your `Config`, `Prompt`, `Answer`, `Report` types.
-3. Implement the `Exercise<Config, Prompt, Answer, Report>` interface.
-4. Add a screen variant (or, when the second exercise lands, refactor `SessionScreen` to accept an exercise-supplied main view).
-5. Add a selector option in `StartScreen`.
+1. Implement the exercise under `src/lib/exercise/` (mirror `modes/`): config, prompt, answer and report types plus the `Exercise<...>` interface; add the config to `AnyConfig`.
+2. Add a settings component in `src/lib/components/start/` (mirror `IntervalsSettings.svelte`).
+3. Add a card entry in `StartScreen`'s `CARD_GROUPS`, render the settings component, and build the config in `buildConfig`.
+4. Parse and serialize the config in `src/lib/routing/hash.ts`, and add its summary in `src/lib/exercise/summary.ts`.

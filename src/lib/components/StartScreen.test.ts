@@ -2,58 +2,84 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import StartScreen from './StartScreen.svelte';
 import type { AnyConfig } from '../exercise/config';
+import { sessionHash } from '../routing/hash';
+
+const PREFS_KEY = 'guitar-exercises.prefs.v1';
+
+function card(container: HTMLElement, id: string): HTMLButtonElement {
+  return container.querySelector(`button[data-exercise="${id}"]`) as HTMLButtonElement;
+}
+function chipByText(container: HTMLElement, text: string, group?: string): HTMLButtonElement {
+  const root = group ? container.querySelector(`[aria-label="${group}"]`)! : container;
+  return Array.from(root.querySelectorAll('.chip'))
+    .find(c => c.textContent?.trim() === text) as HTMLButtonElement;
+}
+function startButton(container: HTMLElement): HTMLButtonElement {
+  return container.querySelector('.start-button') as HTMLButtonElement;
+}
+function storedPrefs() {
+  return JSON.parse(localStorage.getItem(PREFS_KEY)!);
+}
 
 describe('StartScreen — exercise selector', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  function exerciseSelect(container: HTMLElement): HTMLSelectElement {
-    return container.querySelector('#exercise') as HTMLSelectElement;
-  }
-
-  it('offers both exercises and is not disabled', () => {
+  it('offers four exercise cards and no select', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
-    const sel = exerciseSelect(container);
-    expect(sel.disabled).toBe(false);
-    const values = Array.from(sel.options).map(o => o.value);
-    expect(values).toContain('root-notes');
-    expect(values).toContain('random-roots');
+    expect(container.querySelector('#exercise')).toBeNull();
+    const ids = Array.from(container.querySelectorAll('button.card')).map(c => c.getAttribute('data-exercise'));
+    expect(ids).toEqual(['root-notes', 'intervals', 'play-shape', 'identify-mode']);
   });
 
-  it('hides the root-note picker when random-roots is selected', async () => {
+  it('hides the target-note picker for modes exercises', async () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
-    expect(container.querySelector('#note')).not.toBeNull();
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'random-roots' } });
-    expect(container.querySelector('#note')).toBeNull();
+    expect(container.querySelector('[aria-label="Target note"]')).not.toBeNull();
+    await fireEvent.click(card(container, 'play-shape'));
+    expect(container.querySelector('[aria-label="Target note"]')).toBeNull();
   });
 
-  it('emits exercise=random-roots in the started config', async () => {
+  it('emits exercise=random-roots when the A/E/D target is picked', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'random-roots' } });
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    await fireEvent.click(chipByText(container, 'A/E/D', 'Target note'));
+    await fireEvent.click(startButton(container));
     expect(onStart).toHaveBeenCalledOnce();
     expect(onStart.mock.calls[0][0].exercise).toBe('random-roots');
+  });
+
+  it('emits the picked root-notes target', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(chipByText(container, 'G', 'Target note'));
+    await fireEvent.click(startButton(container));
+    const cfg = onStart.mock.calls[0][0];
+    expect(cfg.exercise).toBe('root-notes');
+    if (cfg.exercise === 'root-notes') expect(cfg.targetNote).toBe('G');
   });
 
   it('defaults to root-notes', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    expect(card(container, 'root-notes').getAttribute('aria-pressed')).toBe('true');
+    await fireEvent.click(startButton(container));
     expect(onStart.mock.calls[0][0].exercise).toBe('root-notes');
   });
 
-  it('offers the modes exercises', () => {
-    const { container } = render(StartScreen, { props: { onStart: () => {} } });
-    const values = Array.from(exerciseSelect(container).options).map(o => o.value);
-    expect(values).toContain('play-shape');
-    expect(values).toContain('identify-mode');
+  it('legacy prefs exercise=random-roots selects Root Notes with A/E/D', async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ exercise: 'random-roots' }));
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    expect(card(container, 'root-notes').getAttribute('aria-pressed')).toBe('true');
+    expect(chipByText(container, 'A/E/D', 'Target note').classList.contains('chip-active')).toBe(true);
+    await fireEvent.click(startButton(container));
+    expect(onStart.mock.calls[0][0].exercise).toBe('random-roots');
   });
 
   it('shows mode chips but no shape controls for identify-mode', async () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'identify-mode' } });
+    await fireEvent.click(card(container, 'identify-mode'));
     const chipText = Array.from(container.querySelectorAll('.chip')).map(c => c.textContent?.trim());
     expect(chipText).toContain('Dorian');
     // Shape / judging controls belong to play-shape only.
@@ -64,29 +90,26 @@ describe('StartScreen — exercise selector', () => {
   it('emits an identify-mode config', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'identify-mode' } });
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    await fireEvent.click(card(container, 'identify-mode'));
+    await fireEvent.click(startButton(container));
     expect(onStart.mock.calls[0][0].exercise).toBe('identify-mode');
   });
 
   it('shows mode chips and shape controls when play-shape is selected', async () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
-    // 7 mode chips + 2 shape chips are present among the chip buttons.
+    await fireEvent.click(card(container, 'play-shape'));
     const chipText = Array.from(container.querySelectorAll('.chip')).map(c => c.textContent?.trim());
     expect(chipText).toContain('Ionian');
     expect(chipText).toContain('Locrian');
     expect(chipText).toContain('One octave');
     expect(chipText).toContain('Position box');
-    // Root-note picker is hidden for modes exercises.
-    expect(container.querySelector('#note')).toBeNull();
   });
 
   it('emits a play-shape config with the enabled modes', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    await fireEvent.click(card(container, 'play-shape'));
+    await fireEvent.click(startButton(container));
     const config = onStart.mock.calls[0][0];
     expect(config.exercise).toBe('play-shape');
     if (config.exercise === 'play-shape') {
@@ -96,46 +119,35 @@ describe('StartScreen — exercise selector', () => {
 
   it('disables Start when the box span is cleared (prevents an infeasible config)', async () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
+    await fireEvent.click(card(container, 'play-shape'));
     // Switch to the box shape, which reveals the span number input.
-    const boxChip = Array.from(container.querySelectorAll('.chip'))
-      .find(c => c.textContent?.trim() === 'Position box') as HTMLButtonElement;
-    await fireEvent.click(boxChip);
+    await fireEvent.click(chipByText(container, 'Position box'));
     const span = container.querySelector('#span') as HTMLInputElement;
     expect(span).toBeTruthy();
     await fireEvent.input(span, { target: { value: '' } });
-    expect((container.querySelector('.start-button') as HTMLButtonElement).disabled).toBe(true);
+    expect(startButton(container).disabled).toBe(true);
   });
 
   it('disables Start when every mode is toggled off', async () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
-    const modeChips = Array.from(container.querySelectorAll('.chip'))
-      .filter(c => ['Ionian','Dorian','Phrygian','Lydian','Mixolydian','Aeolian','Locrian']
-        .includes(c.textContent?.trim() ?? ''));
+    await fireEvent.click(card(container, 'play-shape'));
+    const modeChips = Array.from(container.querySelectorAll('[aria-label="Modes"] .chip'));
+    expect(modeChips.length).toBe(7);
     for (const chip of modeChips) {
       if (chip.classList.contains('chip-active')) await fireEvent.click(chip);
     }
-    expect((container.querySelector('.start-button') as HTMLButtonElement).disabled).toBe(true);
+    expect(startButton(container).disabled).toBe(true);
   });
 });
 
 describe('StartScreen — modes sound/ear controls', () => {
   beforeEach(() => localStorage.clear());
 
-  function exerciseSelect(container: HTMLElement): HTMLSelectElement {
-    return container.querySelector('#exercise') as HTMLSelectElement;
-  }
-  function chipByText(container: HTMLElement, text: string): HTMLButtonElement {
-    return Array.from(container.querySelectorAll('.chip'))
-      .find(c => c.textContent?.trim() === text) as HTMLButtonElement;
-  }
-
   it('play-shape emits the new sound/ear defaults', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    await fireEvent.click(card(container, 'play-shape'));
+    await fireEvent.click(startButton(container));
     const cfg = onStart.mock.calls[0][0];
     expect(cfg.exercise).toBe('play-shape');
     if (cfg.exercise === 'play-shape') {
@@ -146,31 +158,49 @@ describe('StartScreen — modes sound/ear controls', () => {
     }
   });
 
-  it('mic chip: disabled for octave+fixed, enabled for octave+pitch and for box', async () => {
-    const { container } = render(StartScreen, { props: { onStart: () => {} } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
-    // Default octave + fixed judge: mic disabled (can't verify position by pitch).
-    expect(chipByText(container, 'Play (mic)').disabled).toBe(true);
-    // octave + "Any position (by pitch)": enabled.
-    await fireEvent.click(chipByText(container, 'Any position (by pitch)'));
-    expect(chipByText(container, 'Play (mic)').disabled).toBe(false);
-    // Position box: also enabled (notes matched by pitch).
-    await fireEvent.click(chipByText(container, 'Position box'));
-    expect(chipByText(container, 'Play (mic)').disabled).toBe(false);
-  });
-
-  it('emits inputMode=mic only when octave+pitch is active', async () => {
+  it('mic chip is enabled under octave+fixed and switches judging to by-pitch', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
+    await fireEvent.click(card(container, 'play-shape'));
+    expect(chipByText(container, 'Play (mic)').disabled).toBe(false);
+    await fireEvent.click(chipByText(container, 'Play (mic)'));
+    expect(chipByText(container, 'Any position (by pitch)').classList.contains('chip-active')).toBe(true);
+    await fireEvent.click(startButton(container));
+    const cfg = onStart.mock.calls[0][0];
+    expect(cfg.exercise).toBe('play-shape');
+    if (cfg.exercise === 'play-shape') {
+      expect(cfg.inputMode).toBe('mic');
+      expect(cfg.octaveJudge).toBe('pitch');
+    }
+  });
+
+  it('choosing Fixed fingering after mic reverts input to click', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(card(container, 'play-shape'));
+    await fireEvent.click(chipByText(container, 'Play (mic)'));
+    await fireEvent.click(chipByText(container, 'Fixed fingering'));
+    expect(chipByText(container, 'Click the notes').classList.contains('chip-active')).toBe(true);
+    await fireEvent.click(startButton(container));
+    const cfg = onStart.mock.calls[0][0];
+    if (cfg.exercise === 'play-shape') {
+      expect(cfg.inputMode).toBe('click');
+      expect(cfg.octaveJudge).toBe('fixed');
+    }
+  });
+
+  it('emits inputMode=mic with drone when octave+pitch is active', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(card(container, 'play-shape'));
     await fireEvent.click(chipByText(container, 'Any position (by pitch)'));
     await fireEvent.click(chipByText(container, 'Play (mic)'));
-    // Drone is a checkbox, not a chip; toggle it directly.
+    // Drone is a checkbox inside More options.
     const droneBox = Array.from(container.querySelectorAll('label'))
       .find(l => l.textContent?.includes('Drone the root'))!
       .querySelector('input') as HTMLInputElement;
     if (!droneBox.checked) await fireEvent.click(droneBox);
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    await fireEvent.click(startButton(container));
     const cfg = onStart.mock.calls[0][0];
     if (cfg.exercise === 'play-shape') {
       expect(cfg.inputMode).toBe('mic');
@@ -181,9 +211,9 @@ describe('StartScreen — modes sound/ear controls', () => {
   it('identify-mode emits promptMode=audio when "Hear the scale" is chosen', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'identify-mode' } });
+    await fireEvent.click(card(container, 'identify-mode'));
     await fireEvent.click(chipByText(container, 'Hear the scale'));
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    await fireEvent.click(startButton(container));
     const cfg = onStart.mock.calls[0][0];
     if (cfg.exercise === 'identify-mode') {
       expect(cfg.promptMode).toBe('audio');
@@ -193,13 +223,12 @@ describe('StartScreen — modes sound/ear controls', () => {
   it('shows mic sensitivity + input-source controls when mic is selected', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'play-shape' } });
+    await fireEvent.click(card(container, 'play-shape'));
     await fireEvent.click(chipByText(container, 'Any position (by pitch)'));
     await fireEvent.click(chipByText(container, 'Play (mic)'));
-    // The shared MicSettings controls are present.
     expect(container.querySelector('input[aria-label="Mic sensitivity"]')).toBeTruthy();
     expect(container.querySelector('select[aria-label="Input source"]')).toBeTruthy();
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    await fireEvent.click(startButton(container));
     const cfg = onStart.mock.calls[0][0];
     if (cfg.exercise === 'play-shape') {
       expect(typeof cfg.micSensitivity).toBe('number');
@@ -210,14 +239,95 @@ describe('StartScreen — modes sound/ear controls', () => {
   it('fixed root emits the chosen note', async () => {
     const onStart = vi.fn<(c: AnyConfig) => void>();
     const { container } = render(StartScreen, { props: { onStart } });
-    await fireEvent.change(exerciseSelect(container), { target: { value: 'identify-mode' } });
-    await fireEvent.click(chipByText(container, 'Fixed'));
-    const sel = container.querySelector('select[aria-label="Fixed root note"]') as HTMLSelectElement;
-    await fireEvent.change(sel, { target: { value: 'G' } });
-    await fireEvent.click(container.querySelector('.start-button') as HTMLButtonElement);
+    await fireEvent.click(card(container, 'identify-mode'));
+    await fireEvent.click(chipByText(container, 'G', 'Root'));
+    await fireEvent.click(startButton(container));
     const cfg = onStart.mock.calls[0][0];
     if (cfg.exercise === 'identify-mode') {
       expect(cfg.fixedRootNote).toBe('G');
     }
+  });
+});
+
+describe('StartScreen — layout, summary and recents', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('"More options" is a closed details holding the Play notes checkbox', () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    const more = container.querySelector('details.more') as HTMLDetailsElement;
+    expect(more).toBeTruthy();
+    expect(more.open).toBe(false);
+    expect(Array.from(more.querySelectorAll('label')).some(l => l.textContent?.includes('Play notes'))).toBe(true);
+  });
+
+  it('sticky summary describes the default config', () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    expect(container.querySelector('.start-bar .summary')?.textContent).toBe('Root Notes · A · 5m · 24 frets');
+  });
+
+  it('Start records a recent session that starts the same config again', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const first = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(startButton(first.container));
+    expect(storedPrefs().recentSessions).toHaveLength(1);
+    first.unmount();
+
+    const { container } = render(StartScreen, { props: { onStart } });
+    const recent = container.querySelectorAll('.recent');
+    expect(recent).toHaveLength(1);
+    expect(recent[0].textContent).toBe('Root Notes · A · 5m · 24 frets');
+    await fireEvent.click(recent[0]);
+    expect(onStart).toHaveBeenCalledTimes(2);
+    expect(onStart.mock.calls[1][0]).toEqual(onStart.mock.calls[0][0]);
+    expect(storedPrefs().recentSessions).toHaveLength(1);
+  });
+
+  it('skips unparseable stored recents', () => {
+    const valid = sessionHash({
+      exercise: 'identify-mode', enabledModes: ['dorian'], maxFret: 12, durationSec: 60, continuous: false,
+      showFretNumbers: true, playSound: true, drone: false, highlightCharacteristic: false,
+      fixedRootNote: null, promptMode: 'visual', displayNotePercentage: 100
+    });
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ recentSessions: ['garbage', '#/session?ex=nope', valid] }));
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    expect(container.querySelectorAll('.recent')).toHaveLength(1);
+  });
+
+  it('Start still works and prunes junk when stored recents are corrupt', async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ recentSessions: 'abc' }));
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(startButton(container));
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(storedPrefs().recentSessions).toHaveLength(1);
+  });
+
+  it('a recent that reads the same as a new start is replaced, not duplicated', async () => {
+    const first = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(startButton(first.container));
+    first.unmount();
+
+    // Change an intervals-only setting, which alters the hash but not Root Notes' summary.
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(card(container, 'intervals'));
+    await fireEvent.click(chipByText(container, '5th', 'Interval'));
+    await fireEvent.click(card(container, 'root-notes'));
+    await fireEvent.click(startButton(container));
+    expect(storedPrefs().recentSessions).toHaveLength(1);
+  });
+
+  it('switching to A/E/D remembers the fixed target picked this visit', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(chipByText(container, 'C', 'Target note'));
+    await fireEvent.click(chipByText(container, 'A/E/D', 'Target note'));
+    await fireEvent.click(startButton(container));
+    expect(storedPrefs().targetNote).toBe('C');
+  });
+
+  it('duration chips expose the selection via aria-pressed', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(chipByText(container, 'Continuous', 'Duration'));
+    expect(chipByText(container, 'Continuous', 'Duration').getAttribute('aria-pressed')).toBe('true');
+    expect(chipByText(container, '5m', 'Duration').getAttribute('aria-pressed')).toBe('false');
   });
 });
