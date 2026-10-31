@@ -18,7 +18,7 @@ function makeConfig(): ExerciseConfig {
     showFretNumbers: true,
     playSound: false,
     algorithm: 'fret-first',
-    intervalKind: 'random',
+    intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
     keyRoot: 'C',
     keyQuality: 'major',
     direction: 'nearest'
@@ -120,7 +120,7 @@ describe('SessionScreen — per-prompt target (random-roots)', () => {
           exercise: 'intervals',
           keyRoot: 'C',
           keyQuality: 'major',
-          intervalKind: '3rd'
+          intervals: ['3rd'], intervalRef: 'diatonic-from-note'
         },
         onComplete: () => {},
         onAbort: () => {}

@@ -7,7 +7,7 @@ import type {
   PerTargetStat
 } from './types';
 import { noteAt, closestPositionOf, CHROMATIC, type Fret, type Note } from '../music/notes';
-import { scaleNotes, diatonicInterval, type Interval, type ScaleQuality } from '../music/scales';
+import { scaleNotes, diatonicInterval, transpose, CHROMATIC_INTERVALS, type Interval, type ScaleQuality } from '../music/scales';
 import type { StringNum } from '../music/tuning';
 
 // The fixed pool the 'random-roots' exercise re-draws its target from on every
@@ -115,7 +115,9 @@ export class FretboardExercise
   }
 
   // Resolves key + interval (each fixed or re-drawn per prompt), picks a shown
-  // note that is diatonic to that key, and targets its 3rd/5th.
+  // note that is diatonic to that key, and targets its diatonic interval
+  // ('diatonic-from-note'), or shows the key root and targets a chromatic
+  // interval above it ('from-root').
   private nextIntervalPrompt(): ExercisePrompt {
     const keyRoot = this.config.keyRoot === 'random'
       ? randomOf(CHROMATIC)
@@ -123,9 +125,15 @@ export class FretboardExercise
     const keyQuality: ScaleQuality = this.config.keyQuality === 'random'
       ? randomOf(['major', 'minor'] as const)
       : this.config.keyQuality;
-    const interval: Interval = this.config.intervalKind === 'random'
-      ? randomOf(['3rd', '5th'] as const)
-      : this.config.intervalKind;
+    const interval: Interval = randomOf(this.config.intervals);
+
+    if (this.config.intervalRef === 'from-root') {
+      // Measured from the key root (shown), chromatically: b7, #4, b3...
+      const flavour = randomOf(CHROMATIC_INTERVALS[interval]);
+      const pick = this.pickPosition(new Set([keyRoot]));
+      const targetNote = transpose(keyRoot, flavour.semis);
+      return { highlight: pick, highlightNote: keyRoot, targetNote, interval, intervalLabel: flavour.label, keyRoot, keyQuality };
+    }
 
     const scale = scaleNotes(keyRoot, keyQuality);
     const pick = this.pickPosition(new Set(scale));

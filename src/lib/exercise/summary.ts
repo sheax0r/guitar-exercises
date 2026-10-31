@@ -19,7 +19,9 @@ export function summarize(c: AnyConfig): string {
     case 'intervals': {
       const root = c.keyRoot === 'random' ? 'any key' : NOTE_DISPLAY[c.keyRoot];
       const quality = c.keyQuality === 'random' ? 'major/minor' : c.keyQuality;
-      parts.push('Intervals', c.intervalKind === 'random' ? '3rd/5th' : c.intervalKind, `${root} ${quality}`);
+      const ints = c.intervals.join('/');
+      if (c.intervalRef === 'from-root') parts.push('Intervals', `${ints} from the root`, root);
+      else parts.push('Intervals', ints, `${root} ${quality}`);
       break;
     }
     case 'play-shape':
@@ -30,6 +32,10 @@ export function summarize(c: AnyConfig): string {
     case 'identify-mode':
       parts.push('Identify the Mode', modes(c.enabledModes));
       if (c.promptMode === 'audio') parts.push('By ear');
+      break;
+    case 'degrees':
+      parts.push('Name the Degree', c.degreeVariant === 'name' ? 'Name it' : 'Find it',
+        c.keyRoot === 'random' ? 'any key' : `key of ${NOTE_DISPLAY[c.keyRoot]}`);
       break;
     case 'caged': {
       const shapes = CAGED_ORDER.filter(s => c.enabledShapes.includes(s)).join('');

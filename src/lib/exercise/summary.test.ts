@@ -16,7 +16,7 @@ const fret: ExerciseConfig = {
   showFretNumbers: true,
   playSound: true,
   algorithm: 'fret-first',
-  intervalKind: 'random',
+  intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
   keyRoot: 'random',
   keyQuality: 'random',
   direction: 'nearest'
@@ -75,7 +75,7 @@ describe('summarize', () => {
 
   it('intervals, fixed', () => {
     expect(summarize({
-      ...fret, exercise: 'intervals', intervalKind: '5th', keyRoot: 'C#',
+      ...fret, exercise: 'intervals', intervals: ['5th'], intervalRef: 'diatonic-from-note', keyRoot: 'C#',
       keyQuality: 'minor', durationSec: 90, maxFret: 24
     })).toBe(`Intervals · 5th · ${NOTE_DISPLAY['C#']} minor · 90s · 24 frets`);
   });
@@ -98,6 +98,13 @@ describe('summarize', () => {
     const s = summarize({ ...shape, enabledModes: ['minor-pentatonic', 'blues'], shapeVariant: 'caged' });
     expect(s).toContain('Minor pentatonic, Blues · CAGED · Mic');
     expect(summarize({ ...shape, enabledModes: ['ionian', 'dorian', 'blues', 'aeolian'] })).toContain('4 scales');
+  });
+
+  it('degrees and from-root intervals', () => {
+    expect(summarize({ exercise: 'degrees', degreeVariant: 'find', keyRoot: 'D', algorithm: 'fret-first', maxFret: 12, durationSec: 60, continuous: false, showFretNumbers: true, playSound: true }))
+      .toBe('Name the Degree · Find it · key of D · 1m · 12 frets');
+    expect(summarize({ ...fret, exercise: 'intervals', intervals: ['3rd', '7th'], intervalRef: 'from-root', keyRoot: 'random' }))
+      .toContain('Intervals · 3rd/7th from the root · any key');
   });
 
   it('identify-mode by ear', () => {

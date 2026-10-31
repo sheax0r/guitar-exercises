@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scaleNotes, diatonicInterval } from './scales';
+import { scaleNotes, diatonicInterval, CHROMATIC_INTERVALS, INTERVAL_ORDER, transpose, degreeOf, DEGREE_LABELS } from './scales';
 
 describe('scaleNotes', () => {
   it('builds the C major scale', () => {
@@ -38,5 +38,29 @@ describe('diatonicInterval', () => {
 
   it('returns null when the note is not in the scale', () => {
     expect(diatonicInterval('C', 'major', 'C#', '3rd')).toBeNull();
+  });
+});
+
+describe('wider diatonic intervals', () => {
+  it('2nd, 4th, 6th and 7th in C major', () => {
+    expect(diatonicInterval('C', 'major', 'E', '2nd')).toBe('F');
+    expect(diatonicInterval('C', 'major', 'F', '4th')).toBe('B');
+    expect(diatonicInterval('C', 'major', 'C', '6th')).toBe('A');
+    expect(diatonicInterval('C', 'major', 'D', '7th')).toBe('C');
+  });
+});
+
+describe('chromatic degrees', () => {
+  it('each generic interval has a flat and a natural/sharp flavour, all distinct labels', () => {
+    for (const i of INTERVAL_ORDER) expect(CHROMATIC_INTERVALS[i]).toHaveLength(2);
+    expect(CHROMATIC_INTERVALS['7th'].map(x => x.semis)).toEqual([10, 11]);
+  });
+  it('transpose and degreeOf', () => {
+    expect(transpose('D', 10)).toBe('C');
+    expect(transpose('C', -1)).toBe('B');
+    expect(degreeOf('D', 'C')).toBe('b7');
+    expect(degreeOf('C', 'F#')).toBe('#4');
+    expect(degreeOf('A', 'A')).toBe('1');
+    expect(DEGREE_LABELS).toHaveLength(12);
   });
 });

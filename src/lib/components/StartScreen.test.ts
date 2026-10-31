@@ -26,11 +26,11 @@ describe('StartScreen — exercise selector', () => {
     localStorage.clear();
   });
 
-  it('offers five exercise cards and no select', () => {
+  it('offers six exercise cards and no select', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     expect(container.querySelector('#exercise')).toBeNull();
     const ids = Array.from(container.querySelectorAll('button.card')).map(c => c.getAttribute('data-exercise'));
-    expect(ids).toEqual(['root-notes', 'intervals', 'play-shape', 'identify-mode', 'caged']);
+    expect(ids).toEqual(['root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged']);
   });
 
   it('hides the target-note picker for modes exercises', async () => {
@@ -126,6 +126,28 @@ describe('StartScreen — exercise selector', () => {
     expect(span).toBeTruthy();
     await fireEvent.input(span, { target: { value: '' } });
     expect(startButton(container).disabled).toBe(true);
+  });
+
+  it('emits an intervals config with chosen intervals and the from-root reference', async () => {
+    const onStart = vi.fn();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(card(container, 'intervals'));
+    await fireEvent.click(chipByText(container, '7th', 'Intervals'));
+    await fireEvent.click(chipByText(container, '3rd', 'Intervals'));
+    await fireEvent.click(chipByText(container, 'Key root, chromatic', 'Measured from'));
+    await fireEvent.click(startButton(container));
+    const cfg = onStart.mock.calls[0][0];
+    expect(cfg.intervals).toEqual(['5th', '7th']);
+    expect(cfg.intervalRef).toBe('from-root');
+  });
+
+  it('emits a degrees config', async () => {
+    const onStart = vi.fn();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(card(container, 'degrees'));
+    await fireEvent.click(chipByText(container, 'Find the degree', 'Drill'));
+    await fireEvent.click(startButton(container));
+    expect(onStart.mock.calls[0][0]).toMatchObject({ exercise: 'degrees', degreeVariant: 'find', keyRoot: 'C' });
   });
 
   it('emits a caged play-shape config with other scales and mic', async () => {
@@ -325,7 +347,7 @@ describe('StartScreen — layout, summary and recents', () => {
     // Change an intervals-only setting, which alters the hash but not Root Notes' summary.
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     await fireEvent.click(card(container, 'intervals'));
-    await fireEvent.click(chipByText(container, '5th', 'Interval'));
+    await fireEvent.click(chipByText(container, '5th', 'Intervals'));
     await fireEvent.click(card(container, 'root-notes'));
     await fireEvent.click(startButton(container));
     expect(storedPrefs().recentSessions).toHaveLength(1);

@@ -17,7 +17,10 @@ export interface ExerciseConfig {
   algorithm: ClosestAlgorithm;
   // 'intervals' exercise only. Each musical dimension is either fixed for the
   // whole session or re-drawn per prompt ('random'). Unused by other exercises.
-  intervalKind: Interval | 'random';
+  intervals: Interval[];   // drawn from per prompt
+  // 'diatonic-from-note': the in-key 3rd/5th/... above a shown note.
+  // 'from-root': a chromatic interval (b3, #4, b7...) above the key root.
+  intervalRef: 'diatonic-from-note' | 'from-root';
   keyRoot: Note | 'random';
   keyQuality: ScaleQuality | 'random';
   direction: Direction;
@@ -33,6 +36,7 @@ export interface ExercisePrompt {
   // 'intervals' exercise only: the resolved interval and key for this prompt,
   // used to render the header ("Find the 3rd of E — key of C major").
   interval?: Interval;
+  intervalLabel?: string;   // 'from-root' only: the chromatic name, e.g. 'b7'
   keyRoot?: Note;
   keyQuality?: ScaleQuality;
 }

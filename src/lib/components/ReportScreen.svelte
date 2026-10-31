@@ -3,9 +3,11 @@
   import Fretboard, { type Highlight } from './Fretboard.svelte';
   import { noteAt } from '../music/notes';
   import { MODE_DISPLAY } from '../music/modes';
+  import { DEGREE_LABELS, type Degree } from '../music/scales';
   import type { ExerciseConfig, ExerciseReport, PerTargetStat } from '../exercise/types';
   import type { ModesReport } from '../exercise/modes/types';
   import type { CagedReport } from '../exercise/caged/types';
+  import type { DegreesReport } from '../exercise/degrees/types';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
@@ -30,19 +32,22 @@
   const rootConfig = untrack(() => (isRoot ? (config as ExerciseConfig) : null));
   const rootReport = untrack(() => (isRoot ? (report as ExerciseReport) : null));
   const isCaged = untrack(() => config.exercise === 'caged');
+  const isDegrees = untrack(() => config.exercise === 'degrees');
   // Modes and CAGED both report per-group stats (per mode / per shape).
   type GroupStat = { label: string; timesAsked: number; correctCount: number; avgTimeMs: number };
   const groupStats: GroupStat[] = untrack(() =>
     isRoot ? []
     : isCaged ? (report as CagedReport).perShapeStats.map(s => ({ ...s, label: `${s.shape} shape` }))
+    : isDegrees ? (report as DegreesReport).perDegreeStats.map(s => ({ ...s, label: s.degree }))
     : (report as ModesReport).perModeStats.map(s => ({ ...s, label: MODE_DISPLAY[s.mode] }))
   );
-  const groupName = isCaged ? 'shape' : 'mode';
+  const groupName = isCaged ? 'shape' : isDegrees ? 'degree' : 'mode';
 
   const isRandomRoots = untrack(() => config.exercise === 'random-roots');
   const titleSuffix = isRoot
     ? (isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${rootConfig!.targetNote}`)
     : isCaged ? 'CAGED Shapes'
+    : isDegrees ? 'Name the Degree'
     : (config.exercise === 'play-shape' ? 'Play the Shape' : 'Identify the Mode');
 
   const accuracyPct = $derived(Math.round(report.accuracy * 100));
@@ -80,7 +85,9 @@
 
   // --- Per-group (mode / shape) stats ------------------------------------
   const perModeSorted = $derived<GroupStat[]>(
-    [...groupStats].sort((a, b) => a.label.localeCompare(b.label))
+    [...groupStats].sort((a, b) => isDegrees
+      ? DEGREE_LABELS.indexOf(a.label as Degree) - DEGREE_LABELS.indexOf(b.label as Degree)
+      : a.label.localeCompare(b.label))
   );
 
   const weakestModes = $derived<GroupStat[]>(
@@ -250,7 +257,7 @@
       {:else}
         <table class="per-mode">
           <thead>
-            <tr><th>{isCaged ? 'Shape' : 'Mode'}</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
+            <tr><th>{isCaged ? 'Shape' : isDegrees ? 'Degree' : 'Mode'}</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
           </thead>
           <tbody>
             {#each perModeSorted as s}

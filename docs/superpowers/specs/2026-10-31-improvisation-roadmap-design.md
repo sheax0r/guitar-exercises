@@ -14,7 +14,7 @@ lays out these skill layers:
 | Layer | Skill | Covered today |
 |---|---|---|
 | 1 | Note names anywhere on the neck | Yes: Root Notes |
-| 2 | Scale degrees relative to a key/chord | Partly: Intervals (diatonic 3rd/5th only) |
+| 2 | Scale degrees relative to a key/chord | Yes: Intervals (2nd–7th, in key or chromatic from the root), Name the Degree |
 | 3 | Chord tones / arpeggios inside a position (CAGED) | Yes: CAGED Shapes |
 | 4 | Scales attached to those positions | Yes: modes, pentatonics, blues, harmonic/melodic minor, CAGED positions |
 | 5 | Targeting chord tones over changes | **No** |
@@ -132,7 +132,10 @@ The most direct improvisation drill.
   position).
 - **Report:** accuracy per chord degree (I, IV, V, ii…) and per target type.
 
-## 3. Interval and degree upgrades (extend existing exercises)
+## 3. Interval and degree upgrades (extend existing exercises) — SHIPPED
+
+Shipped 2026-10-31; see `2026-10-31-interval-degree-upgrades-design.md`
+(multi-select intervals, Name the Degree as a sibling card).
 
 - **Intervals:** add 2nd, 4th, 6th and 7th to `Interval`. Add a reference mode
   `from-root`: the interval is measured from the key root and includes

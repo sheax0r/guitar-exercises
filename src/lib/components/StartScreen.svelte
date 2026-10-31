@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Note, ClosestAlgorithm, Direction } from '../music/notes';
-  import type { Interval, ScaleQuality } from '../music/scales';
+  import { INTERVAL_ORDER, type Interval, type ScaleQuality } from '../music/scales';
   import { MODE_ORDER, SCALE_ORDER, type ScaleType } from '../music/modes';
   import { loadPrefs, savePrefs, type Prefs } from '../storage/prefs';
   import { pushRecent } from '../storage/recent';
@@ -15,8 +15,10 @@
   import IntervalsSettings from './start/IntervalsSettings.svelte';
   import ModesSettings from './start/ModesSettings.svelte';
   import CagedSettings from './start/CagedSettings.svelte';
+  import NotePicker from './start/NotePicker.svelte';
   import { CAGED_ORDER, type CagedShape, type ChordQuality } from '../music/caged';
   import type { CagedVariant } from '../exercise/caged/types';
+  import type { DegreeVariant } from '../exercise/degrees/types';
 
   type Props = {
     onStart: (config: AnyConfig) => void;
@@ -24,13 +26,14 @@
 
   let { onStart }: Props = $props();
 
-  type Card = 'root-notes' | 'intervals' | 'play-shape' | 'identify-mode' | 'caged';
+  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged';
   const CARD_GROUPS: Array<{ title: string; cards: Array<{ id: Card; name: string; desc: string }> }> = [
     {
       title: 'Fretboard',
       cards: [
         { id: 'root-notes', name: 'Root Notes', desc: 'Find the nearest occurrence of a note.' },
-        { id: 'intervals', name: 'Intervals', desc: 'Find the 3rd or 5th above a note, in key.' }
+        { id: 'intervals', name: 'Intervals', desc: 'Find the 2nd–7th above a note in key, or from the root.' },
+        { id: 'degrees', name: 'Name the Degree', desc: 'Name a note\'s degree in a key, or find the b7 of D.' }
       ]
     },
     {
@@ -69,7 +72,12 @@
   let playSound = $state<boolean>(stored.playSound ?? true);
   let continuous = $state<boolean>(stored.continuous ?? false);
   let algorithm = $state<ClosestAlgorithm>(stored.algorithm ?? 'fret-first');
-  let intervalKind = $state<Interval | 'random'>(stored.intervalKind ?? 'random');
+  // Legacy prefs stored one intervalKind ('random' = the 3rd/5th mix).
+  let intervals = $state<Interval[]>(
+    stored.intervals ?? (stored.intervalKind && stored.intervalKind !== 'random' ? [stored.intervalKind] : ['3rd', '5th'])
+  );
+  let intervalRef = $state<'diatonic-from-note' | 'from-root'>(stored.intervalRef ?? 'diatonic-from-note');
+  let degreeVariant = $state<DegreeVariant>(stored.degreeVariant ?? 'name');
   let keyRoot = $state<Note | 'random'>(stored.keyRoot ?? 'C');
   let keyQuality = $state<ScaleQuality | 'random'>(stored.keyQuality ?? 'major');
   let direction = $state<Direction>(stored.direction ?? 'nearest');
@@ -122,8 +130,9 @@
     card !== 'play-shape' || shapeVariant !== 'box' || (Number.isInteger(boxSpan) && boxSpan >= 3)
   );
   const cagedValid = $derived(card !== 'caged' || (enabledShapes.length > 0 && chordQualities.length > 0));
+  const intervalsValid = $derived(card !== 'intervals' || intervals.length > 0);
   const valid = $derived(
-    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid
+    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid
   );
 
   function buildConfig(): AnyConfig {
@@ -169,6 +178,19 @@
         micDeviceId
       };
     }
+    if (card === 'degrees') {
+      return {
+        exercise: 'degrees',
+        degreeVariant,
+        keyRoot,
+        algorithm,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound
+      };
+    }
     if (card === 'identify-mode') {
       return {
         exercise: 'identify-mode',
@@ -196,7 +218,8 @@
       showFretNumbers,
       playSound,
       algorithm,
-      intervalKind,
+      intervals: INTERVAL_ORDER.filter(i => intervals.includes(i)),
+      intervalRef,
       keyRoot,
       keyQuality,
       direction
@@ -219,7 +242,9 @@
       showFretNumbers,
       playSound,
       algorithm,
-      intervalKind,
+      intervals,
+      intervalRef,
+      degreeVariant,
       keyRoot,
       keyQuality,
       direction,
@@ -298,7 +323,23 @@
   {#if card === 'root-notes'}
     <RootNotesSettings bind:target={rootTarget} />
   {:else if card === 'intervals'}
-    <IntervalsSettings bind:intervalKind bind:keyRoot bind:keyQuality bind:direction />
+    <IntervalsSettings bind:intervals bind:intervalRef bind:keyRoot bind:keyQuality bind:direction />
+  {:else if card === 'degrees'}
+    <div class="row">
+      <span class="label">Drill</span>
+      <ChipGroup
+        bind:value={degreeVariant}
+        label="Drill"
+        options={[
+          { value: 'name', label: 'Name the degree' },
+          { value: 'find', label: 'Find the degree' }
+        ]}
+      />
+    </div>
+    <div class="row">
+      <span class="label">Key</span>
+      <NotePicker bind:value={keyRoot} label="Key" randomLabel="Random" />
+    </div>
   {:else if card === 'caged'}
     <CagedSettings
       bind:cagedVariant
@@ -355,8 +396,10 @@
           <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
         </div>
       {:else if card !== 'caged'}
-        <label><input type="checkbox" bind:checked={showAllLabels} /> Show all labels (warm-up mode)</label>
-        <label><input type="checkbox" bind:checked={showRootMarkers} /> Show root note positions</label>
+        {#if card !== 'degrees'}
+          <label><input type="checkbox" bind:checked={showAllLabels} /> Show all labels (warm-up mode)</label>
+          <label><input type="checkbox" bind:checked={showRootMarkers} /> Show root note positions</label>
+        {/if}
         <div class="row">
           <span class="label">Closest-position algorithm</span>
           <ChipGroup

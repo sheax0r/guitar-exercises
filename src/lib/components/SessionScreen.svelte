@@ -3,6 +3,7 @@
   import PlayShapeBody from './PlayShapeBody.svelte';
   import IdentifyModeBody from './IdentifyModeBody.svelte';
   import CagedBody from './CagedBody.svelte';
+  import DegreesBody from './DegreesBody.svelte';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
@@ -16,6 +17,8 @@
 
 {#if config.exercise === 'play-shape'}
   <PlayShapeBody {config} {onComplete} {onAbort} />
+{:else if config.exercise === 'degrees'}
+  <DegreesBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'caged'}
   <CagedBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'identify-mode'}

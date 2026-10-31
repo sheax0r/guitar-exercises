@@ -4,12 +4,13 @@ import type { Interval, ScaleQuality } from '../music/scales';
 import type { ExerciseKind } from '../exercise/types';
 import type { ModeExerciseKind } from '../exercise/modes/types';
 import type { CagedVariant } from '../exercise/caged/types';
+import type { DegreeVariant } from '../exercise/degrees/types';
 import type { CagedShape, ChordQuality } from '../music/caged';
 
 const KEY = 'guitar-exercises.prefs.v1';
 
 export interface Prefs {
-  exercise: ExerciseKind | ModeExerciseKind | 'caged';
+  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees';
   targetNote: Note;
   durationSec: number;
   continuous: boolean;
@@ -20,7 +21,9 @@ export interface Prefs {
   playSound: boolean;
   algorithm: ClosestAlgorithm;
   // 'intervals' exercise settings.
-  intervalKind: Interval | 'random';
+  intervalKind?: Interval | 'random'; // legacy (3rd/5th only); read when `intervals` is absent
+  intervals?: Interval[];
+  intervalRef?: 'diatonic-from-note' | 'from-root';
   keyRoot: Note | 'random';
   keyQuality: ScaleQuality | 'random';
   direction: Direction;
@@ -43,6 +46,7 @@ export interface Prefs {
   enabledShapes?: CagedShape[];
   chordQualities?: ChordQuality[];
   include7th?: boolean;
+  degreeVariant?: DegreeVariant;    // Name the Degree (key root shared with Intervals)
   recentSessions?: string[];        // session hashes, newest first
 }
 

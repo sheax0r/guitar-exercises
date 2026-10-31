@@ -272,7 +272,9 @@
 <div class="session">
   <header>
     <div class="target">
-      {#if isIntervals && currentPrompt}
+      {#if isIntervals && currentPrompt?.intervalLabel}
+        Find the <strong>{currentPrompt.intervalLabel}</strong> of <strong>{NOTE_DISPLAY[currentPrompt.highlightNote]}</strong>
+      {:else if isIntervals && currentPrompt}
         Find the <strong>{currentPrompt.interval}</strong> of <strong>{NOTE_DISPLAY[currentPrompt.highlightNote]}</strong>
         — key of {NOTE_DISPLAY[currentPrompt.keyRoot!]} {currentPrompt.keyQuality}
       {:else}
