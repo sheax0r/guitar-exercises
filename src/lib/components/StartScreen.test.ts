@@ -26,11 +26,11 @@ describe('StartScreen — exercise selector', () => {
     localStorage.clear();
   });
 
-  it('offers eight exercise cards and no select', () => {
+  it('offers nine exercise cards and no select', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     expect(container.querySelector('#exercise')).toBeNull();
     const ids = Array.from(container.querySelectorAll('button.card')).map(c => c.getAttribute('data-exercise'));
-    expect(ids).toEqual(['root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged', 'chord-tones', 'call-response']);
+    expect(ids).toEqual(['root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged', 'chord-tones', 'call-response', 'lick-drill']);
   });
 
   it('hides the target-note picker for modes exercises', async () => {
@@ -455,5 +455,37 @@ describe('StartScreen — Call and Response', () => {
     await fireEvent.click(chipByText(container, '1', 'Degrees'));
     await fireEvent.click(chipByText(container, '3', 'Degrees'));
     expect(startButton(container).disabled).toBe(true);
+  });
+});
+
+describe('StartScreen — Lick Drill', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('explains how to make a lick when none are saved, and cannot start', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(card(container, 'lick-drill'));
+    expect(container.textContent).toContain('No saved licks yet');
+    expect(startButton(container).disabled).toBe(true);
+  });
+
+  it('lists saved licks, deletes one, and starts with the selected lick', async () => {
+    localStorage.setItem('guitar-exercises.licks.v1', JSON.stringify([
+      { id: 'a', name: 'First', notes: [57, 60], createdAt: 2 },
+      { id: 'b', name: 'Second', notes: [64, 67, 69], createdAt: 1 }
+    ]));
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ exercise: 'lick-drill', lickId: 'b' }));
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container, getByLabelText } = render(StartScreen, { props: { onStart } });
+    expect(chipByText(container, 'Second').getAttribute('aria-pressed')).toBe('true');
+    await fireEvent.click(getByLabelText('Delete Second'));
+    expect(chipByText(container, 'Second')).toBeUndefined();
+    expect(JSON.parse(localStorage.getItem('guitar-exercises.licks.v1')!)).toHaveLength(1);
+    await fireEvent.click(chipByText(container, 'G', 'Start on'));
+    await fireEvent.click(chipByText(container, '5th', 'Start string'));
+    await fireEvent.click(startButton(container));
+    expect(onStart.mock.calls[0][0]).toMatchObject({
+      exercise: 'lick-drill', lick: [57, 60], lickName: 'First', target: 'G', startString: 5
+    });
+    expect(storedPrefs()).toMatchObject({ exercise: 'lick-drill', lickId: 'a', lickTarget: 'G', lickStartString: 5 });
   });
 });

@@ -8,6 +8,8 @@ import type { CagedConfig } from '../exercise/caged/types';
 import type { DegreesConfig } from '../exercise/degrees/types';
 import type { ChordTonesConfig } from '../exercise/chordtones/types';
 import { PHRASE_DEGREES, type CallResponseConfig } from '../exercise/callresponse/types';
+import type { LickDrillConfig } from '../exercise/lick/types';
+import { decodeLick, encodeLick } from '../exercise/lick/lick';
 import { PROGRESSION_ORDER } from '../music/progressions';
 import { CAGED_ORDER } from '../music/caged';
 import { INTERVAL_ORDER, type Interval } from '../music/scales';
@@ -326,6 +328,31 @@ function parseCallResponse(params: URLSearchParams): Route {
   return { screen: 'session', config };
 }
 
+function parseLickDrill(params: URLSearchParams): Route {
+  const duration = parseDuration(params.get('duration'));
+  const frets = parsePositiveInt(params.get('frets'));
+  const lick = decodeLick(params.get('lick'));
+  if (!duration || frets === null || !lick) return { screen: 'learn' };
+  const to = params.get('to');
+  const sstr = params.get('sstr');
+  const config: LickDrillConfig = {
+    exercise: 'lick-drill',
+    lick,
+    lickName: (params.get('lname') ?? '').slice(0, 40) || 'Lick',
+    target: to === 'same' || (to && VALID_NOTES.has(to)) ? (to as LickDrillConfig['target']) : 'random',
+    startString: sstr === 'any' ? 'any' : sstr && /^[1-6]$/.test(sstr) ? (Number(sstr) as LickDrillConfig['startString']) : 'random',
+    inputMode: params.get('input') === 'mic' ? 'mic' : 'click',
+    micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
+    micDeviceId: null,
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true)
+  };
+  return { screen: 'session', config };
+}
+
 export function parseHash(hash: string): Route {
   const h = hash.startsWith('#') ? hash.slice(1) : hash;
   if (h === '/learn') return { screen: 'learn' };
@@ -344,6 +371,7 @@ export function parseHash(hash: string): Route {
   if (ex === 'degrees') return parseDegrees(params);
   if (ex === 'chord-tones') return parseChordTones(params);
   if (ex === 'call-response') return parseCallResponse(params);
+  if (ex === 'lick-drill') return parseLickDrill(params);
   return { screen: 'learn' };
 }
 
@@ -410,6 +438,17 @@ export function sessionHash(config: AnyConfig): string {
     params.set('rhythm', config.rhythm ? '1' : '0');
     params.set('keyroot', config.keyRoot);
     params.set('drone', config.drone ? '1' : '0');
+    params.set('input', config.inputMode);
+    params.set('sens', String(config.micSensitivity));
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+  } else if (config.exercise === 'lick-drill') {
+    params.set('lick', encodeLick(config.lick));
+    params.set('lname', config.lickName.slice(0, 40));
+    params.set('to', config.target);
+    params.set('sstr', String(config.startString));
     params.set('input', config.inputMode);
     params.set('sens', String(config.micSensitivity));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
