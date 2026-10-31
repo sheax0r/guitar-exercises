@@ -53,6 +53,19 @@ describe('prefs', () => {
     expect(loadPrefs()).toEqual(p);
   });
 
+  it('round-trips CAGED prefs', () => {
+    const p: Prefs = {
+      ...FULL_PREFS,
+      exercise: 'caged',
+      cagedVariant: 'name-shape',
+      enabledShapes: ['C', 'G'],
+      chordQualities: ['minor'],
+      include7th: true
+    };
+    savePrefs(p);
+    expect(loadPrefs()).toEqual(p);
+  });
+
   it('returns empty object on malformed JSON', () => {
     localStorage.setItem('guitar-exercises.prefs.v1', '{not-json');
     expect(loadPrefs()).toEqual({});

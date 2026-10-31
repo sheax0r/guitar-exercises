@@ -26,11 +26,11 @@ describe('StartScreen — exercise selector', () => {
     localStorage.clear();
   });
 
-  it('offers four exercise cards and no select', () => {
+  it('offers five exercise cards and no select', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     expect(container.querySelector('#exercise')).toBeNull();
     const ids = Array.from(container.querySelectorAll('button.card')).map(c => c.getAttribute('data-exercise'));
-    expect(ids).toEqual(['root-notes', 'intervals', 'play-shape', 'identify-mode']);
+    expect(ids).toEqual(['root-notes', 'intervals', 'play-shape', 'identify-mode', 'caged']);
   });
 
   it('hides the target-note picker for modes exercises', async () => {
@@ -329,5 +329,32 @@ describe('StartScreen — layout, summary and recents', () => {
     await fireEvent.click(chipByText(container, 'Continuous', 'Duration'));
     expect(chipByText(container, 'Continuous', 'Duration').getAttribute('aria-pressed')).toBe('true');
     expect(chipByText(container, '5m', 'Duration').getAttribute('aria-pressed')).toBe('false');
+  });
+});
+
+describe('StartScreen — CAGED', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('emits a caged config, persists its prefs, and needs a shape and a quality', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(card(container, 'caged'));
+    await fireEvent.click(chipByText(container, 'Name the shape', 'Drill'));
+    await fireEvent.click(chipByText(container, 'G', 'Shapes'));
+    await fireEvent.click(chipByText(container, 'Minor', 'Chord qualities'));
+    await fireEvent.click(startButton(container));
+    const config = onStart.mock.calls[0][0];
+    expect(config).toMatchObject({
+      exercise: 'caged',
+      cagedVariant: 'name-shape',
+      enabledShapes: ['C', 'A', 'E', 'D'],
+      qualities: ['major'],
+      include7th: false,
+      inputMode: 'click'
+    });
+    expect(storedPrefs()).toMatchObject({ exercise: 'caged', cagedVariant: 'name-shape', chordQualities: ['major'] });
+
+    await fireEvent.click(chipByText(container, 'Major', 'Chord qualities'));
+    expect(startButton(container).disabled).toBe(true);
   });
 });

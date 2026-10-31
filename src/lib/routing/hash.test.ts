@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseHash, sessionHash, canonicalHash, HOME_HASH, LEARN_HASH, IDEATE_HASH } from './hash';
 import type { ExerciseConfig } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
+import type { CagedConfig } from '../exercise/caged/types';
 
 describe('parseHash', () => {
   it('returns home for empty, root and unknown hashes', () => {
@@ -366,5 +367,45 @@ describe('parseHash / sessionHash — identify-mode', () => {
   it('falls back to start when no modes are enabled', () => {
     expect(parseHash('#/session?ex=identify-mode&modes=&duration=300&frets=12'))
       .toEqual({ screen: 'learn' });
+  });
+});
+
+describe('caged hash', () => {
+  const caged: CagedConfig = {
+    exercise: 'caged',
+    cagedVariant: 'next-shape',
+    enabledShapes: ['C', 'E', 'D'],
+    qualities: ['minor'],
+    include7th: true,
+    fixedRootNote: 'F#',
+    maxFret: 22,
+    durationSec: 120,
+    continuous: false,
+    showFretNumbers: false,
+    playSound: true,
+    inputMode: 'click',
+    micSensitivity: 0.3,
+    micDeviceId: null
+  };
+
+  it('round-trips every variant', () => {
+    for (const cagedVariant of ['find-tones', 'name-shape', 'next-shape'] as const) {
+      const c = { ...caged, cagedVariant };
+      expect(parseHash(sessionHash(c))).toEqual({ screen: 'session', config: c });
+    }
+    const mic = { ...caged, cagedVariant: 'find-tones' as const, inputMode: 'mic' as const, fixedRootNote: null, continuous: true, durationSec: 300 };
+    expect(parseHash(sessionHash(mic))).toEqual({ screen: 'session', config: mic });
+  });
+
+  it('coerces mic to click outside find-tones and rejects bad lists', () => {
+    const r = parseHash(sessionHash({ ...caged, inputMode: 'mic' }));
+    expect(r.screen === 'session' && r.config.exercise === 'caged' && r.config.inputMode).toBe('click');
+    expect(parseHash('#/learn/session?ex=caged&shapes=C,X&quals=major&duration=300&frets=12').screen).toBe('learn');
+    expect(parseHash('#/learn/session?ex=caged&shapes=C&quals=&duration=300&frets=12').screen).toBe('learn');
+  });
+
+  it('defaults the variant to find-tones', () => {
+    const r = parseHash('#/learn/session?ex=caged&shapes=C&quals=major&duration=300&frets=12');
+    expect(r.screen === 'session' && r.config.exercise === 'caged' && r.config.cagedVariant).toBe('find-tones');
   });
 });

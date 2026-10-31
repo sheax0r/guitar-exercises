@@ -4,6 +4,8 @@ import { DEFAULT_MIC_SENSITIVITY } from '../audio/pitchMath';
 import type { ExerciseConfig, ExerciseKind } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 import type { AnyConfig } from '../exercise/config';
+import type { CagedConfig } from '../exercise/caged/types';
+import { CAGED_ORDER } from '../music/caged';
 
 export type Route =
   | { screen: 'home' }
@@ -206,6 +208,39 @@ function parseIdentifyMode(params: URLSearchParams): Route {
   return { screen: 'session', config };
 }
 
+// Comma list where every item is in `valid`; null if absent, empty or invalid.
+function parseList<T extends string>(raw: string | null, valid: readonly string[]): T[] | null {
+  const parts = (raw ?? '').split(',').filter(p => p.length > 0);
+  return parts.length > 0 && parts.every(p => valid.includes(p)) ? (parts as T[]) : null;
+}
+
+function parseCaged(params: URLSearchParams): Route {
+  const enabledShapes = parseList<CagedConfig['enabledShapes'][number]>(params.get('shapes'), CAGED_ORDER);
+  const qualities = parseList<CagedConfig['qualities'][number]>(params.get('quals'), ['major', 'minor']);
+  const duration = parseDuration(params.get('duration'));
+  const frets = parsePositiveInt(params.get('frets'));
+  if (!enabledShapes || !qualities || !duration || frets === null) return { screen: 'learn' };
+  const cagedVariant = parseEnum(params.get('cvar'), new Set(['find-tones', 'name-shape', 'next-shape']), 'find-tones' as const);
+  const config: CagedConfig = {
+    exercise: 'caged',
+    cagedVariant,
+    enabledShapes,
+    qualities,
+    include7th: parseBool(params.get('sev'), false),
+    fixedRootNote: parseFixedRoot(params.get('root')),
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true),
+    // Mic only judges find-tones.
+    inputMode: params.get('input') === 'mic' && cagedVariant === 'find-tones' ? 'mic' : 'click',
+    micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
+    micDeviceId: null
+  };
+  return { screen: 'session', config };
+}
+
 export function parseHash(hash: string): Route {
   const h = hash.startsWith('#') ? hash.slice(1) : hash;
   if (h === '/learn') return { screen: 'learn' };
@@ -220,6 +255,7 @@ export function parseHash(hash: string): Route {
   if (VALID_FRETBOARD_EXERCISES.has(ex)) return parseFretboard(params, ex as ExerciseKind);
   if (ex === 'play-shape') return parsePlayShape(params);
   if (ex === 'identify-mode') return parseIdentifyMode(params);
+  if (ex === 'caged') return parseCaged(params);
   return { screen: 'learn' };
 }
 
@@ -242,6 +278,18 @@ export function sessionHash(config: AnyConfig): string {
     params.set('input', config.inputMode);
     params.set('sens', String(config.micSensitivity));
     params.set('show', String(config.displayNotePercentage));
+  } else if (config.exercise === 'caged') {
+    params.set('cvar', config.cagedVariant);
+    params.set('shapes', config.enabledShapes.join(','));
+    params.set('quals', config.qualities.join(','));
+    params.set('sev', config.include7th ? '1' : '0');
+    params.set('root', config.fixedRootNote ?? 'random');
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+    params.set('input', config.inputMode);
+    params.set('sens', String(config.micSensitivity));
   } else if (config.exercise === 'identify-mode') {
     params.set('modes', config.enabledModes.join(','));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
