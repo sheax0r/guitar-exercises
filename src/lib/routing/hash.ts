@@ -244,6 +244,7 @@ function parseCaged(params: URLSearchParams): Route {
     playSound: parseBool(params.get('sound'), true),
     // Mic only judges find-tones.
     inputMode: params.get('input') === 'mic' && cagedVariant === 'find-tones' ? 'mic' : 'click',
+    micJudge: parseEnum(params.get('mjudge'), new Set(['notes', 'strum', 'strum-bass']), 'notes' as const),
     micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
     micDeviceId: null
   };
@@ -347,6 +348,7 @@ export function sessionHash(config: AnyConfig): string {
     params.set('fretnums', config.showFretNumbers ? '1' : '0');
     params.set('sound', config.playSound ? '1' : '0');
     params.set('input', config.inputMode);
+    params.set('mjudge', config.micJudge);
     params.set('sens', String(config.micSensitivity));
   } else if (config.exercise === 'degrees') {
     params.set('dvar', config.degreeVariant);

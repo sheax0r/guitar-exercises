@@ -182,6 +182,16 @@ The Whistler pipeline lifts constraints recorded in
   - Trade-off: the model downloads on first use and analysis is per chunk, not
     instant. Use it as "play, then check", with pitchy kept for live
     single-note judging.
+  - [x] **Done for CAGED find-tones:** a "Strum it" / "Strum it, root in
+    bass" mic judging option. `src/lib/audio/strum.ts` records a 2 s take
+    (onset-triggered after a quiet gap, with 150 ms pre-roll, or the Record
+    now button), Basic Pitch runs via a dynamic import of `detectNotes`
+    (`engine: 'ai'`), notes under 30% of the loudest are dropped, and the
+    pitch-class set must equal the chord's exactly. Decisions: the "expected
+    bass" is the chord root (every CAGED voicing is root-position); a wrong
+    strum keeps the prompt open (marked wrong) so the player strums again;
+    the Basic Pitch model instance is cached across takes. Triad drills and
+    harmonic ear training are not done yet.
 - **Rhythm.** Whistler's metronome, count-in, beat-grid quantization and
   **latency calibration** (`estimateLag`) close the rhythm gap. Possible
   exercises: timed chord-tone targeting, "play on beat 1/the and", and
@@ -193,6 +203,15 @@ The Whistler pipeline lifts constraints recorded in
   - [ ] "Play on beat 1/the and" and scoring onset error in ms.
 - **Tuner.** The live cents readout becomes a shared widget, usable as an
   intonation check in any mic exercise.
+  - [x] **Done:** `src/lib/audio/tuner.ts` (`tunerReading`) and
+    `src/lib/components/Tuner.svelte` (note, cents, needle, green within
+    ±15¢). Ideate's Recorder uses it. In Learn, `startPitchListener` reports
+    a reading every frame (`onTuner`), so no second mic is opened. The
+    widget appears in Play the Shape and CAGED note-by-note mic sessions
+    behind a "Tuner" header toggle. It is off by default and remembered in
+    prefs (`showTuner`), not in the session hash, since it doesn't change
+    the drill. It is not offered in CAGED strum mode, which doesn't run
+    pitchy.
 - **Call and Response** (roadmap item 5). Record the response, transcribe it
   with `detectNotes` and quantization, and compare it note by note against
   the prompt phrase, rhythm included.

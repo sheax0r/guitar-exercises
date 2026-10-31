@@ -17,7 +17,7 @@
   import CagedSettings from './start/CagedSettings.svelte';
   import NotePicker from './start/NotePicker.svelte';
   import { CAGED_ORDER, type CagedShape, type ChordQuality } from '../music/caged';
-  import type { CagedVariant } from '../exercise/caged/types';
+  import type { CagedMicJudge, CagedVariant } from '../exercise/caged/types';
   import type { DegreeVariant } from '../exercise/degrees/types';
   import ChordTonesSettings from './start/ChordTonesSettings.svelte';
   import type { ProgressionId } from '../music/progressions';
@@ -115,6 +115,7 @@
   let tempo = $state<'untimed' | 'timed'>(stored.tempo ?? 'untimed');
   let bpm = $state<number>(stored.bpm ?? 80);
   let barsPerChord = $state<number>(stored.barsPerChord ?? 1);
+  let cagedMicJudge = $state<CagedMicJudge>(stored.cagedMicJudge ?? 'notes');
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
   // Best-effort device list (labels appear only after mic permission).
   $effect(() => { listAudioInputs().then(d => { micDevices = d; }); });
@@ -189,6 +190,7 @@
         showFretNumbers,
         playSound,
         inputMode: cagedVariant === 'find-tones' ? inputMode : 'click',
+        micJudge: cagedMicJudge,
         micSensitivity,
         micDeviceId
       };
@@ -309,6 +311,8 @@
       tempo,
       bpm,
       barsPerChord,
+      cagedMicJudge,
+      showTuner: stored.showTuner,
       recentSessions: rememberRecent(config, sessionHash(config))
     };
     savePrefs(prefs);
@@ -406,6 +410,7 @@
       bind:chordQualities
       bind:include7th
       bind:inputMode
+      bind:micJudge={cagedMicJudge}
       bind:micSensitivity
       bind:micDeviceId
       {micDevices}

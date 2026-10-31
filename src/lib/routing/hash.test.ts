@@ -388,6 +388,7 @@ describe('caged hash', () => {
     showFretNumbers: false,
     playSound: true,
     inputMode: 'click',
+    micJudge: 'notes',
     micSensitivity: 0.3,
     micDeviceId: null
   };
@@ -399,6 +400,13 @@ describe('caged hash', () => {
     }
     const mic = { ...caged, cagedVariant: 'find-tones' as const, inputMode: 'mic' as const, fixedRootNote: null, continuous: true, durationSec: 300 };
     expect(parseHash(sessionHash(mic))).toEqual({ screen: 'session', config: mic });
+    const strum = { ...mic, micJudge: 'strum-bass' as const };
+    expect(parseHash(sessionHash(strum))).toEqual({ screen: 'session', config: strum });
+  });
+
+  it('defaults the mic judge to single notes', () => {
+    const r = parseHash('#/learn/session?ex=caged&shapes=C&quals=major&duration=300&frets=12&input=mic&mjudge=bogus');
+    expect(r.screen === 'session' && r.config.exercise === 'caged' && r.config.micJudge).toBe('notes');
   });
 
   it('coerces mic to click outside find-tones and rejects bad lists', () => {

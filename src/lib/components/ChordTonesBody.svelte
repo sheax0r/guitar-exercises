@@ -15,6 +15,9 @@
   import { loadCalibMs } from '../audio/calibration';
   import { getAudioContext } from '../audio/context';
   import { startPitchListener, listAudioInputs, type PitchListener } from '../audio/pitch';
+  import Tuner from './Tuner.svelte';
+  import type { TunerReading } from '../audio/tuner';
+  import { loadPrefs, updatePrefs } from '../storage/prefs';
 
   type Props = {
     config: ChordTonesConfig;
@@ -178,6 +181,8 @@
   let micDeviceId = $state(untrack(() => config.micDeviceId));
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
   let micListener: PitchListener | null = null;
+  let showTuner = $state(loadPrefs().showTuner ?? false);
+  let tuner = $state<TunerReading | null>(null);
 
   $effect(() => {
     if (!mic) return;
@@ -190,7 +195,7 @@
       if (paused || !currentPrompt || exercise.isAnswered()) return;
       const result = exercise.submitMicNote(midi);
       judged(result.correct, result.correctAnswers.map(a => mark(a, result.correct ? 'user-correct' : 'correct-flash')));
-    }, { sensitivity: untrack(() => micSensitivity), deviceId })
+    }, { sensitivity: untrack(() => micSensitivity), deviceId, onTuner: (r) => { if (showTuner) tuner = r; } })
       .then((l) => {
         if (cancelled) { l.stop(); return; }
         micListener = l;
@@ -239,6 +244,11 @@
       <div class="mic" class:mic-error={micError !== null}>
         {#if micError}{micError}{:else}🎤 listening{lastHeard ? ` — heard ${lastHeard}` : '…'}{/if}
       </div>
+      {#if showTuner}<Tuner reading={tuner} compact />{/if}
+      <label class="toggle">
+        <input type="checkbox" bind:checked={showTuner} onchange={() => updatePrefs({ showTuner })} />
+        Tuner
+      </label>
     {/if}
     <label class="toggle">
       <input type="checkbox" bind:checked={showFretNumbers} />

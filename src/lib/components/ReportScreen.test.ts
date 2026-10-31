@@ -60,7 +60,7 @@ describe('ReportScreen — CAGED', () => {
     const config: CagedConfig = {
       exercise: 'caged', cagedVariant: 'find-tones', enabledShapes: ['C', 'E'], qualities: ['major'],
       include7th: false, fixedRootNote: null, maxFret: 12, durationSec: 300, continuous: false,
-      showFretNumbers: true, playSound: false, inputMode: 'click', micSensitivity: 0.5, micDeviceId: null
+      showFretNumbers: true, playSound: false, inputMode: 'click', micJudge: 'notes', micSensitivity: 0.5, micDeviceId: null
     };
     const report: CagedReport = {
       totalPrompts: 3, correctCount: 2, incorrectCount: 1, accuracy: 2 / 3, avgTimeMs: 2000,

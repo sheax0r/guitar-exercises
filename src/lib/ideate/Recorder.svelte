@@ -4,10 +4,10 @@
   import { PitchDetector } from 'pitchy';
   import { onDestroy } from 'svelte';
   import { openMic } from '../audio/pitch';
-  import { hzToMidiFloat } from '../audio/pitchMath';
+  import { tunerReading, type TunerReading } from '../audio/tuner';
+  import Tuner from '../components/Tuner.svelte';
   import { beatSeconds, scheduleTone, startMetronome } from '../audio/metronome';
   import { INSTR } from '../transcribe/detect';
-  import { noteName } from '../transcribe/fretting';
   import { settings, ui, enqueue, audioCtx, flashBeat } from './state.svelte';
 
   let { onMicOpened }: { onMicOpened?: () => void } = $props();
@@ -17,7 +17,7 @@
   let stopMetro: (() => void) | null = null;
   let meterRaf = 0;
   let level = $state(0);
-  let tuner = $state<{ note: string; cents: number } | null>(null);
+  let tuner = $state<TunerReading | null>(null);
 
   function startMeter(ctx: AudioContext, s: MediaStream) {
     const src = ctx.createMediaStreamSource(s), an = ctx.createAnalyser();
@@ -30,10 +30,7 @@
       for (const x of buf) sum += x * x;
       level = Math.min(100, Math.sqrt(sum / buf.length) * 300);
       const [hz, clar] = det.findPitch(buf, ctx.sampleRate), c = INSTR[settings.instrument];
-      if (clar > 0.9 && hz > c.lo && hz < c.hi) {
-        const m = hzToMidiFloat(hz);
-        tuner = { note: noteName(Math.round(m)), cents: Math.round((m - Math.round(m)) * 100) };
-      } else tuner = null;
+      tuner = tunerReading(hz, clar, c.lo, c.hi);
       meterRaf = requestAnimationFrame(loop);
     };
     loop();
@@ -131,10 +128,7 @@
     </button>
     {#if ui.flash !== null}<div class="flash" aria-live="polite">{ui.flash}</div>{/if}
   </div>
-  <div class="tuner" class:intune={tuner && Math.abs(tuner.cents) <= 15} class:off={tuner && Math.abs(tuner.cents) > 15}>
-    <span class="tnote">{tuner?.note ?? '–'}</span>
-    <span class="tcents">{tuner ? (tuner.cents > 0 ? '+' : '') + tuner.cents + '¢' : ''}</span>
-  </div>
+  <Tuner reading={tuner} />
   <div class="meter"><div class="meterbar" style:width="{level}%"></div></div>
   <span class="status" role="status">{ui.status}</span>
   <label class="hint upload">or transcribe a file:
@@ -155,11 +149,6 @@
     font-size: 72px; font-weight: 800; pointer-events: none; color: #fff;
     text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
   }
-  .tuner { height: 44px; display: flex; align-items: baseline; justify-content: center; gap: 10px; }
-  .tnote { font-size: 32px; font-weight: 800; }
-  .tcents { font-size: 16px; opacity: 0.7; min-width: 60px; }
-  .tuner.intune { color: #2e9e3a; }
-  .tuner.off { color: #d97a00; }
   .meter { height: 8px; width: 200px; max-width: 100%; background: rgba(136, 136, 136, 0.35); border-radius: 4px; overflow: hidden; }
   .meterbar { height: 100%; background: #ff8c42; transition: width 0.05s; }
   .status { opacity: 0.7; min-height: 1.2em; text-align: center; }

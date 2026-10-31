@@ -2,6 +2,7 @@ import type { Note } from '../../music/notes';
 import type { CagedShape, ChordQuality, ChordType, Pos } from '../../music/caged';
 import type { AttemptRecord } from '../types';
 
+export type CagedMicJudge = 'notes' | 'strum' | 'strum-bass';
 export type CagedVariant = 'find-tones' | 'name-shape' | 'next-shape';
 
 export interface CagedConfig {
@@ -17,6 +18,9 @@ export interface CagedConfig {
   showFretNumbers: boolean;
   playSound: boolean;
   inputMode: 'click' | 'mic';     // 'mic' valid only for find-tones
+  // Mic judging: single notes live (pitchy), or a strummed chord checked after
+  // the take (Basic Pitch), optionally with the root in the bass.
+  micJudge: CagedMicJudge;
   micSensitivity: number;
   micDeviceId: string | null;
 }

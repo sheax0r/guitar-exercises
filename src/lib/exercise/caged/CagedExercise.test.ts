@@ -17,6 +17,7 @@ const base: CagedConfig = {
   showFretNumbers: true,
   playSound: false,
   inputMode: 'click',
+  micJudge: 'notes',
   micSensitivity: 0.5,
   micDeviceId: null
 };
@@ -133,5 +134,32 @@ describe('CagedExercise prompt drawing', () => {
       expect(`${p.shape}${p.anchor.fret}`).not.toBe(`${prev.shape}${prev.anchor.fret}`);
       prev = p;
     }
+  });
+});
+
+describe('CagedExercise strum', () => {
+  it('completes on the chord pitch-class set, lighting every tone', () => {
+    const { ex, p } = begin({ enabledShapes: ['E'], fixedRootNote: 'A', qualities: ['major'] });
+    const r = ex.submitStrum([45, 52, 57, 61, 64], false); // A E A C# E
+    expect(r.correct).toBe(true);
+    expect(r.promptComplete).toBe(true);
+    expect(r.correctAnswers).toEqual(chordPositions('A', 'maj', p.window));
+    expect(ex.getReport().correctCount).toBe(1);
+  });
+
+  it('a wrong strum keeps the prompt open and marks it wrong', () => {
+    const { ex } = begin({ enabledShapes: ['E'], fixedRootNote: 'A', qualities: ['major'] });
+    const bad = ex.submitStrum([45, 52, 57, 60, 64], false); // C natural
+    expect(bad.correct).toBe(false);
+    expect(bad.promptComplete).toBe(false);
+    expect(bad.verdict.missing).toEqual([1]);
+    expect(ex.submitStrum([45, 52, 57, 61, 64], false).promptComplete).toBe(true);
+    expect(ex.getReport().incorrectCount).toBe(1);
+  });
+
+  it('requireBass checks the lowest note is the root', () => {
+    const { ex } = begin({ enabledShapes: ['E'], fixedRootNote: 'A', qualities: ['major'] });
+    expect(ex.submitStrum([52, 57, 61, 64], true).verdict.bassOk).toBe(false);
+    expect(ex.submitStrum([45, 52, 57, 61, 64], true).correct).toBe(true);
   });
 });
