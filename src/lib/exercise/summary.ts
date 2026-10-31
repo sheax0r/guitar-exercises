@@ -1,6 +1,9 @@
 import { NOTE_DISPLAY } from '../music/notes';
 import { MODE_DISPLAY, MODE_ORDER, type Mode } from '../music/modes';
 import type { AnyConfig } from './config';
+import { CAGED_ORDER } from '../music/caged';
+
+const CAGED_VARIANT_LABEL = { 'find-tones': 'Find tones', 'name-shape': 'Name the shape', 'next-shape': 'Next shape' };
 
 // One-line human description of a config, e.g.
 // "Root Notes · A · 5m · 12 frets".
@@ -28,6 +31,14 @@ export function summarize(c: AnyConfig): string {
       parts.push('Identify the Mode', modes(c.enabledModes));
       if (c.promptMode === 'audio') parts.push('By ear');
       break;
+    case 'caged': {
+      const shapes = CAGED_ORDER.filter(s => c.enabledShapes.includes(s)).join('');
+      const quals = c.qualities.length === 2 ? 'major/minor' : c.qualities[0];
+      parts.push('CAGED', CAGED_VARIANT_LABEL[c.cagedVariant], shapes, `${quals}${c.include7th ? ' 7ths' : ''}`);
+      if (c.fixedRootNote) parts.push(`in ${NOTE_DISPLAY[c.fixedRootNote]}`);
+      if (c.inputMode === 'mic') parts.push('Mic');
+      break;
+    }
   }
   const d = c.durationSec;
   parts.push(c.continuous ? 'Continuous' : d % 60 === 0 ? `${d / 60}m` : `${d}s`);

@@ -1,5 +1,6 @@
 import type { Mode } from '../../music/modes';
-import type { ModesReport, PerModeStat } from './types';
+import type { AttemptRecord } from '../types';
+import type { ModesReport } from './types';
 
 export interface ModeAttempt {
   mode: Mode;
@@ -7,38 +8,44 @@ export interface ModeAttempt {
   elapsedMs: number;
 }
 
-// Shared per-mode aggregation used by both modes exercises.
-export function aggregateModesReport(attempts: ModeAttempt[]): ModesReport {
+export interface GroupStat<K> {
+  key: K;
+  timesAsked: number;
+  correctCount: number;
+  avgTimeMs: number;
+}
+
+// Session totals plus per-key stats (key = mode, CAGED shape, ...), in first-
+// asked order. Shared by the modes and CAGED exercises.
+export function aggregateGrouped<K>(attempts: Array<{ key: K; correct: boolean; elapsedMs: number }>) {
   const total = attempts.length;
   const correct = attempts.filter(a => a.correct).length;
-  const accuracy = total === 0 ? 0 : correct / total;
-  const avgTimeMs = total === 0
-    ? 0
-    : attempts.reduce((sum, a) => sum + a.elapsedMs, 0) / total;
-
-  const byMode = new Map<Mode, { stat: PerModeStat; totalTime: number }>();
+  const byKey = new Map<K, { stat: GroupStat<K>; totalTime: number }>();
   for (const a of attempts) {
-    const entry = byMode.get(a.mode) ?? {
-      stat: { mode: a.mode, timesAsked: 0, correctCount: 0, avgTimeMs: 0 },
+    const entry = byKey.get(a.key) ?? {
+      stat: { key: a.key, timesAsked: 0, correctCount: 0, avgTimeMs: 0 },
       totalTime: 0
     };
     entry.stat.timesAsked += 1;
     if (a.correct) entry.stat.correctCount += 1;
     entry.totalTime += a.elapsedMs;
-    byMode.set(a.mode, entry);
+    byKey.set(a.key, entry);
   }
-  const perModeStats: PerModeStat[] = [];
-  for (const { stat, totalTime } of byMode.values()) {
-    perModeStats.push({ ...stat, avgTimeMs: totalTime / stat.timesAsked });
-  }
-
   return {
     totalPrompts: total,
     correctCount: correct,
     incorrectCount: total - correct,
-    accuracy,
-    avgTimeMs,
-    perModeStats,
-    attempts: attempts.map(a => ({ elapsedMs: a.elapsedMs, correct: a.correct }))
+    accuracy: total === 0 ? 0 : correct / total,
+    avgTimeMs: total === 0 ? 0 : attempts.reduce((sum, a) => sum + a.elapsedMs, 0) / total,
+    groups: [...byKey.values()].map(({ stat, totalTime }) => ({ ...stat, avgTimeMs: totalTime / stat.timesAsked })),
+    attempts: attempts.map((a): AttemptRecord => ({ elapsedMs: a.elapsedMs, correct: a.correct }))
+  };
+}
+
+export function aggregateModesReport(attempts: ModeAttempt[]): ModesReport {
+  const { groups, ...rest } = aggregateGrouped(attempts.map(a => ({ ...a, key: a.mode })));
+  return {
+    ...rest,
+    perModeStats: groups.map(({ key, ...s }) => ({ mode: key, ...s }))
   };
 }

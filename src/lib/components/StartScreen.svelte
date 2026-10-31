@@ -14,6 +14,9 @@
   import RootNotesSettings from './start/RootNotesSettings.svelte';
   import IntervalsSettings from './start/IntervalsSettings.svelte';
   import ModesSettings from './start/ModesSettings.svelte';
+  import CagedSettings from './start/CagedSettings.svelte';
+  import { CAGED_ORDER, type CagedShape, type ChordQuality } from '../music/caged';
+  import type { CagedVariant } from '../exercise/caged/types';
 
   type Props = {
     onStart: (config: AnyConfig) => void;
@@ -21,7 +24,7 @@
 
   let { onStart }: Props = $props();
 
-  type Card = 'root-notes' | 'intervals' | 'play-shape' | 'identify-mode';
+  type Card = 'root-notes' | 'intervals' | 'play-shape' | 'identify-mode' | 'caged';
   const CARD_GROUPS: Array<{ title: string; cards: Array<{ id: Card; name: string; desc: string }> }> = [
     {
       title: 'Fretboard',
@@ -35,6 +38,12 @@
       cards: [
         { id: 'play-shape', name: 'Play the Shape', desc: 'Play a mode as an octave run or position box.' },
         { id: 'identify-mode', name: 'Identify the Mode', desc: 'Name the mode from its notes or its sound.' }
+      ]
+    },
+    {
+      title: 'Chords',
+      cards: [
+        { id: 'caged', name: 'CAGED Shapes', desc: 'Find, name and connect chord shapes up the neck.' }
       ]
     }
   ];
@@ -80,6 +89,11 @@
   let displayNotePercentage = $state<number>(stored.displayNotePercentage ?? 100);
   let micSensitivity = $state<number>(stored.micSensitivity ?? DEFAULT_MIC_SENSITIVITY);
   let micDeviceId = $state<string | null>(stored.micDeviceId ?? null);
+  // CAGED settings (root and mic settings are shared with the modes cards).
+  let cagedVariant = $state<CagedVariant>(stored.cagedVariant ?? 'find-tones');
+  let enabledShapes = $state<CagedShape[]>(stored.enabledShapes ?? [...CAGED_ORDER]);
+  let chordQualities = $state<ChordQuality[]>(stored.chordQualities ?? ['major', 'minor']);
+  let include7th = $state<boolean>(stored.include7th ?? false);
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
   // Best-effort device list (labels appear only after mic permission).
   $effect(() => { listAudioInputs().then(d => { micDevices = d; }); });
@@ -107,8 +121,9 @@
   const boxSpanValid = $derived(
     card !== 'play-shape' || shapeVariant !== 'box' || (Number.isInteger(boxSpan) && boxSpan >= 3)
   );
+  const cagedValid = $derived(card !== 'caged' || (enabledShapes.length > 0 && chordQualities.length > 0));
   const valid = $derived(
-    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid
+    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid
   );
 
   function buildConfig(): AnyConfig {
@@ -134,6 +149,24 @@
         micSensitivity,
         micDeviceId,
         displayNotePercentage
+      };
+    }
+    if (card === 'caged') {
+      return {
+        exercise: 'caged',
+        cagedVariant,
+        enabledShapes: CAGED_ORDER.filter(s => enabledShapes.includes(s)),
+        qualities: (['major', 'minor'] as const).filter(q => chordQualities.includes(q)),
+        include7th,
+        fixedRootNote: root,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound,
+        inputMode: cagedVariant === 'find-tones' ? inputMode : 'click',
+        micSensitivity,
+        micDeviceId
       };
     }
     if (card === 'identify-mode') {
@@ -202,6 +235,10 @@
       micSensitivity,
       micDeviceId,
       displayNotePercentage,
+      cagedVariant,
+      enabledShapes,
+      chordQualities,
+      include7th,
       recentSessions: rememberRecent(config, sessionHash(config))
     };
     savePrefs(prefs);
@@ -217,7 +254,7 @@
 
   function startRecent(r: { hash: string; config: AnyConfig }) {
     // The mic device isn't in the hash; use the one currently chosen.
-    const config = r.config.exercise === 'play-shape' ? { ...r.config, micDeviceId } : r.config;
+    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' ? { ...r.config, micDeviceId } : r.config;
     savePrefs({ ...loadPrefs(), recentSessions: rememberRecent(r.config, r.hash) } as Prefs);
     onStart(config);
   }
@@ -262,6 +299,18 @@
     <RootNotesSettings bind:target={rootTarget} />
   {:else if card === 'intervals'}
     <IntervalsSettings bind:intervalKind bind:keyRoot bind:keyQuality bind:direction />
+  {:else if card === 'caged'}
+    <CagedSettings
+      bind:cagedVariant
+      bind:enabledShapes
+      bind:chordQualities
+      bind:include7th
+      bind:inputMode
+      bind:micSensitivity
+      bind:micDeviceId
+      {micDevices}
+      bind:fixedRootNote
+    />
   {:else}
     <ModesSettings
       exercise={card}
@@ -305,7 +354,7 @@
           <input id="shownotes" type="range" min="0" max="100" step="5" bind:value={displayNotePercentage} />
           <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
         </div>
-      {:else}
+      {:else if card !== 'caged'}
         <label><input type="checkbox" bind:checked={showAllLabels} /> Show all labels (warm-up mode)</label>
         <label><input type="checkbox" bind:checked={showRootMarkers} /> Show root note positions</label>
         <div class="row">

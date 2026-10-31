@@ -15,7 +15,7 @@ lays out these skill layers:
 |---|---|---|
 | 1 | Note names anywhere on the neck | Yes: Root Notes |
 | 2 | Scale degrees relative to a key/chord | Partly: Intervals (diatonic 3rd/5th only) |
-| 3 | Chord tones / arpeggios inside a position (CAGED) | **No** |
+| 3 | Chord tones / arpeggios inside a position (CAGED) | Yes: CAGED Shapes |
 | 4 | Scales attached to those positions | Partly: modes only, no pentatonic/blues/minor variants |
 | 5 | Targeting chord tones over changes | **No** |
 | 6 | Ear to fingers (hear it, play it) | Partly: drone, Identify-by-ear |
@@ -38,7 +38,10 @@ Layers 3 and 5 are the real gaps. They come first.
 - Every new option is persisted in prefs and the URL hash like existing options.
   Defaults reproduce current behaviour.
 
-## 1. CAGED Shapes (new exercise, new "Chords" card group)
+## 1. CAGED Shapes (new exercise, new "Chords" card group) — SHIPPED
+
+Shipped 2026-10-31; see `2026-10-31-caged-shapes-design.md` for the decisions
+and deviations (the A-shape window and deferred "highlight degrees").
 
 ### Shape model
 
@@ -50,7 +53,7 @@ of the pitch-class filter.
 | Shape | Root string | Window (frets relative to root fret) |
 |---|---|---|
 | C | 5 | root−3 … root |
-| A | 5 | root … root+3 |
+| A | 5 | root … root+2 |
 | G | 6 | root−3 … root |
 | E | 6 | root … root+2 |
 | D | 4 | root … root+3 |
