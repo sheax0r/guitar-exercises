@@ -27,6 +27,18 @@ Open the URL printed by Vite (usually `http://localhost:5173`).
 npm test
 ```
 
+### Ideate transcription tests (dev only)
+
+A browser harness scores the transcription pipeline (`src/lib/transcribe/`) against real audio:
+
+```bash
+python3 -I test/fetch_fixtures.py   # ~7.7 MB into test/fixtures/ (gitignored)
+npm run dev                         # then open /ideate-test.html
+```
+
+`?engines=pitchy` or `?engines=ai` runs one engine; `?only=hb-` filters fixtures. Missing fixtures
+SKIP. The synthetic fixtures also run in `npm test`. Licenses: `test/fixtures/ATTRIBUTION.md`.
+
 ## Build
 
 ```bash
@@ -46,6 +58,7 @@ src/
   lib/
     music/        # Note math, tuning, scales, modes, fretboard position helpers
     audio/        # Pluck synthesis, drone, mic pitch detection
+    transcribe/   # Ideate: audio -> notes -> tab -> .gp (ported from Whistler)
     exercise/     # Exercise<...> interface, fretboard exercises, config summary
       modes/      # Play the Shape and Identify the Mode
       caged/      # CAGED Shapes
