@@ -128,7 +128,11 @@ function parseFretboard(params: URLSearchParams, exercise: ExerciseKind): Route 
     intervalRef: params.get('iref') === 'root' ? 'from-root' : 'diatonic-from-note',
     keyRoot,
     keyQuality: parseEnum(params.get('keyqual'), VALID_QUALITIES, 'major'),
-    direction: parseEnum(params.get('dir'), VALID_DIRECTIONS, 'nearest')
+    direction: parseEnum(params.get('dir'), VALID_DIRECTIONS, 'nearest'),
+    ...(exercise === 'intervals' ? {} : {
+      rootVariant: params.get('rvar') === 'all' ? 'find-all' as const : 'nearest' as const,
+      findAllWindow: params.get('win') === 'window' ? 'window' as const : 'neck' as const
+    })
   };
   return { screen: 'session', config };
 }
@@ -346,6 +350,10 @@ export function sessionHash(config: AnyConfig): string {
     params.set('keyroot', config.keyRoot);
     params.set('keyqual', config.keyQuality);
     params.set('dir', config.direction);
+    if (config.exercise !== 'intervals') {
+      params.set('rvar', config.rootVariant === 'find-all' ? 'all' : 'nearest');
+      params.set('win', config.findAllWindow ?? 'neck');
+    }
   }
   return SESSION_PREFIX + params.toString();
 }

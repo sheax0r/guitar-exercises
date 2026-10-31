@@ -11,10 +11,10 @@ export function summarize(c: AnyConfig): string {
   const parts: string[] = [];
   switch (c.exercise) {
     case 'root-notes':
-      parts.push('Root Notes', NOTE_DISPLAY[c.targetNote]);
+      parts.push('Root Notes', NOTE_DISPLAY[c.targetNote], ...findAll(c));
       break;
     case 'random-roots':
-      parts.push('Root Notes', 'A/E/D');
+      parts.push('Root Notes', 'A/E/D', ...findAll(c));
       break;
     case 'intervals': {
       const root = c.keyRoot === 'random' ? 'any key' : NOTE_DISPLAY[c.keyRoot];
@@ -50,6 +50,11 @@ export function summarize(c: AnyConfig): string {
   parts.push(c.continuous ? 'Continuous' : d % 60 === 0 ? `${d / 60}m` : `${d}s`);
   parts.push(`${c.maxFret} frets`);
   return parts.join(' · ');
+}
+
+function findAll(c: { rootVariant?: string; findAllWindow?: string }): string[] {
+  if (c.rootVariant !== 'find-all') return [];
+  return [c.findAllWindow === 'window' ? 'Find all (5-fret window)' : 'Find all'];
 }
 
 function modes(enabled: ScaleType[]): string {

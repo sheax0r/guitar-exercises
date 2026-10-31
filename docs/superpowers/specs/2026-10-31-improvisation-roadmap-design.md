@@ -180,7 +180,10 @@ windows, two-row scale picker).
 - Click fallback: the player clicks the positions in order (the pitch-class
   answer is accepted at any octave).
 
-## 6. Root Notes: "find all" variant
+## 6. Root Notes: "find all" variant — SHIPPED
+
+Shipped 2026-10-31; see `2026-10-31-root-notes-find-all-design.md`
+(whole neck or a random 5-fret window, "Show the rest" to give up).
 
 Find every occurrence of the target within a fret window or the whole neck,
 against the clock. This trains octave shapes directly; today the exercise only

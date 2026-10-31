@@ -30,7 +30,9 @@ describe('parseHash', () => {
         intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
         keyRoot: 'C',
         keyQuality: 'major',
-        direction: 'nearest'
+        direction: 'nearest',
+        rootVariant: 'nearest',
+        findAllWindow: 'neck'
       });
     }
   });
@@ -148,7 +150,9 @@ describe('sessionHash round-trip', () => {
       intervals: ['3rd', '5th'], intervalRef: 'diatonic-from-note',
       keyRoot: 'C',
       keyQuality: 'major',
-      direction: 'nearest'
+      direction: 'nearest',
+      rootVariant: 'find-all',
+      findAllWindow: 'window'
     };
     const parsed = parseHash(sessionHash(original));
     expect(parsed.screen).toBe('session');
@@ -451,3 +455,13 @@ describe('parseHash — interval upgrades and Name the Degree', () => {
   });
 });
 
+describe('parseHash — Root Notes find all', () => {
+  it('old root-notes URLs default to the nearest drill', () => {
+    const r = parseHash('#/session?note=A&duration=300&frets=12');
+    expect(r).toMatchObject({ config: { rootVariant: 'nearest', findAllWindow: 'neck' } });
+  });
+  it('parses rvar=all and win=window', () => {
+    const r = parseHash('#/learn/session?ex=random-roots&duration=300&frets=12&rvar=all&win=window');
+    expect(r).toMatchObject({ config: { exercise: 'random-roots', rootVariant: 'find-all', findAllWindow: 'window' } });
+  });
+});

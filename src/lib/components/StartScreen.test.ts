@@ -141,6 +141,15 @@ describe('StartScreen — exercise selector', () => {
     expect(cfg.intervalRef).toBe('from-root');
   });
 
+  it('emits a Root Notes find-all config', async () => {
+    const onStart = vi.fn();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(chipByText(container, 'Find them all', 'Drill'));
+    await fireEvent.click(chipByText(container, '5-fret window', 'Where'));
+    await fireEvent.click(startButton(container));
+    expect(onStart.mock.calls[0][0]).toMatchObject({ exercise: 'root-notes', rootVariant: 'find-all', findAllWindow: 'window' });
+  });
+
   it('emits a degrees config', async () => {
     const onStart = vi.fn();
     const { container } = render(StartScreen, { props: { onStart } });
