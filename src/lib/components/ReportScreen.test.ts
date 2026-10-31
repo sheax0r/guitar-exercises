@@ -3,6 +3,7 @@ import { render } from '@testing-library/svelte';
 import ReportScreen from './ReportScreen.svelte';
 import type { ExerciseConfig, ExerciseReport } from '../exercise/types';
 import type { CagedConfig, CagedReport } from '../exercise/caged/types';
+import type { ChordTonesConfig, ChordTonesReport } from '../exercise/chordtones/types';
 
 function makeConfig(overrides: Partial<ExerciseConfig> = {}): ExerciseConfig {
   return {
@@ -76,5 +77,36 @@ describe('ReportScreen — CAGED', () => {
     expect(rows[1]).toContain('E shape');
     expect(rows[1]).toContain('50%');
     expect(container.textContent).toContain('Weakest shapes');
+  });
+});
+
+describe('ReportScreen — Chord-Tone Targeting', () => {
+  it('shows per-chord (progression order) and per-target tables', () => {
+    const config: ChordTonesConfig = {
+      exercise: 'chord-tones', progression: 'ii-V-I', keyRoot: 'C', target: 'guide', backing: 'chord',
+      tempo: 'untimed', bpm: 80, barsPerChord: 1, algorithm: 'fret-first', inputMode: 'click',
+      micSensitivity: 0.5, micDeviceId: null, maxFret: 12, durationSec: 300, continuous: false,
+      showFretNumbers: true, playSound: false
+    };
+    const report: ChordTonesReport = {
+      totalPrompts: 3, correctCount: 2, incorrectCount: 1, accuracy: 2 / 3, avgTimeMs: 1000,
+      perChordStats: [
+        { numeral: 'ii', timesAsked: 1, correctCount: 1, avgTimeMs: 1000 },
+        { numeral: 'V', timesAsked: 1, correctCount: 0, avgTimeMs: 1000 },
+        { numeral: 'I', timesAsked: 1, correctCount: 1, avgTimeMs: 1000 }
+      ],
+      perToneStats: [
+        { tone: '3rd', timesAsked: 2, correctCount: 2, avgTimeMs: 1000 },
+        { tone: '7th', timesAsked: 1, correctCount: 0, avgTimeMs: 1000 }
+      ],
+      attempts: [{ elapsedMs: 1000, correct: true }, { elapsedMs: 1000, correct: false }, { elapsedMs: 1000, correct: true }]
+    };
+    const { container } = render(ReportScreen, { props: { report, config, onPracticeAgain: () => {}, onBack: () => {} } });
+    expect(container.querySelector('h2')!.textContent).toContain('Chord-Tone Targeting');
+    const tables = container.querySelectorAll('table.per-mode');
+    expect(tables).toHaveLength(2);
+    expect(Array.from(tables[0].querySelectorAll('tbody tr')).map(r => r.firstElementChild!.textContent)).toEqual(['ii', 'V', 'I']);
+    expect(tables[1].textContent).toContain('7th');
+    expect(tables[1].textContent).toContain('0%');
   });
 });

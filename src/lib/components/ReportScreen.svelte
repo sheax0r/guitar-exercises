@@ -8,6 +8,7 @@
   import type { ModesReport } from '../exercise/modes/types';
   import type { CagedReport } from '../exercise/caged/types';
   import type { DegreesReport } from '../exercise/degrees/types';
+  import type { ChordTonesReport } from '../exercise/chordtones/types';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
@@ -33,21 +34,28 @@
   const rootReport = untrack(() => (isRoot ? (report as ExerciseReport) : null));
   const isCaged = untrack(() => config.exercise === 'caged');
   const isDegrees = untrack(() => config.exercise === 'degrees');
+  const isChordTones = untrack(() => config.exercise === 'chord-tones');
   // Modes and CAGED both report per-group stats (per mode / per shape).
   type GroupStat = { label: string; timesAsked: number; correctCount: number; avgTimeMs: number };
   const groupStats: GroupStat[] = untrack(() =>
     isRoot ? []
     : isCaged ? (report as CagedReport).perShapeStats.map(s => ({ ...s, label: `${s.shape} shape` }))
     : isDegrees ? (report as DegreesReport).perDegreeStats.map(s => ({ ...s, label: s.degree }))
+    : isChordTones ? (report as ChordTonesReport).perChordStats.map(s => ({ ...s, label: s.numeral }))
     : (report as ModesReport).perModeStats.map(s => ({ ...s, label: MODE_DISPLAY[s.mode] }))
   );
-  const groupName = isCaged ? 'shape' : isDegrees ? 'degree' : 'mode';
+  const groupName = isCaged ? 'shape' : isDegrees ? 'degree' : isChordTones ? 'chord' : 'mode';
+  // Chord-Tone Targeting also reports per target type (any / 3rd / 7th).
+  const toneStats: GroupStat[] = untrack(() =>
+    isChordTones ? (report as ChordTonesReport).perToneStats.map(s => ({ ...s, label: s.tone === 'any' ? 'Any chord tone' : s.tone })) : []
+  );
 
   const isRandomRoots = untrack(() => config.exercise === 'random-roots');
   const titleSuffix = isRoot
     ? (isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${rootConfig!.targetNote}`)
     : isCaged ? 'CAGED Shapes'
     : isDegrees ? 'Name the Degree'
+    : isChordTones ? 'Chord-Tone Targeting'
     : (config.exercise === 'play-shape' ? 'Play the Shape' : 'Identify the Mode');
 
   const accuracyPct = $derived(Math.round(report.accuracy * 100));
@@ -85,7 +93,7 @@
 
   // --- Per-group (mode / shape) stats ------------------------------------
   const perModeSorted = $derived<GroupStat[]>(
-    [...groupStats].sort((a, b) => isDegrees
+    isChordTones ? groupStats : [...groupStats].sort((a, b) => isDegrees
       ? DEGREE_LABELS.indexOf(a.label as Degree) - DEGREE_LABELS.indexOf(b.label as Degree)
       : a.label.localeCompare(b.label))
   );
@@ -157,6 +165,10 @@
         lines.push(`- ${s.label}: ${s.correctCount}/${s.timesAsked} (${acc}%) · avg ${(s.avgTimeMs / 1000).toFixed(1)}s`);
       }
     }
+    if (toneStats.length > 0) {
+      lines.push('', 'Per target:');
+      for (const s of toneStats) lines.push(`- ${s.label}: ${s.correctCount}/${s.timesAsked} (${modeAccPct(s)}%)`);
+    }
     return lines.join('\n');
   }
 
@@ -185,6 +197,8 @@
         }
       : isCaged
         ? { perShapeStats: (report as CagedReport).perShapeStats }
+        : isChordTones
+        ? { perChordStats: (report as ChordTonesReport).perChordStats, perToneStats: (report as ChordTonesReport).perToneStats }
         : { perModeStats: (report as ModesReport).perModeStats };
     return JSON.stringify({ ...base, ...detail }, null, 2);
   }
@@ -257,7 +271,7 @@
       {:else}
         <table class="per-mode">
           <thead>
-            <tr><th>{isCaged ? 'Shape' : isDegrees ? 'Degree' : 'Mode'}</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
+            <tr><th>{isCaged ? 'Shape' : isDegrees ? 'Degree' : isChordTones ? 'Chord' : 'Mode'}</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr>
           </thead>
           <tbody>
             {#each perModeSorted as s}
@@ -272,6 +286,19 @@
         </table>
       {/if}
     </div>
+    {#if toneStats.length > 0}
+      <div class="section">
+        <div class="caption">Per target</div>
+        <table class="per-mode">
+          <thead><tr><th>Target</th><th>Asked</th><th>Accuracy</th><th>Avg time</th></tr></thead>
+          <tbody>
+            {#each toneStats as s}
+              <tr><td>{s.label}</td><td>{s.timesAsked}</td><td>{modeAccPct(s)}%</td><td>{(s.avgTimeMs / 1000).toFixed(1)}s</td></tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
   {/if}
 
   {#if report.attempts.length > 0}

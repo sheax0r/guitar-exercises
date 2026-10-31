@@ -3,6 +3,7 @@ import { render, fireEvent } from '@testing-library/svelte';
 import SessionScreen from './SessionScreen.svelte';
 import type { ExerciseConfig } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
+import type { ChordTonesConfig } from '../exercise/chordtones/types';
 
 vi.mock('../audio/pluck', () => ({ playPluck: () => {}, playInterval: () => {} }));
 
@@ -301,5 +302,30 @@ describe('SessionScreen — fret-number toggle', () => {
     // Toggling fret numbers is purely visual — unlike "Show roots" it must not
     // bring up the Paused overlay.
     expect(container.querySelector('.paused-overlay')).toBeNull();
+  });
+});
+
+describe('SessionScreen — chord-tone targeting (untimed, click)', () => {
+  it('judges right and wrong targets and auto-advances on a right one', async () => {
+    const rnd = vi.spyOn(Math, 'random').mockReturnValue(0); // start at string 1, fret 0 (E)
+    const config: ChordTonesConfig = {
+      exercise: 'chord-tones', progression: 'ii-V-I', keyRoot: 'C', target: 'guide', backing: 'off',
+      tempo: 'untimed', bpm: 80, barsPerChord: 1, algorithm: 'fret-first', inputMode: 'click',
+      micSensitivity: 0.5, micDeviceId: null, maxFret: 12, durationSec: 300, continuous: false,
+      showFretNumbers: true, playSound: false
+    };
+    const { container } = render(SessionScreen, { props: { config, onComplete: () => {}, onAbort: () => {} } });
+    const hit = (s: number, f: number) => container.querySelector(`[data-role="hit"][data-string="${s}"][data-fret="${f}"]`)!;
+    expect(container.textContent).toContain('Dm7');
+    // Dm7's 3rd nearest E at 1/0 is F at 1/1.
+    await fireEvent.click(hit(1, 1));
+    expect(container.querySelector('.ok')!.textContent).toBe('✓ 1');
+    await new Promise(r => setTimeout(r, 800));
+    expect(container.textContent).toContain('G7');
+    // G7's 7th is F again: staying on 1/1 is right, so 1/0 is wrong.
+    await fireEvent.click(hit(1, 0));
+    expect(container.querySelector('.bad')!.textContent).toBe('✗ 1');
+    expect(container.querySelector('[data-role="highlight"][data-kind="correct-flash"]')).toBeTruthy();
+    rnd.mockRestore();
   });
 });

@@ -133,3 +133,14 @@ describe('summarize caged', () => {
     })).toContain('Mic (strum)');
   });
 });
+
+describe('summarize chord-tones', () => {
+  it('describes progression, target, key, tempo and input', () => {
+    expect(summarize({
+      exercise: 'chord-tones', progression: 'blues', keyRoot: 'A', target: 'guide', backing: 'chord',
+      tempo: 'timed', bpm: 90, barsPerChord: 1, algorithm: 'fret-first', inputMode: 'mic',
+      micSensitivity: 0.5, micDeviceId: null, maxFret: 12, durationSec: 300, continuous: false,
+      showFretNumbers: true, playSound: true
+    })).toBe('Chord Tones · 12-bar blues · Guide tones · key of A · 90 bpm · Mic · 5m · 12 frets');
+  });
+});

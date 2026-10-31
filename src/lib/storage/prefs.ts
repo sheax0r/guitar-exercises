@@ -6,11 +6,13 @@ import type { ModeExerciseKind } from '../exercise/modes/types';
 import type { CagedVariant } from '../exercise/caged/types';
 import type { DegreeVariant } from '../exercise/degrees/types';
 import type { CagedShape, ChordQuality } from '../music/caged';
+import type { ProgressionId } from '../music/progressions';
+import type { ToneTarget } from '../exercise/chordtones/types';
 
 const KEY = 'guitar-exercises.prefs.v1';
 
 export interface Prefs {
-  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees';
+  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees' | 'chord-tones';
   targetNote: Note;
   durationSec: number;
   continuous: boolean;
@@ -50,6 +52,13 @@ export interface Prefs {
   degreeVariant?: DegreeVariant;
   rootVariant?: 'nearest' | 'find-all';
   findAllWindow?: 'neck' | 'window';    // Name the Degree (key root shared with Intervals)
+  // Chord-Tone Targeting (key root, algorithm and mic settings are shared).
+  progression?: ProgressionId;
+  toneTarget?: ToneTarget;
+  backing?: 'chord' | 'drone' | 'off';
+  tempo?: 'untimed' | 'timed';
+  bpm?: number;
+  barsPerChord?: number;
   showTuner?: boolean;              // live tuner in mic exercises (session toggle)
   recentSessions?: string[];        // session hashes, newest first
 }

@@ -6,6 +6,8 @@ import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/type
 import type { AnyConfig } from '../exercise/config';
 import type { CagedConfig } from '../exercise/caged/types';
 import type { DegreesConfig } from '../exercise/degrees/types';
+import type { ChordTonesConfig } from '../exercise/chordtones/types';
+import { PROGRESSION_ORDER } from '../music/progressions';
 import { CAGED_ORDER } from '../music/caged';
 import { INTERVAL_ORDER, type Interval } from '../music/scales';
 
@@ -268,6 +270,34 @@ function parseDegrees(params: URLSearchParams): Route {
   return { screen: 'session', config };
 }
 
+function parseChordTones(params: URLSearchParams): Route {
+  const duration = parseDuration(params.get('duration'));
+  const frets = parsePositiveInt(params.get('frets'));
+  if (!duration || frets === null) return { screen: 'learn' };
+  const keyRoot = params.get('keyroot');
+  const bpm = parsePositiveInt(params.get('bpm')) ?? 80;
+  const config: ChordTonesConfig = {
+    exercise: 'chord-tones',
+    progression: parseEnum(params.get('prog'), new Set(PROGRESSION_ORDER), 'ii-V-I' as const),
+    keyRoot: keyRoot && VALID_NOTES.has(keyRoot) ? (keyRoot as Note) : 'random',
+    target: parseEnum(params.get('tgt'), new Set(['any', '3rd', '7th', 'guide']), 'guide' as const),
+    backing: parseEnum(params.get('back'), new Set(['chord', 'drone', 'off']), 'chord' as const),
+    tempo: params.get('tempo') === 'timed' ? 'timed' : 'untimed',
+    bpm: Math.min(200, Math.max(40, bpm)),
+    barsPerChord: params.get('bars') === '2' ? 2 : 1,
+    algorithm: parseEnum(params.get('algo'), VALID_ALGOS, 'fret-first'),
+    inputMode: params.get('input') === 'mic' ? 'mic' : 'click',
+    micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
+    micDeviceId: null,
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true)
+  };
+  return { screen: 'session', config };
+}
+
 export function parseHash(hash: string): Route {
   const h = hash.startsWith('#') ? hash.slice(1) : hash;
   if (h === '/learn') return { screen: 'learn' };
@@ -284,6 +314,7 @@ export function parseHash(hash: string): Route {
   if (ex === 'identify-mode') return parseIdentifyMode(params);
   if (ex === 'caged') return parseCaged(params);
   if (ex === 'degrees') return parseDegrees(params);
+  if (ex === 'chord-tones') return parseChordTones(params);
   return { screen: 'learn' };
 }
 
@@ -323,6 +354,21 @@ export function sessionHash(config: AnyConfig): string {
     params.set('dvar', config.degreeVariant);
     params.set('keyroot', config.keyRoot);
     params.set('algo', config.algorithm);
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+  } else if (config.exercise === 'chord-tones') {
+    params.set('prog', config.progression);
+    params.set('keyroot', config.keyRoot);
+    params.set('tgt', config.target);
+    params.set('back', config.backing);
+    params.set('tempo', config.tempo);
+    params.set('bpm', String(config.bpm));
+    params.set('bars', String(config.barsPerChord));
+    params.set('algo', config.algorithm);
+    params.set('input', config.inputMode);
+    params.set('sens', String(config.micSensitivity));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
     params.set('frets', String(config.maxFret));
     params.set('fretnums', config.showFretNumbers ? '1' : '0');

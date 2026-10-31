@@ -19,6 +19,9 @@
   import { CAGED_ORDER, type CagedShape, type ChordQuality } from '../music/caged';
   import type { CagedMicJudge, CagedVariant } from '../exercise/caged/types';
   import type { DegreeVariant } from '../exercise/degrees/types';
+  import ChordTonesSettings from './start/ChordTonesSettings.svelte';
+  import type { ProgressionId } from '../music/progressions';
+  import type { ToneTarget } from '../exercise/chordtones/types';
 
   type Props = {
     onStart: (config: AnyConfig) => void;
@@ -26,7 +29,7 @@
 
   let { onStart }: Props = $props();
 
-  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged';
+  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones';
   const CARD_GROUPS: Array<{ title: string; cards: Array<{ id: Card; name: string; desc: string }> }> = [
     {
       title: 'Fretboard',
@@ -46,7 +49,8 @@
     {
       title: 'Chords',
       cards: [
-        { id: 'caged', name: 'CAGED Shapes', desc: 'Find, name and connect chord shapes up the neck.' }
+        { id: 'caged', name: 'CAGED Shapes', desc: 'Find, name and connect chord shapes up the neck.' },
+        { id: 'chord-tones', name: 'Chord-Tone Targeting', desc: 'Hit the 3rd, 7th or guide tones on every change.' }
       ]
     }
   ];
@@ -104,6 +108,13 @@
   let enabledShapes = $state<CagedShape[]>(stored.enabledShapes ?? [...CAGED_ORDER]);
   let chordQualities = $state<ChordQuality[]>(stored.chordQualities ?? ['major', 'minor']);
   let include7th = $state<boolean>(stored.include7th ?? false);
+  // Chord-Tone Targeting (key root, algorithm and mic settings are shared).
+  let progression = $state<ProgressionId>(stored.progression ?? 'ii-V-I');
+  let toneTarget = $state<ToneTarget>(stored.toneTarget ?? 'guide');
+  let backing = $state<'chord' | 'drone' | 'off'>(stored.backing ?? 'chord');
+  let tempo = $state<'untimed' | 'timed'>(stored.tempo ?? 'untimed');
+  let bpm = $state<number>(stored.bpm ?? 80);
+  let barsPerChord = $state<number>(stored.barsPerChord ?? 1);
   let cagedMicJudge = $state<CagedMicJudge>(stored.cagedMicJudge ?? 'notes');
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
   // Best-effort device list (labels appear only after mic permission).
@@ -134,8 +145,10 @@
   );
   const cagedValid = $derived(card !== 'caged' || (enabledShapes.length > 0 && chordQualities.length > 0));
   const intervalsValid = $derived(card !== 'intervals' || intervals.length > 0);
+  // An empty number input binds to null.
+  const bpmValid = $derived(card !== 'chord-tones' || tempo === 'untimed' || (Number.isInteger(bpm) && bpm >= 40 && bpm <= 200));
   const valid = $derived(
-    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid
+    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid && bpmValid
   );
 
   function buildConfig(): AnyConfig {
@@ -188,6 +201,27 @@
         degreeVariant,
         keyRoot,
         algorithm,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound
+      };
+    }
+    if (card === 'chord-tones') {
+      return {
+        exercise: 'chord-tones',
+        progression,
+        keyRoot,
+        target: toneTarget,
+        backing,
+        tempo,
+        bpm,
+        barsPerChord,
+        algorithm,
+        inputMode,
+        micSensitivity,
+        micDeviceId,
         maxFret,
         durationSec,
         continuous,
@@ -271,6 +305,12 @@
       enabledShapes,
       chordQualities,
       include7th,
+      progression,
+      toneTarget,
+      backing,
+      tempo,
+      bpm,
+      barsPerChord,
       cagedMicJudge,
       showTuner: stored.showTuner,
       recentSessions: rememberRecent(config, sessionHash(config))
@@ -288,7 +328,7 @@
 
   function startRecent(r: { hash: string; config: AnyConfig }) {
     // The mic device isn't in the hash; use the one currently chosen.
-    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' ? { ...r.config, micDeviceId } : r.config;
+    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' ? { ...r.config, micDeviceId } : r.config;
     savePrefs({ ...loadPrefs(), recentSessions: rememberRecent(r.config, r.hash) } as Prefs);
     onStart(config);
   }
@@ -349,6 +389,20 @@
       <span class="label">Key</span>
       <NotePicker bind:value={keyRoot} label="Key" randomLabel="Random" />
     </div>
+  {:else if card === 'chord-tones'}
+    <ChordTonesSettings
+      bind:progression
+      bind:keyRoot
+      bind:toneTarget
+      bind:backing
+      bind:tempo
+      bind:bpm
+      bind:barsPerChord
+      bind:inputMode
+      bind:micSensitivity
+      bind:micDeviceId
+      {micDevices}
+    />
   {:else if card === 'caged'}
     <CagedSettings
       bind:cagedVariant
@@ -406,7 +460,7 @@
           <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
         </div>
       {:else if card !== 'caged'}
-        {#if card !== 'degrees' && !(card === 'root-notes' && rootVariant === 'find-all')}
+        {#if card !== 'degrees' && card !== 'chord-tones' && !(card === 'root-notes' && rootVariant === 'find-all')}
           <label><input type="checkbox" bind:checked={showAllLabels} /> Show all labels (warm-up mode)</label>
           <label><input type="checkbox" bind:checked={showRootMarkers} /> Show root note positions</label>
         {/if}

@@ -90,8 +90,9 @@ function compareKeys(a: number[], b: number[]): number {
 
 export type Direction = 'nearest' | 'ascending';
 
+// `target` may be several notes: the nearest occurrence of any of them wins.
 export function closestPositionOf(
-  target: Note,
+  target: Note | readonly Note[],
   from: { string: StringNum; fret: Fret },
   maxFret: Fret,
   algorithm: ClosestAlgorithm = 'fret-first',
@@ -99,7 +100,7 @@ export function closestPositionOf(
 ): Array<{ string: StringNum; fret: Fret }> {
   assertString(from.string);
   assertFret(from.fret);
-  const all = allPositionsOf(target, maxFret);
+  const all = (typeof target === 'string' ? [target] : target).flatMap(n => allPositionsOf(n, maxFret));
   if (all.length === 0) {
     throw new Error(`No positions found for note ${target} within maxFret=${maxFret}`);
   }

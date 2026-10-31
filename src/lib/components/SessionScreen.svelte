@@ -5,6 +5,7 @@
   import CagedBody from './CagedBody.svelte';
   import DegreesBody from './DegreesBody.svelte';
   import FindAllBody from './FindAllBody.svelte';
+  import ChordTonesBody from './ChordTonesBody.svelte';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
@@ -20,6 +21,8 @@
   <PlayShapeBody {config} {onComplete} {onAbort} />
 {:else if (config.exercise === 'root-notes' || config.exercise === 'random-roots') && config.rootVariant === 'find-all'}
   <FindAllBody {config} {onComplete} {onAbort} />
+{:else if config.exercise === 'chord-tones'}
+  <ChordTonesBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'degrees'}
   <DegreesBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'caged'}
