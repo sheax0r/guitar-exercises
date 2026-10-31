@@ -146,6 +146,14 @@ vitest coverage; harness at `/ideate-test.html` (dev only) with `test/fetch_fixt
 
 ### Phase 3: Ideate UI in Svelte (large)
 
+**Status: done, except archiving.** Components in `src/lib/ideate/` (Recorder, JobsDrawer,
+CleanupPanel, WaveformSelect, Calibration, SeparationToggle, shared state); metronome and
+calibration in `src/lib/audio/`. `public/ideate/` and the iframe are gone. The
+`whistler.calib` key and the `whistler` IndexedDB are read as-is (no migration into prefs),
+so existing data carries over. Archiving the Whistler repo is left to the user. Not verified:
+mic recording, live tuner and calibration (need a real mic), source separation (172 MB
+model), Safari/iOS.
+
 - Rebuild `app.js` as components:
   - Recorder (metronome, count-in, live tuner)
   - JobsDrawer (IndexedDB queue)
