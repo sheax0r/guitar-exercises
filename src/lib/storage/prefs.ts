@@ -36,6 +36,7 @@ export interface Prefs {
   micSensitivity?: number;          // 0..1
   micDeviceId?: string | null;      // chosen audio input (device-specific)
   displayNotePercentage?: number;   // 0..100 of scale notes shown (modes exercises)
+  recentSessions?: string[];        // session hashes, newest first
 }
 
 export function loadPrefs(): Partial<Prefs> {
