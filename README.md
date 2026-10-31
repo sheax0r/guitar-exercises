@@ -36,7 +36,9 @@ python3 -I test/fetch_fixtures.py   # ~7.7 MB into test/fixtures/ (gitignored)
 npm run dev                         # then open /ideate-test.html
 ```
 
-`?engines=pitchy` or `?engines=ai` runs one engine; `?only=hb-` filters fixtures. Missing fixtures
+`?engines=pitchy`, `?engines=ai` or `?engines=learn` runs one engine (`learn` replays the GuitarSet
+takes through Learn's live mic judging and checks the annotated notes are heard; the same check runs in
+`npm test` when the fixtures are present and skips otherwise); `?only=hb-` filters fixtures. Missing fixtures
 SKIP. The synthetic fixtures also run in `npm test`. Licenses: `test/fixtures/ATTRIBUTION.md`.
 
 ## Build

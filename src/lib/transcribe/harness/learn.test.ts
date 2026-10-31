@@ -3,8 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { listenOffline } from '../../audio/pitch';
-import { LEARN_EXPECT, LEARN_FIXTURES, jamsNotes, scoreLearn } from './learn';
+import { LEARN_EXPECT, LEARN_FIXTURES, jamsNotes, learnOnsets, scoreLearn } from './learn';
 
 const TEST_DIR = resolve(__dirname, '../../../../test');
 
@@ -39,7 +38,7 @@ describe('Learn mic judging on GuitarSet', () => {
     const wav = resolve(TEST_DIR, fx.file!), jams = resolve(TEST_DIR, fx.annot!.file);
     it.skipIf(!existsSync(wav) || !existsSync(jams))(fx.id, () => {
       const { data, sampleRate } = readWav(wav);
-      const s = scoreLearn(listenOffline(data, sampleRate), jamsNotes(readFileSync(jams, 'utf8')));
+      const s = scoreLearn(learnOnsets(data, sampleRate), jamsNotes(readFileSync(jams, 'utf8')));
       console.log(fx.id, JSON.stringify(s));
       expect(s.recall).toBeGreaterThanOrEqual(LEARN_EXPECT[fx.id].recall);
       expect(s.precision).toBeGreaterThanOrEqual(LEARN_EXPECT[fx.id].precision);

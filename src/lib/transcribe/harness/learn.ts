@@ -8,6 +8,7 @@
 // detector needs 5 stable frames (~83 ms at 60 fps) by design, so faster runs are out of a
 // drill's scope. precision = accepted onsets that land on some annotated note that way.
 import { FIXTURES } from './fixtures';
+import { listenOffline } from '../../audio/pitch';
 
 export const MIN_NOTE_SEC = 0.12;
 export interface AnnotNote { midi: number; start: number; dur: number }
@@ -32,10 +33,19 @@ export function scoreLearn(onsets: Onset[], annot: AnnotNote[]): LearnScore {
   return { nExp: exp.length, nDet: onsets.length, recall, precision };
 }
 
+// Takes are peak-normalized to 0.5 first (a player with sensible input gain; the
+// GuitarSet mic levels vary ~6x), then judged at the default sensitivity.
+export function learnOnsets(data: Float32Array, sampleRate: number): Onset[] {
+  let peak = 0;
+  for (const x of data) peak = Math.max(peak, Math.abs(x));
+  const g = peak > 0 ? 0.5 / peak : 1;
+  return listenOffline(data.map(x => x * g), sampleRate);
+}
+
 // Regression floors, a little under measured results (default sensitivity, 60 fps).
 export const LEARN_EXPECT: Record<string, { recall: number; precision: number }> = {
-  'guitarset-Jazz1-200-B': { recall: 0, precision: 0 },
-  'guitarset-BN1-147-Gb': { recall: 0, precision: 0 }
+  'guitarset-Jazz1-200-B': { recall: 0.7, precision: 0.9 }, // measured 0.77 / 0.94
+  'guitarset-BN1-147-Gb': { recall: 0.65, precision: 0.95 } // measured 0.69 / 0.98
 };
 
 export const LEARN_FIXTURES = FIXTURES.filter(f => f.id in LEARN_EXPECT);
