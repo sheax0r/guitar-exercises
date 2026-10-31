@@ -24,7 +24,9 @@ Layers 3 and 5 are the real gaps. They come first.
 
 ## Constraints that shape every item
 
-- **Mic is monophonic.** `audio/pitch.ts` detects a single note. Nothing may
+- **Mic is monophonic** (for now; Basic Pitch from the Whistler integration
+  can lift this, see `../plans/2026-10-31-whistler-integration.md` Phase 4).
+  `audio/pitch.ts` detects a single note. Nothing may
   require judging a strummed chord. Chord work is drilled as single notes and
   arpeggios, which is also how CAGED is usually practised.
 - **Reuse, don't fork.** The building blocks already exist:
