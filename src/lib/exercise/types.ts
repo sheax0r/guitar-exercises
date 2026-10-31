@@ -24,6 +24,10 @@ export interface ExerciseConfig {
   keyRoot: Note | 'random';
   keyQuality: ScaleQuality | 'random';
   direction: Direction;
+  // Root Notes only (absent = the original nearest-occurrence drill).
+  // 'find-all': click every occurrence of the target in the neck or a window.
+  rootVariant?: 'nearest' | 'find-all';
+  findAllWindow?: 'neck' | 'window';
 }
 
 export interface ExercisePrompt {

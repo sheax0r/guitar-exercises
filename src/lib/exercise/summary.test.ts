@@ -100,6 +100,11 @@ describe('summarize', () => {
     expect(summarize({ ...shape, enabledModes: ['ionian', 'dorian', 'blues', 'aeolian'] })).toContain('4 scales');
   });
 
+  it('root notes find all', () => {
+    expect(summarize({ ...fret, rootVariant: 'find-all', findAllWindow: 'window' })).toContain('Find all (5-fret window)');
+    expect(summarize({ ...fret, rootVariant: 'nearest' })).not.toContain('Find all');
+  });
+
   it('degrees and from-root intervals', () => {
     expect(summarize({ exercise: 'degrees', degreeVariant: 'find', keyRoot: 'D', algorithm: 'fret-first', maxFret: 12, durationSec: 60, continuous: false, showFretNumbers: true, playSound: true }))
       .toBe('Name the Degree · Find it · key of D · 1m · 12 frets');

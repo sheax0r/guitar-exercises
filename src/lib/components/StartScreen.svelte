@@ -31,7 +31,7 @@
     {
       title: 'Fretboard',
       cards: [
-        { id: 'root-notes', name: 'Root Notes', desc: 'Find the nearest occurrence of a note.' },
+        { id: 'root-notes', name: 'Root Notes', desc: 'Find the nearest occurrence of a note, or all of them.' },
         { id: 'intervals', name: 'Intervals', desc: 'Find the 2nd–7th above a note in key, or from the root.' },
         { id: 'degrees', name: 'Name the Degree', desc: 'Name a note\'s degree in a key, or find the b7 of D.' }
       ]
@@ -78,6 +78,8 @@
   );
   let intervalRef = $state<'diatonic-from-note' | 'from-root'>(stored.intervalRef ?? 'diatonic-from-note');
   let degreeVariant = $state<DegreeVariant>(stored.degreeVariant ?? 'name');
+  let rootVariant = $state<'nearest' | 'find-all'>(stored.rootVariant ?? 'nearest');
+  let findAllWindow = $state<'neck' | 'window'>(stored.findAllWindow ?? 'neck');
   let keyRoot = $state<Note | 'random'>(stored.keyRoot ?? 'C');
   let keyQuality = $state<ScaleQuality | 'random'>(stored.keyQuality ?? 'major');
   let direction = $state<Direction>(stored.direction ?? 'nearest');
@@ -222,7 +224,8 @@
       intervalRef,
       keyRoot,
       keyQuality,
-      direction
+      direction,
+      ...(card === 'root-notes' ? { rootVariant, findAllWindow } : {})
     };
   }
 
@@ -245,6 +248,8 @@
       intervals,
       intervalRef,
       degreeVariant,
+      rootVariant,
+      findAllWindow,
       keyRoot,
       keyQuality,
       direction,
@@ -321,7 +326,7 @@
   {/each}
 
   {#if card === 'root-notes'}
-    <RootNotesSettings bind:target={rootTarget} />
+    <RootNotesSettings bind:target={rootTarget} bind:rootVariant bind:findAllWindow />
   {:else if card === 'intervals'}
     <IntervalsSettings bind:intervals bind:intervalRef bind:keyRoot bind:keyQuality bind:direction />
   {:else if card === 'degrees'}
@@ -396,7 +401,7 @@
           <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
         </div>
       {:else if card !== 'caged'}
-        {#if card !== 'degrees'}
+        {#if card !== 'degrees' && !(card === 'root-notes' && rootVariant === 'find-all')}
           <label><input type="checkbox" bind:checked={showAllLabels} /> Show all labels (warm-up mode)</label>
           <label><input type="checkbox" bind:checked={showRootMarkers} /> Show root note positions</label>
         {/if}

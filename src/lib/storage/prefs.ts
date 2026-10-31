@@ -46,7 +46,9 @@ export interface Prefs {
   enabledShapes?: CagedShape[];
   chordQualities?: ChordQuality[];
   include7th?: boolean;
-  degreeVariant?: DegreeVariant;    // Name the Degree (key root shared with Intervals)
+  degreeVariant?: DegreeVariant;
+  rootVariant?: 'nearest' | 'find-all';
+  findAllWindow?: 'neck' | 'window';    // Name the Degree (key root shared with Intervals)
   recentSessions?: string[];        // session hashes, newest first
 }
 
