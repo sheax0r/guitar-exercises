@@ -2,7 +2,9 @@ import { NOTE_DISPLAY } from '../music/notes';
 import { MODE_DISPLAY, MODE_ORDER, SCALE_ORDER, type ScaleType } from '../music/modes';
 import type { AnyConfig } from './config';
 import { CAGED_ORDER } from '../music/caged';
+import { PROGRESSION_DISPLAY } from '../music/progressions';
 
+const TONE_LABEL = { any: 'Any chord tone', '3rd': '3rds', '7th': '7ths', guide: 'Guide tones' };
 const CAGED_VARIANT_LABEL = { 'find-tones': 'Find tones', 'name-shape': 'Name the shape', 'next-shape': 'Next shape' };
 
 // One-line human description of a config, e.g.
@@ -36,6 +38,12 @@ export function summarize(c: AnyConfig): string {
     case 'degrees':
       parts.push('Name the Degree', c.degreeVariant === 'name' ? 'Name it' : 'Find it',
         c.keyRoot === 'random' ? 'any key' : `key of ${NOTE_DISPLAY[c.keyRoot]}`);
+      break;
+    case 'chord-tones':
+      parts.push('Chord Tones', PROGRESSION_DISPLAY[c.progression], TONE_LABEL[c.target],
+        c.keyRoot === 'random' ? 'any key' : `key of ${NOTE_DISPLAY[c.keyRoot]}`);
+      if (c.tempo === 'timed') parts.push(`${c.bpm} bpm`);
+      if (c.inputMode === 'mic') parts.push('Mic');
       break;
     case 'caged': {
       const shapes = CAGED_ORDER.filter(s => c.enabledShapes.includes(s)).join('');

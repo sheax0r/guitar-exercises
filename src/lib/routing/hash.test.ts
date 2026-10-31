@@ -473,3 +473,22 @@ describe('parseHash — Root Notes find all', () => {
     expect(r).toMatchObject({ config: { exercise: 'random-roots', rootVariant: 'find-all', findAllWindow: 'window' } });
   });
 });
+
+describe('parseHash — chord-tone targeting', () => {
+  it('fills defaults for a bare URL', () => {
+    const r = parseHash('#/learn/session?ex=chord-tones&duration=300&frets=12');
+    expect(r).toMatchObject({ screen: 'session', config: {
+      exercise: 'chord-tones', progression: 'ii-V-I', keyRoot: 'random', target: 'guide',
+      backing: 'chord', tempo: 'untimed', bpm: 80, barsPerChord: 1, inputMode: 'click'
+    } });
+  });
+  it('round-trips a timed mic config', () => {
+    const r = parseHash('#/learn/session?ex=chord-tones&prog=blues&keyroot=A&tgt=7th&back=drone&tempo=timed&bpm=96&bars=2&input=mic&duration=continuous&frets=12');
+    expect(r).toMatchObject({ config: { progression: 'blues', keyRoot: 'A', target: '7th', backing: 'drone', tempo: 'timed', bpm: 96, barsPerChord: 2, inputMode: 'mic' } });
+    if (r.screen === 'session') expect(parseHash(sessionHash(r.config))).toEqual(r);
+  });
+  it('clamps the tempo', () => {
+    const r = parseHash('#/learn/session?ex=chord-tones&bpm=900&duration=300&frets=12');
+    expect(r).toMatchObject({ config: { bpm: 200 } });
+  });
+});
