@@ -6,10 +6,15 @@ import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/type
 import type { AnyConfig } from '../exercise/config';
 
 export type Route =
-  | { screen: 'start' }
+  | { screen: 'home' }
+  | { screen: 'learn' }
+  | { screen: 'ideate' }
   | { screen: 'session'; config: AnyConfig };
 
-export const START_HASH = '#/';
+export const HOME_HASH = '#/';
+export const LEARN_HASH = '#/learn';
+export const IDEATE_HASH = '#/ideate';
+const SESSION_PREFIX = '#/learn/session?';
 
 const VALID_NOTES = new Set<string>(CHROMATIC);
 const VALID_ALGOS = new Set<string>(['fret-first', 'manhattan']);
@@ -85,18 +90,18 @@ function parseFretboard(params: URLSearchParams, exercise: ExerciseKind): Route 
   if (exercise === 'random-roots' || exercise === 'intervals') {
     targetNote = note && VALID_NOTES.has(note) ? (note as Note) : 'A';
   } else {
-    if (!note || !VALID_NOTES.has(note)) return { screen: 'start' };
+    if (!note || !VALID_NOTES.has(note)) return { screen: 'learn' };
     targetNote = note as Note;
   }
 
   const duration = parseDuration(params.get('duration'));
-  if (duration === null) return { screen: 'start' };
+  if (duration === null) return { screen: 'learn' };
 
   const frets = parsePositiveInt(params.get('frets'));
-  if (frets === null) return { screen: 'start' };
+  if (frets === null) return { screen: 'learn' };
 
   const algoRaw = params.get('algo') ?? 'fret-first';
-  if (!VALID_ALGOS.has(algoRaw)) return { screen: 'start' };
+  if (!VALID_ALGOS.has(algoRaw)) return { screen: 'learn' };
 
   const keyRootRaw = params.get('keyroot');
   const keyRoot: Note | 'random' =
@@ -125,19 +130,19 @@ function parseFretboard(params: URLSearchParams, exercise: ExerciseKind): Route 
 
 function parsePlayShape(params: URLSearchParams): Route {
   const enabledModes = parseModes(params.get('modes'));
-  if (enabledModes === null) return { screen: 'start' };
+  if (enabledModes === null) return { screen: 'learn' };
 
   const duration = parseDuration(params.get('duration'));
-  if (duration === null) return { screen: 'start' };
+  if (duration === null) return { screen: 'learn' };
 
   const frets = parsePositiveInt(params.get('frets'));
-  if (frets === null) return { screen: 'start' };
+  if (frets === null) return { screen: 'learn' };
 
   const variantRaw = params.get('variant') ?? 'octave';
-  if (variantRaw !== 'octave' && variantRaw !== 'box') return { screen: 'start' };
+  if (variantRaw !== 'octave' && variantRaw !== 'box') return { screen: 'learn' };
 
   const judgeRaw = params.get('judge') ?? 'fixed';
-  if (judgeRaw !== 'pitch' && judgeRaw !== 'fixed') return { screen: 'start' };
+  if (judgeRaw !== 'pitch' && judgeRaw !== 'fixed') return { screen: 'learn' };
 
   const span = parsePositiveInt(params.get('span')) ?? 4;
 
@@ -173,13 +178,13 @@ function parsePlayShape(params: URLSearchParams): Route {
 
 function parseIdentifyMode(params: URLSearchParams): Route {
   const enabledModes = parseModes(params.get('modes'));
-  if (enabledModes === null) return { screen: 'start' };
+  if (enabledModes === null) return { screen: 'learn' };
 
   const duration = parseDuration(params.get('duration'));
-  if (duration === null) return { screen: 'start' };
+  if (duration === null) return { screen: 'learn' };
 
   const frets = parsePositiveInt(params.get('frets'));
-  if (frets === null) return { screen: 'start' };
+  if (frets === null) return { screen: 'learn' };
 
   const pmodeRaw = params.get('pmode');
   const promptMode: 'visual' | 'audio' = pmodeRaw === 'audio' ? 'audio' : 'visual';
@@ -203,7 +208,10 @@ function parseIdentifyMode(params: URLSearchParams): Route {
 
 export function parseHash(hash: string): Route {
   const h = hash.startsWith('#') ? hash.slice(1) : hash;
-  if (!h.startsWith('/session')) return { screen: 'start' };
+  if (h === '/learn') return { screen: 'learn' };
+  if (h === '/ideate') return { screen: 'ideate' };
+  // '/session' is the pre-sections path; old recents and bookmarks still use it.
+  if (!h.startsWith('/learn/session') && !h.startsWith('/session')) return { screen: 'home' };
 
   const qIdx = h.indexOf('?');
   const params = new URLSearchParams(qIdx >= 0 ? h.slice(qIdx + 1) : '');
@@ -212,7 +220,7 @@ export function parseHash(hash: string): Route {
   if (VALID_FRETBOARD_EXERCISES.has(ex)) return parseFretboard(params, ex as ExerciseKind);
   if (ex === 'play-shape') return parsePlayShape(params);
   if (ex === 'identify-mode') return parseIdentifyMode(params);
-  return { screen: 'start' };
+  return { screen: 'learn' };
 }
 
 export function sessionHash(config: AnyConfig): string {
@@ -259,5 +267,15 @@ export function sessionHash(config: AnyConfig): string {
     params.set('keyqual', config.keyQuality);
     params.set('dir', config.direction);
   }
-  return '#/session?' + params.toString();
+  return SESSION_PREFIX + params.toString();
+}
+
+// The one hash each route is shown under; the app rewrites the URL to it.
+export function canonicalHash(route: Route): string {
+  switch (route.screen) {
+    case 'home': return HOME_HASH;
+    case 'learn': return LEARN_HASH;
+    case 'ideate': return IDEATE_HASH;
+    case 'session': return sessionHash(route.config);
+  }
 }

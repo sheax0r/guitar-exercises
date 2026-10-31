@@ -224,7 +224,7 @@
 </script>
 
 <div class="start">
-  <h1>Guitar Exercises</h1>
+  <h1>Learn</h1>
 
   {#if recents.length > 0}
     <div class="row">
