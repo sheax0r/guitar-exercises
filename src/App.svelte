@@ -2,7 +2,6 @@
   import HomeScreen from './lib/components/HomeScreen.svelte';
   import SectionNav from './lib/components/SectionNav.svelte';
   import StartScreen from './lib/components/StartScreen.svelte';
-  import SessionScreen from './lib/components/SessionScreen.svelte';
   import ReportScreen from './lib/components/ReportScreen.svelte';
   import type { AnyConfig, AnyReport } from './lib/exercise/config';
   import { parseHash, sessionHash, canonicalHash, LEARN_HASH, type Route } from './lib/routing/hash';
@@ -104,13 +103,16 @@
     <IdeateScreen />
   {/await}
 {:else if screen === 'session' && activeConfig}
-  {#key activeConfig}
-    <SessionScreen
-      config={activeConfig}
-      onComplete={handleComplete}
-      onAbort={handleAbort}
-    />
-  {/key}
+  <!-- Lazy: exercise bodies, pitchy and the audio code load on the first session, not on the menu. -->
+  {#await import('./lib/components/SessionScreen.svelte') then { default: SessionScreen }}
+    {#key activeConfig}
+      <SessionScreen
+        config={activeConfig}
+        onComplete={handleComplete}
+        onAbort={handleAbort}
+      />
+    {/key}
+  {/await}
 {:else if screen === 'report' && activeReport && activeConfig}
   <ReportScreen
     report={activeReport}

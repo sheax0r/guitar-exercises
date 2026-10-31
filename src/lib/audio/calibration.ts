@@ -1,7 +1,6 @@
 // Latency calibration: play N metronome beats, record them (or the player's taps), and
 // measure how far the onsets sit off the beat grid. The result is a timing offset in ms
 // (negative = shift notes earlier), saved as the default for new recordings.
-import { estimateLag } from '../transcribe/detect';
 import { beatSeconds, scheduleClick } from './metronome';
 
 // Whistler's key, kept as-is so existing users keep their calibration.
@@ -55,5 +54,7 @@ export async function calibrate(ctx: AudioContext, stream: MediaStream, o: Calib
     }
   }, (t0 + beats * beatSec - ctx.currentTime) * 1000 + 300);
   const buf = await ctx.decodeAudioData(await (await done).arrayBuffer());
+  // Lazy: detect.ts is heavy and only Ideate calibrates; Learn just reads the offset.
+  const { estimateLag } = await import('../transcribe/detect');
   return estimateLag(buf.getChannelData(0), buf.sampleRate, beatSec);
 }
