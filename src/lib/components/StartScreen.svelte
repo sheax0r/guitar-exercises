@@ -96,7 +96,10 @@
     card === 'root-notes' && rootTarget === 'random' ? 'random-roots' : card
   );
   // random-roots ignores targetNote; keep the last fixed pick.
-  const targetNote = $derived<Note>(rootTarget === 'random' ? (stored.targetNote ?? 'A') : rootTarget);
+  // svelte-ignore state_referenced_locally
+  let lastFixedTarget = $state<Note>(rootTarget === 'random' ? (stored.targetNote ?? 'A') : rootTarget);
+  $effect(() => { if (rootTarget !== 'random') lastFixedTarget = rootTarget; });
+  const targetNote = $derived<Note>(rootTarget === 'random' ? lastFixedTarget : rootTarget);
   const isModes = $derived(card === 'play-shape' || card === 'identify-mode');
 
   const durationValid = $derived(continuous || durationSec > 0);
@@ -126,8 +129,8 @@
         drone,
         highlightCharacteristic,
         fixedRootNote: root,
-        // ModesSettings reverts inputMode to click when mic isn't eligible.
-        inputMode,
+        // Mic can't verify a fixed-fingering octave (ModesSettings also reverts the chip).
+        inputMode: shapeVariant === 'box' || octaveJudge === 'pitch' ? inputMode : 'click',
         micSensitivity,
         micDeviceId,
         displayNotePercentage
@@ -199,17 +202,23 @@
       micSensitivity,
       micDeviceId,
       displayNotePercentage,
-      recentSessions: pushRecent(stored.recentSessions, sessionHash(config))
+      recentSessions: rememberRecent(config, sessionHash(config))
     };
     savePrefs(prefs);
     onStart(config);
   }
 
+  // Hashes carry fields the exercise ignores, so entries that read the same are
+  // dropped as duplicates; unparseable stored entries are pruned too.
+  function rememberRecent(config: AnyConfig, hash: string): string[] {
+    const label = summarize(config);
+    return pushRecent(recents.filter(r => summarize(r.config) !== label).map(r => r.hash), hash);
+  }
+
   function startRecent(r: { hash: string; config: AnyConfig }) {
     // The mic device isn't in the hash; use the one currently chosen.
     const config = r.config.exercise === 'play-shape' ? { ...r.config, micDeviceId } : r.config;
-    const current = loadPrefs();
-    savePrefs({ ...current, recentSessions: pushRecent(current.recentSessions, r.hash) } as Prefs);
+    savePrefs({ ...loadPrefs(), recentSessions: rememberRecent(r.config, r.hash) } as Prefs);
     onStart(config);
   }
 </script>

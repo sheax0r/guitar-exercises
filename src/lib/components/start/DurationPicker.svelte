@@ -46,12 +46,13 @@
   }
 </script>
 
-<div class="chips">
+<div class="chips" role="group" aria-label="Duration">
   {#each DURATIONS as d}
     <button
       type="button"
       class="chip"
       class:chip-active={!continuous && !customMode && durationSec === d.sec}
+      aria-pressed={!continuous && !customMode && durationSec === d.sec}
       onclick={() => pickPreset(d.sec)}
     >{d.label}</button>
   {/each}
@@ -59,6 +60,7 @@
     type="button"
     class="chip"
     class:chip-active={!continuous && customMode}
+    aria-pressed={!continuous && customMode}
     onclick={pickCustom}
   >Custom</button>
   {#if !continuous && customMode}
@@ -76,6 +78,7 @@
     type="button"
     class="chip"
     class:chip-active={continuous}
+    aria-pressed={continuous}
     onclick={pickContinuous}
   >Continuous</button>
 </div>

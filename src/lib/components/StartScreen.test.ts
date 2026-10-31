@@ -292,4 +292,42 @@ describe('StartScreen — layout, summary and recents', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     expect(container.querySelectorAll('.recent')).toHaveLength(1);
   });
+
+  it('Start still works and prunes junk when stored recents are corrupt', async () => {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ recentSessions: 'abc' }));
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(startButton(container));
+    expect(onStart).toHaveBeenCalledOnce();
+    expect(storedPrefs().recentSessions).toHaveLength(1);
+  });
+
+  it('a recent that reads the same as a new start is replaced, not duplicated', async () => {
+    const first = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(startButton(first.container));
+    first.unmount();
+
+    // Change an intervals-only setting, which alters the hash but not Root Notes' summary.
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(card(container, 'intervals'));
+    await fireEvent.click(chipByText(container, '5th', 'Interval'));
+    await fireEvent.click(card(container, 'root-notes'));
+    await fireEvent.click(startButton(container));
+    expect(storedPrefs().recentSessions).toHaveLength(1);
+  });
+
+  it('switching to A/E/D remembers the fixed target picked this visit', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(chipByText(container, 'C', 'Target note'));
+    await fireEvent.click(chipByText(container, 'A/E/D', 'Target note'));
+    await fireEvent.click(startButton(container));
+    expect(storedPrefs().targetNote).toBe('C');
+  });
+
+  it('duration chips expose the selection via aria-pressed', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(chipByText(container, 'Continuous', 'Duration'));
+    expect(chipByText(container, 'Continuous', 'Duration').getAttribute('aria-pressed')).toBe('true');
+    expect(chipByText(container, '5m', 'Duration').getAttribute('aria-pressed')).toBe('false');
+  });
 });
