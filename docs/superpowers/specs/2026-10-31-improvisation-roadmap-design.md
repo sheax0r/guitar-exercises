@@ -226,6 +226,10 @@ They are recorded so they are not forgotten; none is scoped yet.
 - **Vocabulary transfer.** Learning licks and moving them to other keys and
   positions, and connecting the drills to real songs or backing tracks.
   Possibly out of scope for a drill app.
+  *Partly addressed (2026-10-31):* Lick Drill takes a lick transcribed in
+  Ideate and drills it in other keys and from other strings
+  (`2026-10-31-lick-drill-design.md`). Songs and backing tracks are still
+  open.
 - **Tunings.** Only standard tuning (`music/tuning.ts`). Drop D, DADGAD and
   others are not supported.
 - **Long-term progress.** No history beyond recent sessions: no streaks,

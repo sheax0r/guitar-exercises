@@ -222,6 +222,13 @@ The Whistler pipeline lifts constraints recorded in
 - **Ideate to Learn bridge** (later). Take a transcribed idea and drill it,
   for example "play this lick in another key or position" using the fretting
   logic. This is the roadmap's "vocabulary transfer" gap.
+  - [x] Shipped 2026-10-31 as **Lick Drill**. Ideate's cleanup panel saves a
+    note range of a finished job as a named lick (localStorage, not the
+    `whistler` IndexedDB) and opens Learn with it selected. The drill shows
+    and plays the original lick, then asks for it from another start note
+    and/or string, refretted with `fretting.ts`. It reuses Call and
+    Response's session body and in-order, any-octave judging. See
+    `../specs/2026-10-31-lick-drill-design.md`.
 - **Fixture harness.** GuitarSet guitar takes become regression tests for
   every mic-judged exercise. Today those exercises have no real-audio tests.
   - [x] **Done:** `src/lib/transcribe/harness/learn.ts` replays GuitarSet

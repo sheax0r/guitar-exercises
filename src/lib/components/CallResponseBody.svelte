@@ -8,29 +8,45 @@
   import { PHRASE_BPM, type CallResponseConfig, type CallResponsePrompt, type CallResponseReport } from '../exercise/callresponse/types';
   import type { Pos } from '../music/caged';
   import { noteAt, pitchOf, CHROMATIC, NOTE_DISPLAY } from '../music/notes';
+  import type { StringNum } from '../music/tuning';
   import { playPluck, midiAsPos } from '../audio/pluck';
   import { playSequence } from '../audio/sequence';
   import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
   import { startPitchListener, listAudioInputs, type PitchListener } from '../audio/pitch';
   import type { TunerReading } from '../audio/tuner';
   import { loadPrefs, updatePrefs } from '../storage/prefs';
+  import { LickDrillExercise } from '../exercise/lick/LickDrillExercise';
+  import type { LickDrillConfig, LickDrillReport, LickPrompt } from '../exercise/lick/types';
+  import { ORDINAL } from '../exercise/summary';
 
   type Props = {
-    config: CallResponseConfig;
-    onComplete: (report: CallResponseReport) => void;
-    onAbort: (report: CallResponseReport) => void;
+    config: CallResponseConfig | LickDrillConfig;
+    onComplete: (report: CallResponseReport | LickDrillReport) => void;
+    onAbort: (report: CallResponseReport | LickDrillReport) => void;
   };
 
   let { config, onComplete, onAbort }: Props = $props();
 
-  const exercise = new CallResponseExercise();
-  untrack(() => exercise.start(config));
+  // Lick Drill shares this body (in-order judging, mic, replay, give up). It plays and shows
+  // the original lick, then asks for it from another note and/or string.
+  const crConfig = untrack(() => (config.exercise === 'call-response' ? config : null));
+  const lickName = untrack(() => (config.exercise === 'lick-drill' ? config.lickName : ''));
+  const exercise = untrack(() => {
+    if (config.exercise === 'lick-drill') {
+      const e = new LickDrillExercise();
+      e.start(config);
+      return e;
+    }
+    const e = new CallResponseExercise();
+    e.start(config);
+    return e;
+  });
   const mic = untrack(() => config.inputMode === 'mic');
   const SIXTEENTH_MS = 60000 / PHRASE_BPM / 4;
   // Mic input is ignored this long after the phrase ends (speaker ring-out).
   const ECHO_GUARD_MS = 400;
 
-  let currentPrompt = $state<CallResponsePrompt | null>(null);
+  let currentPrompt = $state<CallResponsePrompt | LickPrompt | null>(null);
   let phase = $state<'playing' | 'listening' | 'done'>('playing');
   let heard = $state<Array<{ label: string; ok: boolean }>>([]);
   let clicked = $state<Highlight[]>([]);
@@ -66,7 +82,8 @@
     stopPlayback();
     if (phase !== 'done') phase = 'playing';
     const gaps = p.notes.slice(0, -1).map(n => n.sixteenths * SIXTEENTH_MS);
-    try { cancelPlayback = playSequence(p.notes.map(n => midiAsPos(n.midi)), gaps); } catch { /* ignore */ }
+    const seq = 'call' in p ? p.call : p.notes.map(n => midiAsPos(n.midi));
+    try { cancelPlayback = playSequence(seq, gaps); } catch { /* ignore */ }
     const total = gaps.reduce((a, b) => a + b, 0) + p.notes[p.notes.length - 1].sixteenths * SIXTEENTH_MS;
     listenTimer = setTimeout(() => {
       if (phase === 'playing') { phase = 'listening'; exercise.markListening(); }
@@ -90,7 +107,7 @@
   let drone: DroneHandle | null = null;
   $effect(() => {
     const key = currentPrompt?.keyRoot;
-    if (config.drone && key && !paused) drone = startDrone(midiForDrone(key));
+    if (crConfig?.drone && key && !paused) drone = startDrone(midiForDrone(key));
     return () => { drone?.stop(); drone = null; };
   });
 
@@ -103,9 +120,9 @@
     untrack(() => { if (phase === 'done') nextPrompt(); else play(); });
   });
 
-  function submit(midi: number, atSec?: number) {
+  function submit(midi: number, atSec?: number, string?: StringNum) {
     if (!currentPrompt || phase === 'done') return;
-    const r = exercise.submitNote(midi, atSec);
+    const r = exercise instanceof LickDrillExercise ? exercise.submitNote(midi, atSec, string) : exercise.submitNote(midi, atSec);
     heard = [...heard, { label: NOTE_DISPLAY[CHROMATIC[((midi % 12) + 12) % 12]], ok: r.noteCorrect }];
     if (r.done) finish(r.correct, r.rhythmOff);
   }
@@ -132,7 +149,7 @@
     if (mic && micError === null) return;
     if (config.playSound) { try { playPluck(pos.string, pos.fret); } catch { /* ignore */ } }
     const before = heard.length;
-    submit(pitchOf(pos.string, pos.fret));
+    submit(pitchOf(pos.string, pos.fret), undefined, pos.string);
     const ok = heard[before]?.ok ?? false;
     clicked = [...clicked, { string: pos.string, fret: pos.fret, note: noteAt(pos.string, pos.fret), kind: ok ? 'user-correct' : 'user-wrong' }];
   }
@@ -182,9 +199,22 @@
   });
   $effect(() => { micListener?.setSensitivity(micSensitivity); });
 
-  const phraseText = $derived(
-    currentPrompt ? currentPrompt.notes.map(n => NOTE_DISPLAY[n.note]).join(' – ') + ` (${currentPrompt.notes.map(n => n.degree).join(' ')})` : ''
-  );
+  const phraseText = $derived.by(() => {
+    const p = currentPrompt;
+    if (!p) return '';
+    const names = p.notes.map(n => NOTE_DISPLAY[n.note]).join(' – ');
+    return 'call' in p ? `${names} (shown on the neck)` : `${names} (${p.notes.map(n => n.degree).join(' ')})`;
+  });
+
+  // Lick Drill: the original lick on the neck while answering; the answer once revealed.
+  const guide = $derived.by<Highlight[]>(() => {
+    const p = currentPrompt;
+    if (!p || !('call' in p)) return [];
+    const reveal = phase === 'done' && !lastCorrect;
+    return (reveal ? p.answer : p.call).map(q => ({
+      string: q.string, fret: q.fret, note: noteAt(q.string, q.fret), kind: reveal ? 'prompt' : 'scale-note'
+    }));
+  });
 </script>
 
 <SessionShell
@@ -198,10 +228,14 @@
 >
   {#snippet headerExtra()}
     <div class="target">
-      {#if currentPrompt}
+      {#if currentPrompt && 'call' in currentPrompt}
+        <strong>{lickName}</strong>: play it starting on <strong>{NOTE_DISPLAY[currentPrompt.keyRoot]}</strong>{#if currentPrompt.startString}{' '}on
+          the <strong>{ORDINAL[currentPrompt.startString]} string</strong>{/if} —
+        {phase === 'playing' ? 'listen…' : `${currentPrompt.notes.length} notes`}
+      {:else if currentPrompt}
         Key of <strong>{NOTE_DISPLAY[currentPrompt.keyRoot]}</strong> —
         {phase === 'playing' ? 'listen…' : `play it back (${currentPrompt.notes.length} notes)`}
-        {#if config.showStart}<span class="start">starts on {NOTE_DISPLAY[currentPrompt.notes[0].note]} ({currentPrompt.notes[0].degree})</span>{/if}
+        {#if crConfig?.showStart}<span class="start">starts on {NOTE_DISPLAY[currentPrompt.notes[0].note]} ({currentPrompt.notes[0].degree})</span>{/if}
       {/if}
     </div>
     {#if mic}
@@ -229,7 +263,7 @@
   </div>
 
   <div class="board" class:paused={paused}>
-    <Fretboard maxFret={config.maxFret} fretNumbersVisible={showFretNumbers} highlights={paused ? [] : clicked} onSelect={handleSelect} />
+    <Fretboard maxFret={config.maxFret} fretNumbersVisible={showFretNumbers} highlights={paused ? [] : [...guide, ...clicked]} onSelect={handleSelect} />
     {#if paused}
       <div class="paused-overlay">
         <div class="paused-text">Paused</div>

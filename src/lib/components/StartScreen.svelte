@@ -25,6 +25,9 @@
   import { PHRASE_DEGREES } from '../exercise/callresponse/types';
   import CallResponseSettings from './start/CallResponseSettings.svelte';
   import type { Degree } from '../music/scales';
+  import type { StringNum } from '../music/tuning';
+  import LickDrillSettings from './start/LickDrillSettings.svelte';
+  import { loadLicks } from '../storage/licks';
 
   type Props = {
     onStart: (config: AnyConfig) => void;
@@ -32,7 +35,7 @@
 
   let { onStart }: Props = $props();
 
-  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones' | 'call-response';
+  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones' | 'call-response' | 'lick-drill';
   const CARD_GROUPS: Array<{ title: string; cards: Array<{ id: Card; name: string; desc: string }> }> = [
     {
       title: 'Fretboard',
@@ -60,6 +63,12 @@
       title: 'Ear',
       cards: [
         { id: 'call-response', name: 'Call and Response', desc: 'Hear a short phrase, play it back.' }
+      ]
+    },
+    {
+      title: 'Licks',
+      cards: [
+        { id: 'lick-drill', name: 'Lick Drill', desc: 'Play a lick from Ideate in another key or position.' }
       ]
     }
   ];
@@ -131,6 +140,13 @@
   let phraseMotion = $state<'stepwise' | 'leaps'>(stored.phraseMotion ?? 'leaps');
   let showStartNote = $state<boolean>(stored.showStartNote ?? false);
   let judgeRhythm = $state<boolean>(stored.judgeRhythm ?? false);
+  // Lick Drill (mic settings are shared). Licks are saved from Ideate's cleanup panel.
+  let licks = $state(loadLicks());
+  // svelte-ignore state_referenced_locally
+  let lickId = $state<string | null>(licks.some(l => l.id === stored.lickId) ? stored.lickId! : licks[0]?.id ?? null);
+  let lickTarget = $state<Note | 'random' | 'same'>(stored.lickTarget ?? 'random');
+  let lickStartString = $state<StringNum | 'random' | 'any'>(stored.lickStartString ?? 'any');
+  const selectedLick = $derived(licks.find(l => l.id === lickId) ?? null);
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
   // Best-effort device list (labels appear only after mic permission).
   $effect(() => { listAudioInputs().then(d => { micDevices = d; }); });
@@ -163,8 +179,9 @@
   // An empty number input binds to null.
   const phraseValid = $derived(card !== 'call-response' || (phraseLengths.length > 0 && phraseDegrees.length >= 2));
   const bpmValid = $derived(card !== 'chord-tones' || tempo === 'untimed' || (Number.isInteger(bpm) && bpm >= 40 && bpm <= 200));
+  const lickValid = $derived(card !== 'lick-drill' || selectedLick !== null);
   const valid = $derived(
-    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid && bpmValid && phraseValid
+    lickValid && durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid && bpmValid && phraseValid
   );
 
   function buildConfig(): AnyConfig {
@@ -235,6 +252,23 @@
         rhythm: inputMode === 'mic' && judgeRhythm,
         keyRoot,
         drone,
+        inputMode,
+        micSensitivity,
+        micDeviceId,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound
+      };
+    }
+    if (card === 'lick-drill') {
+      return {
+        exercise: 'lick-drill',
+        lick: selectedLick?.notes ?? [],
+        lickName: selectedLick?.name ?? 'no lick',
+        target: lickTarget,
+        startString: lickStartString,
         inputMode,
         micSensitivity,
         micDeviceId,
@@ -353,6 +387,9 @@
       phraseMotion,
       showStartNote,
       judgeRhythm,
+      lickId: lickId ?? undefined,
+      lickTarget,
+      lickStartString,
       cagedMicJudge,
       showTuner: stored.showTuner,
       recentSessions: rememberRecent(config, sessionHash(config))
@@ -370,7 +407,7 @@
 
   function startRecent(r: { hash: string; config: AnyConfig }) {
     // The mic device isn't in the hash; use the one currently chosen.
-    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' || r.config.exercise === 'call-response' ? { ...r.config, micDeviceId } : r.config;
+    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' || r.config.exercise === 'call-response' || r.config.exercise === 'lick-drill' ? { ...r.config, micDeviceId } : r.config;
     savePrefs({ ...loadPrefs(), recentSessions: rememberRecent(r.config, r.hash) } as Prefs);
     onStart(config);
   }
@@ -439,6 +476,17 @@
       bind:showStart={showStartNote}
       bind:rhythm={judgeRhythm}
       bind:keyRoot
+      bind:inputMode
+      bind:micSensitivity
+      bind:micDeviceId
+      {micDevices}
+    />
+  {:else if card === 'lick-drill'}
+    <LickDrillSettings
+      bind:licks
+      bind:lickId
+      bind:target={lickTarget}
+      bind:startString={lickStartString}
       bind:inputMode
       bind:micSensitivity
       bind:micDeviceId
@@ -516,7 +564,7 @@
           <input id="shownotes" type="range" min="0" max="100" step="5" bind:value={displayNotePercentage} />
           <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
         </div>
-      {:else if card !== 'caged'}
+      {:else if card !== 'caged' && card !== 'lick-drill'}
         {#if card !== 'degrees' && card !== 'chord-tones' && !(card === 'root-notes' && rootVariant === 'find-all')}
           <label><input type="checkbox" bind:checked={showAllLabels} /> Show all labels (warm-up mode)</label>
           <label><input type="checkbox" bind:checked={showRootMarkers} /> Show root note positions</label>
