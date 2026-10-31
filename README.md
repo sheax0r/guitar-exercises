@@ -56,8 +56,9 @@ Quick layout:
 src/
   lib/
     music/        # Note math, tuning, scales, modes, fretboard position helpers
-    audio/        # Pluck synthesis, drone, mic pitch detection
+    audio/        # Pluck synthesis, drone, mic pitch detection, metronome, latency calibration
     transcribe/   # Ideate: audio -> notes -> tab -> .gp (ported from Whistler)
+    ideate/       # Ideate UI: recorder, jobs queue, cleanup panel, calibration
     exercise/     # Exercise<...> interface, fretboard exercises, config summary
       modes/      # Play the Shape and Identify the Mode
     components/   # Svelte screens + Fretboard widget
