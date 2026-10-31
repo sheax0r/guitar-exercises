@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { playSequence } from './sequence';
+import { playPluck } from './pluck';
+
+vi.mock('./pluck', () => ({ playPluck: vi.fn() }));
 
 describe('playSequence', () => {
   it('is a no-op for an empty list', () => {
@@ -17,5 +20,21 @@ describe('playSequence', () => {
     expect(typeof cancel).toBe('function');
     expect(() => cancel()).not.toThrow();
     expect(() => cancel()).not.toThrow(); // idempotent
+  });
+});
+
+describe('playSequence with per-note gaps', () => {
+  it('plays note i+1 gapMs[i] after note i', () => {
+    vi.useFakeTimers();
+    vi.mocked(playPluck).mockClear();
+    playSequence([{ string: 6, fret: 0 }, { string: 6, fret: 2 }, { string: 6, fret: 4 }], [100, 300]);
+    expect(playPluck).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(100);
+    expect(playPluck).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(299);
+    expect(playPluck).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(1);
+    expect(playPluck).toHaveBeenLastCalledWith(6, 4);
+    vi.useRealTimers();
   });
 });

@@ -45,6 +45,13 @@ export function summarize(c: AnyConfig): string {
       if (c.tempo === 'timed') parts.push(`${c.bpm} bpm`);
       if (c.inputMode === 'mic') parts.push('Mic');
       break;
+    case 'call-response':
+      parts.push('Call and Response', `${c.lengths.join('/')} notes`, `degrees ${c.degrees.join(' ')}`,
+        c.motion === 'stepwise' ? 'Stepwise' : 'Leaps',
+        c.keyRoot === 'random' ? 'any key' : `key of ${NOTE_DISPLAY[c.keyRoot]}`);
+      if (c.rhythm) parts.push('Rhythm');
+      if (c.inputMode === 'mic') parts.push('Mic');
+      break;
     case 'caged': {
       const shapes = CAGED_ORDER.filter(s => c.enabledShapes.includes(s)).join('');
       const quals = c.qualities.length === 2 ? 'major/minor' : c.qualities[0];

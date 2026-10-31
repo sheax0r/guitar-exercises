@@ -5,7 +5,7 @@ import ChordTonesBody from './ChordTonesBody.svelte';
 import type { ChordTonesConfig } from '../exercise/chordtones/types';
 import type { MetronomeOptions } from '../audio/metronome';
 
-vi.mock('../audio/pluck', () => ({ playPluck: () => {} }));
+vi.mock('../audio/pluck', () => ({ midiAsPos: (m: number) => ({ string: 6, fret: m - 40 }), playPluck: () => {} }));
 vi.mock('../audio/sequence', () => ({ playSequence: () => () => {} }));
 vi.mock('../audio/drone', () => ({ startDrone: () => ({ stop() {} }), midiForDrone: () => 48 }));
 vi.mock('../audio/context', () => ({ getAudioContext: () => ({ state: 'running', currentTime: 0, resume: () => Promise.resolve() }) }));

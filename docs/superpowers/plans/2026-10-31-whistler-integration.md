@@ -215,6 +215,10 @@ The Whistler pipeline lifts constraints recorded in
 - **Call and Response** (roadmap item 5). Record the response, transcribe it
   with `detectNotes` and quantization, and compare it note by note against
   the prompt phrase, rhythm included.
+  - [x] Shipped 2026-10-31. It judges with the live pitch listener instead of
+    `detectNotes`, because that gives per-note feedback and knows from the
+    phrase length when the take ends. Rhythm uses quantize's `toSixteenths`
+    on the onset gaps. See `../specs/2026-10-31-call-and-response-design.md`.
 - **Ideate to Learn bridge** (later). Take a transcribed idea and drill it,
   for example "play this lick in another key or position" using the fretting
   logic. This is the roadmap's "vocabulary transfer" gap.

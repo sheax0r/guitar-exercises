@@ -4,6 +4,7 @@ import ReportScreen from './ReportScreen.svelte';
 import type { ExerciseConfig, ExerciseReport } from '../exercise/types';
 import type { CagedConfig, CagedReport } from '../exercise/caged/types';
 import type { ChordTonesConfig, ChordTonesReport } from '../exercise/chordtones/types';
+import type { CallResponseConfig, CallResponseReport } from '../exercise/callresponse/types';
 
 function makeConfig(overrides: Partial<ExerciseConfig> = {}): ExerciseConfig {
   return {
@@ -108,5 +109,34 @@ describe('ReportScreen — Chord-Tone Targeting', () => {
     expect(Array.from(tables[0].querySelectorAll('tbody tr')).map(r => r.firstElementChild!.textContent)).toEqual(['ii', 'V', 'I']);
     expect(tables[1].textContent).toContain('7th');
     expect(tables[1].textContent).toContain('0%');
+  });
+});
+
+describe('ReportScreen — Call and Response', () => {
+  it('shows per-length and per-degree tables', () => {
+    const config: CallResponseConfig = {
+      exercise: 'call-response', lengths: [2, 3], degrees: ['1', '3', '5'], motion: 'leaps', showStart: false,
+      rhythm: false, keyRoot: 'C', drone: false, inputMode: 'click', micSensitivity: 0.5, micDeviceId: null,
+      maxFret: 12, durationSec: 300, continuous: false, showFretNumbers: true, playSound: false
+    };
+    const report: CallResponseReport = {
+      totalPrompts: 2, correctCount: 1, incorrectCount: 1, accuracy: 0.5, avgTimeMs: 3000,
+      perLengthStats: [
+        { length: 2, timesAsked: 1, correctCount: 1, avgTimeMs: 2000 },
+        { length: 3, timesAsked: 1, correctCount: 0, avgTimeMs: 4000 }
+      ],
+      perDegreeStats: [
+        { degree: '1', timesAsked: 2, correctCount: 2, avgTimeMs: 3000 },
+        { degree: '5', timesAsked: 2, correctCount: 1, avgTimeMs: 3000 }
+      ],
+      attempts: [{ elapsedMs: 2000, correct: true }, { elapsedMs: 4000, correct: false }]
+    };
+    const { container } = render(ReportScreen, { props: { report, config, onPracticeAgain: () => {}, onBack: () => {} } });
+    expect(container.querySelector('h2')!.textContent).toContain('Call and Response');
+    const tables = container.querySelectorAll('table.per-mode');
+    expect(tables).toHaveLength(2);
+    expect(tables[0].textContent).toContain('3 notes');
+    expect(tables[1].querySelector('th')!.textContent).toBe('Degree');
+    expect(tables[1].textContent).toContain('50%');
   });
 });

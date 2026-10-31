@@ -7,6 +7,7 @@ import type { AnyConfig } from '../exercise/config';
 import type { CagedConfig } from '../exercise/caged/types';
 import type { DegreesConfig } from '../exercise/degrees/types';
 import type { ChordTonesConfig } from '../exercise/chordtones/types';
+import { PHRASE_DEGREES, type CallResponseConfig } from '../exercise/callresponse/types';
 import { PROGRESSION_ORDER } from '../music/progressions';
 import { CAGED_ORDER } from '../music/caged';
 import { INTERVAL_ORDER, type Interval } from '../music/scales';
@@ -298,6 +299,33 @@ function parseChordTones(params: URLSearchParams): Route {
   return { screen: 'session', config };
 }
 
+function parseCallResponse(params: URLSearchParams): Route {
+  const duration = parseDuration(params.get('duration'));
+  const frets = parsePositiveInt(params.get('frets'));
+  if (!duration || frets === null) return { screen: 'learn' };
+  const keyRoot = params.get('keyroot');
+  const degrees = parseList<CallResponseConfig['degrees'][number]>(params.get('degs'), PHRASE_DEGREES);
+  const config: CallResponseConfig = {
+    exercise: 'call-response',
+    lengths: (parseList<string>(params.get('lens'), ['2', '3', '4']) ?? ['3']).map(Number),
+    degrees: degrees && new Set(degrees).size >= 2 ? degrees : ['1', '3', '5'],
+    motion: params.get('motion') === 'step' ? 'stepwise' : 'leaps',
+    showStart: parseBool(params.get('start'), false),
+    rhythm: parseBool(params.get('rhythm'), false),
+    keyRoot: keyRoot && VALID_NOTES.has(keyRoot) ? (keyRoot as Note) : 'random',
+    drone: parseBool(params.get('drone'), false),
+    inputMode: params.get('input') === 'mic' ? 'mic' : 'click',
+    micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
+    micDeviceId: null,
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true)
+  };
+  return { screen: 'session', config };
+}
+
 export function parseHash(hash: string): Route {
   const h = hash.startsWith('#') ? hash.slice(1) : hash;
   if (h === '/learn') return { screen: 'learn' };
@@ -315,6 +343,7 @@ export function parseHash(hash: string): Route {
   if (ex === 'caged') return parseCaged(params);
   if (ex === 'degrees') return parseDegrees(params);
   if (ex === 'chord-tones') return parseChordTones(params);
+  if (ex === 'call-response') return parseCallResponse(params);
   return { screen: 'learn' };
 }
 
@@ -367,6 +396,20 @@ export function sessionHash(config: AnyConfig): string {
     params.set('bpm', String(config.bpm));
     params.set('bars', String(config.barsPerChord));
     params.set('algo', config.algorithm);
+    params.set('input', config.inputMode);
+    params.set('sens', String(config.micSensitivity));
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+  } else if (config.exercise === 'call-response') {
+    params.set('lens', config.lengths.join(','));
+    params.set('degs', config.degrees.join(','));
+    params.set('motion', config.motion === 'stepwise' ? 'step' : 'leap');
+    params.set('start', config.showStart ? '1' : '0');
+    params.set('rhythm', config.rhythm ? '1' : '0');
+    params.set('keyroot', config.keyRoot);
+    params.set('drone', config.drone ? '1' : '0');
     params.set('input', config.inputMode);
     params.set('sens', String(config.micSensitivity));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
