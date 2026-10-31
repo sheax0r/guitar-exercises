@@ -1,6 +1,7 @@
 // Dev-only transcription harness (ideate-test.html, served by `npm run dev`, not built):
 // runs every fixture through the real pipeline and scores it.
-// URL params: ?engines=pitchy,ai  ?only=<fixture id substring>.
+// URL params: ?engines=pitchy,ai,learn  ?only=<fixture id substring>.
+// "learn" replays guitar takes through Learn's live mic judging (see learn.ts).
 // Results: window.__results, window.__done.
 import { detectNotes } from '../detect';
 import { firstMidi, mapNotes } from '../quantize';
@@ -10,11 +11,12 @@ import type { Engine, TabNote } from '../types';
 import { FIXTURES, type Fixture } from './fixtures';
 import { scoreNotes, scoreAnnot, type Expected, type Score } from './scoring';
 import { synthMelody } from './synth';
+import { LEARN_EXPECT, jamsNotes, learnOnsets, scoreLearn } from './learn';
 import { HAPPY_BIRTHDAY, withPos, songToNotes } from './songs';
 
 const $ = (id: string) => document.getElementById(id)!;
 const P = new URLSearchParams(location.search);
-const ENGINES = (P.get('engines') || 'pitchy,ai').split(',') as Engine[], ONLY = P.get('only');
+const ENGINES = (P.get('engines') || 'pitchy,ai,learn').split(',') as Array<Engine | 'learn'>, ONLY = P.get('only');
 const DETECT = { clarity: 0.9, minMs: 90, mergeMs: 80 }; // the app's default detection settings
 const SONGS = { 'happy-birthday': HAPPY_BIRTHDAY };
 const EXTS = ['wav', 'flac', 'webm', 'ogg', 'm4a', 'mp3'];
@@ -109,6 +111,17 @@ for (const fx of FIXTURES.filter(f => !ONLY || f.id.includes(ONLY))) {
     continue;
   }
   for (const engine of ENGINES) {
+    if (engine === 'learn') {
+      const th = LEARN_EXPECT[fx.id];
+      if (!th) continue;
+      const t0 = performance.now();
+      const annot = jamsNotes(new TextDecoder().decode((await fetchFirst([fx.annot!.file]))!.buf));
+      const s = scoreLearn(learnOnsets(audio.buf.getChannelData(0), audio.buf.sampleRate), annot);
+      const status = s.recall >= th.recall && s.precision >= th.precision ? 'PASS' : 'FAIL';
+      row({ id: fx.id, engine, status, ms: performance.now() - t0, threshold: th,
+        note: `heard ${Math.round(s.recall * 100)}% of ${s.nExp} notes, ${Math.round(s.precision * 100)}% of ${s.nDet} onsets right` }, fx);
+      continue;
+    }
     $('status').textContent = `running ${fx.id} · ${engine}…`;
     const t0 = performance.now();
     try {
