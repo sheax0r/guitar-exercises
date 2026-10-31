@@ -8,7 +8,7 @@
   import { progressionChords } from '../music/progressions';
   import { CHORD_OFFSETS, chordName, type ChordType, type Pos } from '../music/caged';
   import { noteAt, CHROMATIC, NOTE_DISPLAY, type Note } from '../music/notes';
-  import { playPluck } from '../audio/pluck';
+  import { playPluck, midiAsPos } from '../audio/pluck';
   import { playSequence } from '../audio/sequence';
   import { startDrone, midiForDrone, type DroneHandle } from '../audio/drone';
   import { startMetronome } from '../audio/metronome';
@@ -61,10 +61,9 @@
       drone?.stop();
       drone = startDrone(midiForDrone(c.chordRoot));
     } else if (config.backing === 'chord') {
-      // Pluck takes a string and fret; the low E (MIDI 40) with a high "fret"
-      // sounds any pitch, here a quick low arpeggio from the drone octave.
+      // A quick low arpeggio from the drone octave.
       const root = midiForDrone(c.chordRoot);
-      try { playSequence(CHORD_OFFSETS[c.chordType].map(o => ({ string: 6 as const, fret: root + o - 40 })), 35); } catch { /* ignore */ }
+      try { playSequence(CHORD_OFFSETS[c.chordType].map(o => midiAsPos(root + o)), 35); } catch { /* ignore */ }
     }
   }
   // Pausing silences the drone; untimed resume sounds the chord again (timed

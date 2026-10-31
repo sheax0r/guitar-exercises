@@ -6,6 +6,10 @@ function frequencyFor(string: StringNum, fret: number): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
+// Any pitch as a pluckable "position": the low E string (MIDI 40) with a
+// possibly off-the-neck fret. Only the frequency matters to the synth.
+export const midiAsPos = (midi: number): { string: StringNum; fret: number } => ({ string: 6, fret: midi - 40 });
+
 export function playPluck(string: StringNum, fret: number, durationSec = 1.5): void {
   const audioCtx = getAudioContext();
   if (!audioCtx) return;

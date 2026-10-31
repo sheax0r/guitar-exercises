@@ -492,3 +492,21 @@ describe('parseHash — chord-tone targeting', () => {
     expect(r).toMatchObject({ config: { bpm: 200 } });
   });
 });
+
+describe('parseHash — call and response', () => {
+  it('fills defaults for a bare URL', () => {
+    const r = parseHash('#/learn/session?ex=call-response&duration=300&frets=12');
+    expect(r).toMatchObject({ screen: 'session', config: {
+      exercise: 'call-response', lengths: [3], degrees: ['1', '3', '5'], motion: 'leaps',
+      showStart: false, rhythm: false, keyRoot: 'random', drone: false, inputMode: 'click'
+    } });
+  });
+  it('round-trips a full config', () => {
+    const r = parseHash('#/learn/session?ex=call-response&lens=2,4&degs=1,2,3,5&motion=step&start=1&rhythm=1&keyroot=G&drone=1&input=mic&duration=continuous&frets=12');
+    expect(r).toMatchObject({ config: { lengths: [2, 4], degrees: ['1', '2', '3', '5'], motion: 'stepwise', showStart: true, rhythm: true, keyRoot: 'G', drone: true, inputMode: 'mic' } });
+    if (r.screen === 'session') expect(parseHash(sessionHash(r.config))).toEqual(r);
+  });
+  it('needs two degrees', () => {
+    expect(parseHash('#/learn/session?ex=call-response&degs=5&duration=300&frets=12')).toMatchObject({ config: { degrees: ['1', '3', '5'] } });
+  });
+});

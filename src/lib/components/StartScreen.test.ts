@@ -26,11 +26,11 @@ describe('StartScreen — exercise selector', () => {
     localStorage.clear();
   });
 
-  it('offers seven exercise cards and no select', () => {
+  it('offers eight exercise cards and no select', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     expect(container.querySelector('#exercise')).toBeNull();
     const ids = Array.from(container.querySelectorAll('button.card')).map(c => c.getAttribute('data-exercise'));
-    expect(ids).toEqual(['root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged', 'chord-tones']);
+    expect(ids).toEqual(['root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged', 'chord-tones', 'call-response']);
   });
 
   it('hides the target-note picker for modes exercises', async () => {
@@ -428,6 +428,32 @@ describe('StartScreen — Chord-Tone Targeting', () => {
     await fireEvent.click(card(container, 'chord-tones'));
     await fireEvent.click(chipByText(container, 'Timed', 'Tempo'));
     await fireEvent.input(container.querySelector('input[aria-label="BPM"]')!, { target: { value: '10' } });
+    expect(startButton(container).disabled).toBe(true);
+  });
+});
+
+describe('StartScreen — Call and Response', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('emits a call-response config and remembers its settings', async () => {
+    const onStart = vi.fn<(c: AnyConfig) => void>();
+    const { container } = render(StartScreen, { props: { onStart } });
+    await fireEvent.click(card(container, 'call-response'));
+    await fireEvent.click(chipByText(container, '4 notes', 'Phrase length'));
+    await fireEvent.click(chipByText(container, '2', 'Degrees'));
+    await fireEvent.click(chipByText(container, 'Stepwise', 'Motion'));
+    await fireEvent.click(startButton(container));
+    expect(onStart.mock.calls[0][0]).toMatchObject({
+      exercise: 'call-response', lengths: [3, 4], degrees: ['1', '2', '3', '5'], motion: 'stepwise', rhythm: false
+    });
+    expect(storedPrefs()).toMatchObject({ exercise: 'call-response', phraseLengths: [3, 4], phraseMotion: 'stepwise' });
+  });
+
+  it('needs two degrees', async () => {
+    const { container } = render(StartScreen, { props: { onStart: () => {} } });
+    await fireEvent.click(card(container, 'call-response'));
+    await fireEvent.click(chipByText(container, '1', 'Degrees'));
+    await fireEvent.click(chipByText(container, '3', 'Degrees'));
     expect(startButton(container).disabled).toBe(true);
   });
 });

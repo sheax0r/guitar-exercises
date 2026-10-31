@@ -22,6 +22,9 @@
   import ChordTonesSettings from './start/ChordTonesSettings.svelte';
   import type { ProgressionId } from '../music/progressions';
   import type { ToneTarget } from '../exercise/chordtones/types';
+  import { PHRASE_DEGREES } from '../exercise/callresponse/types';
+  import CallResponseSettings from './start/CallResponseSettings.svelte';
+  import type { Degree } from '../music/scales';
 
   type Props = {
     onStart: (config: AnyConfig) => void;
@@ -29,7 +32,7 @@
 
   let { onStart }: Props = $props();
 
-  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones';
+  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones' | 'call-response';
   const CARD_GROUPS: Array<{ title: string; cards: Array<{ id: Card; name: string; desc: string }> }> = [
     {
       title: 'Fretboard',
@@ -51,6 +54,12 @@
       cards: [
         { id: 'caged', name: 'CAGED Shapes', desc: 'Find, name and connect chord shapes up the neck.' },
         { id: 'chord-tones', name: 'Chord-Tone Targeting', desc: 'Hit the 3rd, 7th or guide tones on every change.' }
+      ]
+    },
+    {
+      title: 'Ear',
+      cards: [
+        { id: 'call-response', name: 'Call and Response', desc: 'Hear a short phrase, play it back.' }
       ]
     }
   ];
@@ -116,6 +125,12 @@
   let bpm = $state<number>(stored.bpm ?? 80);
   let barsPerChord = $state<number>(stored.barsPerChord ?? 1);
   let cagedMicJudge = $state<CagedMicJudge>(stored.cagedMicJudge ?? 'notes');
+  // Call and Response (key root, drone and mic settings are shared).
+  let phraseLengths = $state<number[]>(stored.phraseLengths ?? [3]);
+  let phraseDegrees = $state<Degree[]>(stored.phraseDegrees ?? ['1', '3', '5']);
+  let phraseMotion = $state<'stepwise' | 'leaps'>(stored.phraseMotion ?? 'leaps');
+  let showStartNote = $state<boolean>(stored.showStartNote ?? false);
+  let judgeRhythm = $state<boolean>(stored.judgeRhythm ?? false);
   let micDevices = $state<Array<{ deviceId: string; label: string }>>([]);
   // Best-effort device list (labels appear only after mic permission).
   $effect(() => { listAudioInputs().then(d => { micDevices = d; }); });
@@ -146,9 +161,10 @@
   const cagedValid = $derived(card !== 'caged' || (enabledShapes.length > 0 && chordQualities.length > 0));
   const intervalsValid = $derived(card !== 'intervals' || intervals.length > 0);
   // An empty number input binds to null.
+  const phraseValid = $derived(card !== 'call-response' || (phraseLengths.length > 0 && phraseDegrees.length >= 2));
   const bpmValid = $derived(card !== 'chord-tones' || tempo === 'untimed' || (Number.isInteger(bpm) && bpm >= 40 && bpm <= 200));
   const valid = $derived(
-    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid && bpmValid
+    durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid && bpmValid && phraseValid
   );
 
   function buildConfig(): AnyConfig {
@@ -201,6 +217,27 @@
         degreeVariant,
         keyRoot,
         algorithm,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound
+      };
+    }
+    if (card === 'call-response') {
+      return {
+        exercise: 'call-response',
+        lengths: [2, 3, 4].filter(n => phraseLengths.includes(n)),
+        degrees: PHRASE_DEGREES.filter(d => phraseDegrees.includes(d)),
+        motion: phraseMotion,
+        showStart: showStartNote,
+        // Rhythm is judged from mic onsets only.
+        rhythm: inputMode === 'mic' && judgeRhythm,
+        keyRoot,
+        drone,
+        inputMode,
+        micSensitivity,
+        micDeviceId,
         maxFret,
         durationSec,
         continuous,
@@ -311,6 +348,11 @@
       tempo,
       bpm,
       barsPerChord,
+      phraseLengths,
+      phraseDegrees,
+      phraseMotion,
+      showStartNote,
+      judgeRhythm,
       cagedMicJudge,
       showTuner: stored.showTuner,
       recentSessions: rememberRecent(config, sessionHash(config))
@@ -328,7 +370,7 @@
 
   function startRecent(r: { hash: string; config: AnyConfig }) {
     // The mic device isn't in the hash; use the one currently chosen.
-    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' ? { ...r.config, micDeviceId } : r.config;
+    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' || r.config.exercise === 'call-response' ? { ...r.config, micDeviceId } : r.config;
     savePrefs({ ...loadPrefs(), recentSessions: rememberRecent(r.config, r.hash) } as Prefs);
     onStart(config);
   }
@@ -389,6 +431,19 @@
       <span class="label">Key</span>
       <NotePicker bind:value={keyRoot} label="Key" randomLabel="Random" />
     </div>
+  {:else if card === 'call-response'}
+    <CallResponseSettings
+      bind:lengths={phraseLengths}
+      bind:degrees={phraseDegrees}
+      bind:motion={phraseMotion}
+      bind:showStart={showStartNote}
+      bind:rhythm={judgeRhythm}
+      bind:keyRoot
+      bind:inputMode
+      bind:micSensitivity
+      bind:micDeviceId
+      {micDevices}
+    />
   {:else if card === 'chord-tones'}
     <ChordTonesSettings
       bind:progression
@@ -451,7 +506,9 @@
     <div class="more-body">
       <label><input type="checkbox" bind:checked={showFretNumbers} /> Show fret numbers</label>
       <label><input type="checkbox" bind:checked={playSound} /> Play notes</label>
-      {#if isModes}
+      {#if card === 'call-response'}
+        <label><input type="checkbox" bind:checked={drone} /> Drone the root</label>
+      {:else if isModes}
         <label><input type="checkbox" bind:checked={drone} /> Drone the root</label>
         <label><input type="checkbox" bind:checked={highlightCharacteristic} /> Highlight the characteristic note</label>
         <div class="row">

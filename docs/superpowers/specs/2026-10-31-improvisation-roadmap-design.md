@@ -18,7 +18,7 @@ lays out these skill layers:
 | 3 | Chord tones / arpeggios inside a position (CAGED) | Yes: CAGED Shapes |
 | 4 | Scales attached to those positions | Yes: modes, pentatonics, blues, harmonic/melodic minor, CAGED positions |
 | 5 | Targeting chord tones over changes | Yes: Chord-Tone Targeting (untimed and timed) |
-| 6 | Ear to fingers (hear it, play it) | Partly: drone, Identify-by-ear |
+| 6 | Ear to fingers (hear it, play it) | Yes: Call and Response, plus drone and Identify-by-ear |
 
 Layers 3 and 5 were the real gaps, so they came first. Both have now shipped.
 
@@ -170,7 +170,11 @@ windows, two-row scale picker).
 - Mic input for box/CAGED variants is judged by pitch class, in any order.
   Today mic works only for octave runs.
 
-## 5. Call and Response (new exercise)
+## 5. Call and Response (new exercise) — SHIPPED
+
+Shipped 2026-10-31; see `2026-10-31-call-and-response-design.md` (live
+pitch listener rather than record-then-transcribe, any-octave matching,
+optional rhythm judged with `toSixteenths`).
 
 - The app plays a short phrase in a key over the drone: 2–4 notes, drawn from
   allowed scale degrees, using the existing pluck and sequence code.

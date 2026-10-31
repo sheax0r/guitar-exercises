@@ -5,7 +5,7 @@ import type { ExerciseConfig } from '../exercise/types';
 import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/types';
 import type { ChordTonesConfig } from '../exercise/chordtones/types';
 
-vi.mock('../audio/pluck', () => ({ playPluck: () => {}, playInterval: () => {} }));
+vi.mock('../audio/pluck', () => ({ midiAsPos: (m: number) => ({ string: 6, fret: m - 40 }), playPluck: () => {}, playInterval: () => {} }));
 
 function makeConfig(): ExerciseConfig {
   return {

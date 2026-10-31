@@ -144,3 +144,13 @@ describe('summarize chord-tones', () => {
     })).toBe('Chord Tones · 12-bar blues · Guide tones · key of A · 90 bpm · Mic · 5m · 12 frets');
   });
 });
+
+describe('summarize call-response', () => {
+  it('describes lengths, degrees, motion, key, rhythm and input', () => {
+    expect(summarize({
+      exercise: 'call-response', lengths: [2, 3], degrees: ['1', '3', '5'], motion: 'stepwise', showStart: false,
+      rhythm: true, keyRoot: 'random', drone: true, inputMode: 'mic', micSensitivity: 0.5, micDeviceId: null,
+      maxFret: 12, durationSec: 300, continuous: false, showFretNumbers: true, playSound: true
+    })).toBe('Call and Response · 2/3 notes · degrees 1 3 5 · Stepwise · any key · Rhythm · Mic · 5m · 12 frets');
+  });
+});
