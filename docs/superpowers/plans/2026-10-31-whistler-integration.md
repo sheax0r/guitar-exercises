@@ -199,6 +199,15 @@ The Whistler pipeline lifts constraints recorded in
   `src/lib/audio/` as shared code.
 - **Tuner.** The live cents readout becomes a shared widget, usable as an
   intonation check in any mic exercise.
+  - [x] **Done:** `src/lib/audio/tuner.ts` (`tunerReading`) and
+    `src/lib/components/Tuner.svelte` (note, cents, needle, green within
+    ±15¢). Ideate's Recorder uses it. In Learn, `startPitchListener` reports
+    a reading every frame (`onTuner`), so no second mic is opened. The
+    widget appears in Play the Shape and CAGED note-by-note mic sessions
+    behind a "Tuner" header toggle. It is off by default and remembered in
+    prefs (`showTuner`), not in the session hash, since it doesn't change
+    the drill. It is not offered in CAGED strum mode, which doesn't run
+    pitchy.
 - **Call and Response** (roadmap item 5). Record the response, transcribe it
   with `detectNotes` and quantization, and compare it note by note against
   the prompt phrase, rhythm included.

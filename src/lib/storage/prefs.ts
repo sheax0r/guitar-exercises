@@ -50,6 +50,7 @@ export interface Prefs {
   degreeVariant?: DegreeVariant;
   rootVariant?: 'nearest' | 'find-all';
   findAllWindow?: 'neck' | 'window';    // Name the Degree (key root shared with Intervals)
+  showTuner?: boolean;              // live tuner in mic exercises (session toggle)
   recentSessions?: string[];        // session hashes, newest first
 }
 
@@ -63,6 +64,11 @@ export function loadPrefs(): Partial<Prefs> {
   } catch {
     return {};
   }
+}
+
+// Merge a few fields into the stored prefs (session-side toggles).
+export function updatePrefs(patch: Partial<Prefs>): void {
+  savePrefs({ ...loadPrefs(), ...patch } as Prefs);
 }
 
 export function savePrefs(prefs: Prefs): void {

@@ -1,5 +1,6 @@
 import { PitchDetector } from 'pitchy';
 import { getAudioContext } from './context';
+import { tunerReading, type TunerReading } from './tuner';
 import { hzToMidi, rms, inGuitarRange, rmsFloorForSensitivity, DEFAULT_MIC_SENSITIVITY, OnsetDetector, type OnsetOptions } from './pitchMath';
 
 export interface PitchListener {
@@ -11,6 +12,7 @@ export interface PitchListener {
 export interface PitchListenerOptions extends OnsetOptions {
   sensitivity?: number;   // 0..1, maps to the RMS loudness floor
   deviceId?: string | null; // specific audio input, or null/undefined for default
+  onTuner?: (reading: TunerReading | null) => void; // every frame, for a live tuner
 }
 
 // Lists the available audio input devices (best-effort; labels are only
