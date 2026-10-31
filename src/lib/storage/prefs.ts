@@ -9,11 +9,12 @@ import type { CagedShape, ChordQuality } from '../music/caged';
 import type { ProgressionId } from '../music/progressions';
 import type { ToneTarget } from '../exercise/chordtones/types';
 import type { Degree } from '../music/scales';
+import type { RhythmTarget } from '../exercise/rhythm/types';
 
 const KEY = 'guitar-exercises.prefs.v1';
 
 export interface Prefs {
-  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees' | 'chord-tones' | 'call-response';
+  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees' | 'chord-tones' | 'call-response' | 'rhythm';
   targetNote: Note;
   durationSec: number;
   continuous: boolean;
@@ -66,6 +67,11 @@ export interface Prefs {
   phraseMotion?: 'stepwise' | 'leaps';
   showStartNote?: boolean;
   judgeRhythm?: boolean;
+  // Rhythm drill (bpm and mic settings are shared).
+  rhythmTarget?: RhythmTarget;
+  rhythmBars?: number;
+  rhythmTolerance?: number;
+  rhythmInput?: 'click' | 'mic';
   showTuner?: boolean;              // live tuner in mic exercises (session toggle)
   recentSessions?: string[];        // session hashes, newest first
 }

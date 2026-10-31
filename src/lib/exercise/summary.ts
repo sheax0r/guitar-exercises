@@ -5,12 +5,18 @@ import { CAGED_ORDER } from '../music/caged';
 import { PROGRESSION_DISPLAY } from '../music/progressions';
 
 const TONE_LABEL = { any: 'Any chord tone', '3rd': '3rds', '7th': '7ths', guide: 'Guide tones' };
+export const RHYTHM_TARGET_LABEL = { one: 'Beat 1', beats: 'Every beat', ands: 'The ands', pattern: 'Patterns' };
 const CAGED_VARIANT_LABEL = { 'find-tones': 'Find tones', 'name-shape': 'Name the shape', 'next-shape': 'Next shape' };
 
 // One-line human description of a config, e.g.
 // "Root Notes · A · 5m · 12 frets".
 export function summarize(c: AnyConfig): string {
   const parts: string[] = [];
+  // Rhythm has no fretboard or timer: it runs a number of bars.
+  if (c.exercise === 'rhythm') {
+    return ['Rhythm', RHYTHM_TARGET_LABEL[c.target], `${c.bpm} bpm`, `${c.bars} bars`, `±${c.toleranceMs} ms`,
+      c.inputMode === 'mic' ? 'Mic' : 'Tap'].join(' · ');
+  }
   switch (c.exercise) {
     case 'root-notes':
       parts.push('Root Notes', NOTE_DISPLAY[c.targetNote], ...findAll(c));

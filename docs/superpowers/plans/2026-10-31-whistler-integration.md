@@ -200,7 +200,13 @@ The Whistler pipeline lifts constraints recorded in
   - [x] Timed chord-tone targeting: shipped 2026-10-31 (shared metronome,
     and the `whistler.calib` offset shifts the mic judging cut-over). See
     `../specs/2026-10-31-chord-tone-targeting-design.md`.
-  - [ ] "Play on beat 1/the and" and scoring onset error in ms.
+  - [x] "Play on beat 1/the and" and scoring onset error in ms: shipped
+    2026-10-31 as the "Time Feel" card. Onsets come from a new amplitude
+    path (`audio/onsets.ts`), because the pitch listener's onset time lags
+    by a variable 30–80 ms. Mic input is shifted by `whistler.calib`, and
+    taps are timed with `getOutputTimestamp`. The report gives mean
+    absolute error, bias, hit rate per target type and an error timeline.
+    See `../specs/2026-10-31-rhythm-drill-design.md`.
 - **Tuner.** The live cents readout becomes a shared widget, usable as an
   intonation check in any mic exercise.
   - [x] **Done:** `src/lib/audio/tuner.ts` (`tunerReading`) and

@@ -69,6 +69,7 @@ src/
     exercise/     # Exercise<...> interface, fretboard exercises, config summary
       modes/      # Play the Shape and Identify the Mode
       caged/      # CAGED Shapes
+      rhythm/     # Time Feel: beat grid and onset-error scoring
     components/   # Svelte screens + Fretboard widget
       start/      # Start-screen pickers and per-exercise settings
     routing/      # URL hash <-> session config

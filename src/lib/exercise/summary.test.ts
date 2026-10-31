@@ -154,3 +154,10 @@ describe('summarize call-response', () => {
     })).toBe('Call and Response · 2/3 notes · degrees 1 3 5 · Stepwise · any key · Rhythm · Mic · 5m · 12 frets');
   });
 });
+
+describe('summarize rhythm', () => {
+  it('names target, tempo, bars, tolerance and input', () => {
+    expect(summarize({ exercise: 'rhythm', target: 'ands', bpm: 90, bars: 8, toleranceMs: 50, inputMode: 'mic', micSensitivity: 0.5, micDeviceId: null }))
+      .toBe('Rhythm · The ands · 90 bpm · 8 bars · ±50 ms · Mic');
+  });
+});

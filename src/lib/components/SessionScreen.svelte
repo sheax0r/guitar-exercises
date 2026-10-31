@@ -7,6 +7,7 @@
   import FindAllBody from './FindAllBody.svelte';
   import ChordTonesBody from './ChordTonesBody.svelte';
   import CallResponseBody from './CallResponseBody.svelte';
+  import RhythmBody from './RhythmBody.svelte';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
@@ -18,7 +19,9 @@
   let { config, onComplete, onAbort }: Props = $props();
 </script>
 
-{#if config.exercise === 'play-shape'}
+{#if config.exercise === 'rhythm'}
+  <RhythmBody {config} {onComplete} {onAbort} />
+{:else if config.exercise === 'play-shape'}
   <PlayShapeBody {config} {onComplete} {onAbort} />
 {:else if (config.exercise === 'root-notes' || config.exercise === 'random-roots') && config.rootVariant === 'find-all'}
   <FindAllBody {config} {onComplete} {onAbort} />
