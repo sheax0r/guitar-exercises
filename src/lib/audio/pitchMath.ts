@@ -1,9 +1,19 @@
 // Pure pitch-detection helpers, isolated from Web Audio so they are unit
 // testable (jsdom has no real AudioContext or microphone).
 
-// Nearest MIDI note number for a frequency in Hz (A4 = 440 Hz = MIDI 69).
+// Fractional MIDI pitch for a frequency in Hz (A4 = 440 Hz = MIDI 69); the
+// fraction is the cents offset / 100 (tuner, transcription).
+export function hzToMidiFloat(hz: number): number {
+  return 69 + 12 * Math.log2(hz / 440);
+}
+
+// Nearest MIDI note number for a frequency in Hz.
 export function hzToMidi(hz: number): number {
-  return Math.round(69 + 12 * Math.log2(hz / 440));
+  return Math.round(hzToMidiFloat(hz));
+}
+
+export function midiToHz(midi: number): number {
+  return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
 // Sensitivity (0 = chill, 1 = picks up quiet playing) maps to an RMS loudness

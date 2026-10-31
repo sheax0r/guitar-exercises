@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Dev-only: `npm run dev`, then open /ideate-test.html. Not a build input, not linked from the UI.
+     Fixtures: python3 -I test/fetch_fixtures.py (see README.md, "Ideate transcription tests"). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ideate transcription tests</title>
+<style>
+  :root{--bg:#fff;--fg:#1a1a1a;--muted:#666;--line:#ddd;--card:#f6f6f6}
+  @media (prefers-color-scheme:dark){:root{--bg:#161616;--fg:#eee;--muted:#999;--line:#333;--card:#222}}
+  body{font-family:system-ui,sans-serif;margin:0 auto;max-width:1200px;padding:20px 16px;background:var(--bg);color:var(--fg)}
+  h1{font-size:20px;margin:0 0 4px} .hint{color:var(--muted);font-size:13px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin-top:12px}
+  th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  .src{color:var(--muted);font-size:11px}
+  tr.PASS .st{color:#2a2;font-weight:700} tr.FAIL .st,tr.ERROR .st{color:#c22;font-weight:700}
+  tr.INFO .st{color:#38c;font-weight:700} tr.SKIP{opacity:.55}
+  code{font-size:11px;word-break:break-all;color:var(--muted);margin-left:6px}
+  button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px}
+  #view{background:#fff;color:#1a1a1a;border:1px solid var(--line);border-radius:8px;min-height:60px;margin-top:6px}
+</style>
+</head>
+<body>
+<h1>Ideate transcription tests</h1>
+<div class="hint">Each fixture runs through the real pipeline (src/lib/transcribe) and is scored against its expected notes:
+  pitch F1 from a transposition-invariant alignment; onset = share of expected notes whose onset lands within
+  ¼ beat (songs) or 50 ms (annotations) after fitting tempo. Trace: <code>=</code> match <code>x</code> wrong pitch
+  <code>+</code> extra <code>-</code> missed. Params: <code>?engines=pitchy</code> <code>?only=hb-</code></div>
+<p><strong id="status">loading…</strong></p>
+<div><button id="ref">Show reference tab</button> <button id="refgp">Download reference .gp</button>
+  <span class="hint" id="viewtitle"></span></div>
+<div id="view"></div>
+<table>
+  <thead><tr><th>fixture</th><th>engine</th><th>status</th><th>notes</th><th>pitch F1</th><th>onset</th><th>tempo</th><th>time</th><th>alignment</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<script type="module" src="/src/lib/transcribe/harness/run.ts"></script>
+</body>
+</html>
