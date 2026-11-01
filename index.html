@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Guitar Exercises</title>
+    <script>
+      // Remembered light/dark choice (see src/lib/storage/theme.ts), applied before first paint.
+      try {
+        const t = localStorage.getItem('guitar-exercises.theme');
+        if (t === 'light' || t === 'dark') document.documentElement.style.colorScheme = t;
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

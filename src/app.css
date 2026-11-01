@@ -1,6 +1,9 @@
 :root {
   font-family: ui-sans-serif, system-ui, sans-serif;
   color-scheme: light dark;
+  /* Explicit, so a forced light/dark choice (src/lib/storage/theme.ts) repaints the page. */
+  background: Canvas;
+  color: CanvasText;
 }
 
 body {
