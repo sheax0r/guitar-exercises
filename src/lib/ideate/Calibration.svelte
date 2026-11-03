@@ -17,7 +17,9 @@
     let ctx: AudioContext;
     try {
       ctx = audioCtx();
-      stream = await openMic(settings.deviceId);
+      // Raw input: the browser's default echo cancellation removes the page's own clicks
+      // (exactly what clicks mode listens for), and noise suppression flattens them.
+      stream = await openMic(settings.deviceId, { echoCancellation: false, noiseSuppression: false, autoGainControl: false });
     } catch (err) {
       out = 'mic unavailable: ' + ((err as Error).name || err);
       return;
