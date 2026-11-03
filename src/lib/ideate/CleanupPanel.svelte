@@ -72,8 +72,9 @@
     });
   });
 
+  // alphaReady, not api: api is a plain variable, so the effect would never re-run once alphaTab loads.
   $effect(() => {
-    if (api && 'metronomeVolume' in api) api.metronomeVolume = playMetro ? settings.metroVol : 0;
+    if (alphaReady && 'metronomeVolume' in api) api.metronomeVolume = playMetro ? settings.metroVol : 0;
   });
 
   // Waveform for region select: decode the take once per job.
