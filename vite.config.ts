@@ -6,6 +6,8 @@ import { svelteTesting } from '@testing-library/svelte/vite';
 
 export default defineConfig({
   plugins: [svelte({ hot: !process.env.VITEST }), svelteTesting()],
+  // separate.worker.ts is a module worker: it dynamic-imports onnxruntime-web and demucs-web.
+  worker: { format: 'es' },
   test: {
     environment: 'jsdom',
     globals: true,

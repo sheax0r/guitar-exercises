@@ -1,42 +1,31 @@
-// Source separation (Demucs via onnxruntime-web), lazy-loaded from the CDN (~172 MB model,
-// cached by the browser after first use). Single-threaded on purpose: no SharedArrayBuffer,
-// so no COOP/COEP headers, so any static host works.
+// Source separation (Demucs, ~172 MB model cached by the browser after first use). The work
+// runs in separate.worker.ts so the page stays responsive; one worker is kept so the
+// model loads once per page.
 import { resampleTo } from './basicPitch';
 
 export type Stem = 'other' | 'vocals' | 'bass' | 'drums';
 
-const ORT_VER = '1.20.1';
-const DEMUCS_URL = 'https://cdn.jsdelivr.net/npm/demucs-web@1.0.2/+esm';
-// CDN modules with no local types.
-let ortMod: any = null, demucsMod: any = null, demucsProc: any = null;
-let progCb: ((p: number) => void) | undefined;
+let worker: Worker | null = null;
 
 export async function separate(audio: AudioBuffer, stem: Stem, onProg?: (p: number) => void): Promise<AudioBuffer> {
-  progCb = onProg;
-  ortMod = ortMod || (await import(/* @vite-ignore */ `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VER}/+esm`));
-  ortMod.env.wasm.numThreads = 1;
-  ortMod.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VER}/dist/`;
-  demucsMod = demucsMod || (await import(/* @vite-ignore */ DEMUCS_URL));
-  if (!demucsProc) {
-    const proc = new demucsMod.DemucsProcessor({
-      ort: ortMod,
-      onDownloadProgress: (l: number, t: number) => { if (t) progCb?.((0.4 * l) / t); }, // 0..0.4 = model download
-      onProgress: ({ progress }: { progress?: number }) => progCb?.(0.4 + 0.6 * (progress || 0)) // 0.4..1 = separation
-    });
-    await proc.loadModel(demucsMod.CONSTANTS.DEFAULT_MODEL_URL);
-    demucsProc = proc; // only after load resolves, so a failed download can be retried
-  }
   const sr = 44100;
-  let L: Float32Array = audio.getChannelData(0), R: Float32Array | null = audio.numberOfChannels > 1 ? audio.getChannelData(1) : null;
-  if (audio.sampleRate !== sr) {
-    L = resampleTo(L, audio.sampleRate, sr);
-    R = R ? resampleTo(R, audio.sampleRate, sr) : null;
-  }
-  const res = await demucsProc.separate(L, R || L);
-  const s = res[stem] || res.other;
-  const mono = new Float32Array(s.left.length);
-  for (let i = 0; i < mono.length; i++) mono[i] = (s.left[i] + (s.right ? s.right[i] : s.left[i])) / 2;
+  const left = resampleTo(audio.getChannelData(0), audio.sampleRate, sr).slice();
+  const right = audio.numberOfChannels > 1 ? resampleTo(audio.getChannelData(1), audio.sampleRate, sr).slice() : left.slice();
+  worker ??= new Worker(new URL('./separate.worker.ts', import.meta.url), { type: 'module' });
+  const w = worker;
+  const mono = await new Promise<Float32Array>((resolve, reject) => {
+    w.onmessage = (e: MessageEvent<{ progress?: number; mono?: Float32Array; error?: string }>) => {
+      if (e.data.mono) resolve(e.data.mono);
+      else if (e.data.error) reject(new Error(e.data.error));
+      else if (e.data.progress != null) onProg?.(e.data.progress);
+    };
+    w.onerror = e => {
+      worker = null; // a crashed worker can't be reused; the next job starts a fresh one
+      reject(new Error(e.message || 'separation worker failed'));
+    };
+    w.postMessage({ left, right, stem }, [left.buffer, right.buffer]);
+  });
   const out = new AudioBuffer({ length: mono.length, sampleRate: sr, numberOfChannels: 1 });
-  out.copyToChannel(mono, 0);
+  out.copyToChannel(mono as Float32Array<ArrayBuffer>, 0);
   return out;
 }
