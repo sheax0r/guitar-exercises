@@ -6,6 +6,7 @@ Whistler melody-to-tab tool; see `docs/superpowers/plans/2026-10-31-whistler-int
 
 Exercises:
 
+- **Note Names** — pick strings; name a highlighted fret by typing it, or play a named note on a given string (click or mic).
 - **Root Notes** — from a starting position, find the nearest occurrence of a target note; the A/E/D option re-picks the target from A, E or D each prompt.
 - **Intervals** — find the 3rd or 5th above a note, in a major or minor key.
 - **Play the Shape** — play a mode as a one-octave run or position box, by clicking or into a mic.
@@ -50,7 +51,7 @@ npm run build
 Output goes to `dist/`. Serve those files from any static host.
 
 `npm run build:check` also fails if the entry chunk (Home + Learn menu) passes 150 kB raw
-(`scripts/check-bundle.mjs`). Sessions (`SessionScreen`) and Ideate load as lazy chunks;
+(`scripts/check-bundle.mjs`). Sessions (`SessionScreen`), reports and Ideate load as lazy chunks;
 keep heavy imports behind them.
 
 ## Architecture

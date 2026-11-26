@@ -6,6 +6,8 @@ import type { PlayShapeConfig, IdentifyModeConfig } from '../exercise/modes/type
 import type { AnyConfig } from '../exercise/config';
 import type { CagedConfig } from '../exercise/caged/types';
 import type { DegreesConfig } from '../exercise/degrees/types';
+import type { NoteNamesConfig } from '../exercise/notenames/types';
+import type { StringNum } from '../music/tuning';
 import type { ChordTonesConfig } from '../exercise/chordtones/types';
 import { PHRASE_DEGREES, type CallResponseConfig } from '../exercise/callresponse/types';
 import type { LickDrillConfig } from '../exercise/lick/types';
@@ -274,6 +276,28 @@ function parseDegrees(params: URLSearchParams): Route {
   return { screen: 'session', config };
 }
 
+function parseNoteNames(params: URLSearchParams): Route {
+  const duration = parseDuration(params.get('duration'));
+  const frets = parsePositiveInt(params.get('frets'));
+  if (!duration || frets === null) return { screen: 'learn' };
+  const strings = [6, 5, 4, 3, 2, 1].filter(s => (params.get('strs') ?? '').split(',').includes(String(s))) as StringNum[];
+  const noteVariant = params.get('nvar') === 'play' ? 'play' : 'name';
+  const config: NoteNamesConfig = {
+    exercise: 'note-names',
+    noteVariant,
+    strings: strings.length > 0 ? strings : [6, 5],
+    inputMode: params.get('input') === 'mic' && noteVariant === 'play' ? 'mic' : 'click',
+    micSensitivity: parseUnit(params.get('sens'), DEFAULT_MIC_SENSITIVITY),
+    micDeviceId: null,
+    maxFret: frets,
+    durationSec: duration.durationSec,
+    continuous: duration.continuous,
+    showFretNumbers: parseBool(params.get('fretnums'), true),
+    playSound: parseBool(params.get('sound'), true)
+  };
+  return { screen: 'session', config };
+}
+
 function parseChordTones(params: URLSearchParams): Route {
   const duration = parseDuration(params.get('duration'));
   const frets = parsePositiveInt(params.get('frets'));
@@ -387,6 +411,7 @@ export function parseHash(hash: string): Route {
   if (ex === 'identify-mode') return parseIdentifyMode(params);
   if (ex === 'caged') return parseCaged(params);
   if (ex === 'degrees') return parseDegrees(params);
+  if (ex === 'note-names') return parseNoteNames(params);
   if (ex === 'chord-tones') return parseChordTones(params);
   if (ex === 'call-response') return parseCallResponse(params);
   if (ex === 'rhythm') return parseRhythm(params);
@@ -430,6 +455,15 @@ export function sessionHash(config: AnyConfig): string {
     params.set('dvar', config.degreeVariant);
     params.set('keyroot', config.keyRoot);
     params.set('algo', config.algorithm);
+    params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
+    params.set('frets', String(config.maxFret));
+    params.set('fretnums', config.showFretNumbers ? '1' : '0');
+    params.set('sound', config.playSound ? '1' : '0');
+  } else if (config.exercise === 'note-names') {
+    params.set('nvar', config.noteVariant);
+    params.set('strs', config.strings.join(','));
+    params.set('input', config.inputMode);
+    params.set('sens', String(config.micSensitivity));
     params.set('duration', config.continuous ? 'continuous' : String(config.durationSec));
     params.set('frets', String(config.maxFret));
     params.set('fretnums', config.showFretNumbers ? '1' : '0');

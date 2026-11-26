@@ -8,6 +8,7 @@
   import ChordTonesBody from './ChordTonesBody.svelte';
   import CallResponseBody from './CallResponseBody.svelte';
   import RhythmBody from './RhythmBody.svelte';
+  import NoteNamesBody from './NoteNamesBody.svelte';
   import type { AnyConfig, AnyReport } from '../exercise/config';
 
   type Props = {
@@ -29,6 +30,8 @@
   <CallResponseBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'chord-tones'}
   <ChordTonesBody {config} {onComplete} {onAbort} />
+{:else if config.exercise === 'note-names'}
+  <NoteNamesBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'degrees'}
   <DegreesBody {config} {onComplete} {onAbort} />
 {:else if config.exercise === 'caged'}

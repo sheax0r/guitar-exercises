@@ -2,7 +2,6 @@
   import HomeScreen from './lib/components/HomeScreen.svelte';
   import SectionNav from './lib/components/SectionNav.svelte';
   import StartScreen from './lib/components/StartScreen.svelte';
-  import ReportScreen from './lib/components/ReportScreen.svelte';
   import type { AnyConfig, AnyReport } from './lib/exercise/config';
   import type { RhythmReport } from './lib/exercise/rhythm/types';
   import { parseHash, sessionHash, canonicalHash, LEARN_HASH, type Route } from './lib/routing/hash';
@@ -125,11 +124,13 @@
       />
     {/await}
   {:else}
-    <ReportScreen
-      report={activeReport as Exclude<AnyReport, RhythmReport>}
-      config={activeConfig}
-      onPracticeAgain={handlePracticeAgain}
-      onBack={handleBack}
-    />
+    {#await import('./lib/components/ReportScreen.svelte') then { default: ReportScreen }}
+      <ReportScreen
+        report={activeReport as Exclude<AnyReport, RhythmReport>}
+        config={activeConfig}
+        onPracticeAgain={handlePracticeAgain}
+        onBack={handleBack}
+      />
+    {/await}
   {/if}
 {/if}

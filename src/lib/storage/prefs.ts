@@ -15,7 +15,7 @@ import type { StringNum } from '../music/tuning';
 const KEY = 'guitar-exercises.prefs.v1';
 
 export interface Prefs {
-  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees' | 'chord-tones' | 'call-response' | 'rhythm' | 'lick-drill';
+  exercise: ExerciseKind | ModeExerciseKind | 'caged' | 'degrees' | 'chord-tones' | 'call-response' | 'rhythm' | 'lick-drill' | 'note-names';
   targetNote: Note;
   durationSec: number;
   continuous: boolean;
@@ -53,6 +53,8 @@ export interface Prefs {
   include7th?: boolean;
   cagedMicJudge?: 'notes' | 'strum' | 'strum-bass';
   degreeVariant?: DegreeVariant;
+  noteVariant?: 'name' | 'play';    // Note Names
+  noteStrings?: StringNum[];
   rootVariant?: 'nearest' | 'find-all';
   findAllWindow?: 'neck' | 'window';    // Name the Degree (key root shared with Intervals)
   // Chord-Tone Targeting (key root, algorithm and mic settings are shared).
