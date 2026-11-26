@@ -29,6 +29,8 @@
   import type { RhythmTarget } from '../exercise/rhythm/types';
   import type { StringNum } from '../music/tuning';
   import LickDrillSettings from './start/LickDrillSettings.svelte';
+  import NoteNamesSettings from './start/NoteNamesSettings.svelte';
+  import type { NoteNamesVariant } from '../exercise/notenames/types';
   import { loadLicks } from '../storage/licks';
 
   type Props = {
@@ -37,11 +39,12 @@
 
   let { onStart }: Props = $props();
 
-  type Card = 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones' | 'call-response' | 'lick-drill' | 'rhythm';
+  type Card = 'note-names' | 'root-notes' | 'intervals' | 'degrees' | 'play-shape' | 'identify-mode' | 'caged' | 'chord-tones' | 'call-response' | 'lick-drill' | 'rhythm';
   const CARD_GROUPS: Array<{ title: string; cards: Array<{ id: Card; name: string; desc: string }> }> = [
     {
       title: 'Fretboard',
       cards: [
+        { id: 'note-names', name: 'Note Names', desc: 'Name a highlighted fret, or play a named note on a given string.' },
         { id: 'root-notes', name: 'Root Notes', desc: 'Find the nearest occurrence of a note, or all of them.' },
         { id: 'intervals', name: 'Intervals', desc: 'Find the 2nd–7th above a note in key, or from the root.' },
         { id: 'degrees', name: 'Name the Degree', desc: 'Name a note\'s degree in a key, or find the b7 of D.' }
@@ -108,6 +111,8 @@
   );
   let intervalRef = $state<'diatonic-from-note' | 'from-root'>(stored.intervalRef ?? 'diatonic-from-note');
   let degreeVariant = $state<DegreeVariant>(stored.degreeVariant ?? 'name');
+  let noteVariant = $state<NoteNamesVariant>(stored.noteVariant ?? 'name');
+  let noteStrings = $state<StringNum[]>(stored.noteStrings ?? [6, 5]);
   let rootVariant = $state<'nearest' | 'find-all'>(stored.rootVariant ?? 'nearest');
   let findAllWindow = $state<'neck' | 'window'>(stored.findAllWindow ?? 'neck');
   let keyRoot = $state<Note | 'random'>(stored.keyRoot ?? 'C');
@@ -194,9 +199,10 @@
   const bpmValid = $derived(
     (card !== 'chord-tones' || tempo === 'untimed') && card !== 'rhythm' || (Number.isInteger(bpm) && bpm >= 40 && bpm <= 200)
   );
+  const noteStringsValid = $derived(card !== 'note-names' || noteStrings.length > 0);
   const lickValid = $derived(card !== 'lick-drill' || selectedLick !== null);
   const valid = $derived(
-    lickValid && durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid && bpmValid && phraseValid
+    noteStringsValid && lickValid && durationValid && (!isModes || enabledModes.length > 0) && boxSpanValid && cagedValid && intervalsValid && bpmValid && phraseValid
   );
 
   function buildConfig(): AnyConfig {
@@ -249,6 +255,21 @@
         degreeVariant,
         keyRoot,
         algorithm,
+        maxFret,
+        durationSec,
+        continuous,
+        showFretNumbers,
+        playSound
+      };
+    }
+    if (card === 'note-names') {
+      return {
+        exercise: 'note-names',
+        noteVariant,
+        strings: [...noteStrings].sort((a, b) => b - a),
+        inputMode: noteVariant === 'play' ? inputMode : 'click',
+        micSensitivity,
+        micDeviceId,
         maxFret,
         durationSec,
         continuous,
@@ -382,6 +403,8 @@
       intervals,
       intervalRef,
       degreeVariant,
+      noteVariant,
+      noteStrings,
       rootVariant,
       findAllWindow,
       keyRoot,
@@ -438,7 +461,7 @@
 
   function startRecent(r: { hash: string; config: AnyConfig }) {
     // The mic device isn't in the hash; use the one currently chosen.
-    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' || r.config.exercise === 'call-response' || r.config.exercise === 'lick-drill' || r.config.exercise === 'rhythm' ? { ...r.config, micDeviceId } : r.config;
+    const config = r.config.exercise === 'play-shape' || r.config.exercise === 'caged' || r.config.exercise === 'chord-tones' || r.config.exercise === 'call-response' || r.config.exercise === 'lick-drill' || r.config.exercise === 'rhythm' || r.config.exercise === 'note-names' ? { ...r.config, micDeviceId } : r.config;
     savePrefs({ ...loadPrefs(), recentSessions: rememberRecent(r.config, r.hash) } as Prefs);
     onStart(config);
   }
@@ -499,6 +522,15 @@
       <span class="label">Key</span>
       <NotePicker bind:value={keyRoot} label="Key" randomLabel="Random" />
     </div>
+  {:else if card === 'note-names'}
+    <NoteNamesSettings
+      bind:variant={noteVariant}
+      bind:strings={noteStrings}
+      bind:inputMode
+      bind:micSensitivity
+      bind:micDeviceId
+      {micDevices}
+    />
   {:else if card === 'call-response'}
     <CallResponseSettings
       bind:lengths={phraseLengths}
@@ -608,7 +640,7 @@
           <input id="shownotes" type="range" min="0" max="100" step="5" bind:value={displayNotePercentage} />
           <span class="hint">Lower it to hide a random share of the notes and make the exercise harder.</span>
         </div>
-      {:else if card !== 'caged' && card !== 'lick-drill'}
+      {:else if card !== 'caged' && card !== 'lick-drill' && card !== 'note-names'}
         {#if card !== 'degrees' && card !== 'chord-tones' && !(card === 'root-notes' && rootVariant === 'find-all')}
           <label><input type="checkbox" bind:checked={showAllLabels} /> Show all labels (warm-up mode)</label>
           <label><input type="checkbox" bind:checked={showRootMarkers} /> Show root note positions</label>

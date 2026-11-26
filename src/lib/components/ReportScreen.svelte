@@ -29,10 +29,12 @@
     config.exercise === 'root-notes'
     || config.exercise === 'random-roots'
     || config.exercise === 'intervals'
+    || config.exercise === 'note-names'
   );
 
   // Narrowed views. Only one is non-null for a given report. The report is a
   // static snapshot of a finished session, so these are captured once.
+  const isNoteNames = untrack(() => config.exercise === 'note-names');
   const rootConfig = untrack(() => (isRoot ? (config as ExerciseConfig) : null));
   const rootReport = untrack(() => (isRoot ? (report as ExerciseReport) : null));
   const isCaged = untrack(() => config.exercise === 'caged');
@@ -66,7 +68,7 @@
 
   const isRandomRoots = untrack(() => config.exercise === 'random-roots');
   const titleSuffix = isRoot
-    ? (isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${rootConfig!.targetNote}`)
+    ? (isNoteNames ? 'Note Names' : isRandomRoots ? 'Random roots (A, E, D)' : `target note: ${rootConfig!.targetNote}`)
     : isCaged ? 'CAGED Shapes'
     : isDegrees ? 'Name the Degree'
     : isChordTones ? 'Chord-Tone Targeting'
@@ -268,7 +270,7 @@
 
   {#if isRoot}
     <div class="section">
-      <div class="caption">Heatmap — {isRandomRoots ? 'positions' : `${rootConfig!.targetNote} positions`} you saw this session</div>
+      <div class="caption">Heatmap — {isRandomRoots || isNoteNames ? 'positions' : `${rootConfig!.targetNote} positions`} you saw this session</div>
       <div class="board">
         <Fretboard maxFret={rootConfig!.maxFret} highlights={heatmapHighlights} />
       </div>

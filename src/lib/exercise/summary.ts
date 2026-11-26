@@ -46,6 +46,13 @@ export function summarize(c: AnyConfig): string {
       parts.push('Name the Degree', c.degreeVariant === 'name' ? 'Name it' : 'Find it',
         c.keyRoot === 'random' ? 'any key' : `key of ${NOTE_DISPLAY[c.keyRoot]}`);
       break;
+    case 'note-names': {
+      const names = ['', 'e', 'B', 'G', 'D', 'A', 'E'];
+      parts.push('Note Names', c.noteVariant === 'name' ? 'Name it' : 'Play it',
+        c.strings.length === 6 ? 'all strings' : `strings ${[...c.strings].sort((a, b) => b - a).map(s => names[s]).join(' ')}`);
+      if (c.noteVariant === 'play' && c.inputMode === 'mic') parts.push('Mic');
+      break;
+    }
     case 'chord-tones':
       parts.push('Chord Tones', PROGRESSION_DISPLAY[c.progression], TONE_LABEL[c.target],
         c.keyRoot === 'random' ? 'any key' : `key of ${NOTE_DISPLAY[c.keyRoot]}`);

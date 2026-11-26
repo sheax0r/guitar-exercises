@@ -30,7 +30,7 @@ describe('StartScreen — exercise selector', () => {
     const { container } = render(StartScreen, { props: { onStart: () => {} } });
     expect(container.querySelector('#exercise')).toBeNull();
     const ids = Array.from(container.querySelectorAll('button.card')).map(c => c.getAttribute('data-exercise'));
-    expect(ids).toEqual(['root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged', 'chord-tones', 'call-response', 'lick-drill', 'rhythm']);
+    expect(ids).toEqual(['note-names', 'root-notes', 'intervals', 'degrees', 'play-shape', 'identify-mode', 'caged', 'chord-tones', 'call-response', 'lick-drill', 'rhythm']);
   });
 
   it('hides the target-note picker for modes exercises', async () => {

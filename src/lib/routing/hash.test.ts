@@ -461,6 +461,14 @@ describe('parseHash — interval upgrades and Name the Degree', () => {
     expect(r).toMatchObject({ screen: 'session', config: { exercise: 'degrees', degreeVariant: 'find', keyRoot: 'D', continuous: true } });
     if (r.screen === 'session') expect(parseHash(sessionHash(r.config))).toEqual(r);
   });
+
+  it('round-trips a note-names config; mic only applies to play', () => {
+    const r = parseHash('#/learn/session?ex=note-names&nvar=play&strs=6,4,1&input=mic&duration=60&frets=12');
+    expect(r).toMatchObject({ screen: 'session', config: { exercise: 'note-names', noteVariant: 'play', strings: [6, 4, 1], inputMode: 'mic' } });
+    if (r.screen === 'session') expect(parseHash(sessionHash(r.config))).toEqual(r);
+    expect(parseHash('#/learn/session?ex=note-names&nvar=name&strs=&input=mic&duration=60&frets=12'))
+      .toMatchObject({ config: { noteVariant: 'name', strings: [6, 5], inputMode: 'click' } });
+  });
 });
 
 describe('parseHash — Root Notes find all', () => {
